@@ -9,7 +9,7 @@
 
 import numpy as np
 import h5py
-
+import Indizes as ind
 
 # ======================================================================================================================
 # ----------------------------------------------- w2dyn CLASS ----------------------------------------------------------
@@ -241,9 +241,10 @@ class g4iw_file:
 
     # ==================================================================================================================
     def read_g2_iw(self, ineq=1, channel=None, spinband=1, iw = None):
+        niw = self.get_niw(ineq=ineq, channel=channel, spinband=spinband)
+        iw_lin = ind.cen2lin(iw, -niw)
         g2 = []
-
-        for wn in iw:
+        for wn in iw_lin:
             g2.append(self._file['/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband)][()].T)
         g2 = np.array(g2)
         return g2
@@ -251,7 +252,6 @@ class g4iw_file:
 
     # ==================================================================================================================
     def get_niw(self, ineq=1, channel=None, spinband=1):
-        group_exists = True
         wn = 0
         while ('/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband) in self._file):
             wn += 1
