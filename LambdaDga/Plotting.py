@@ -36,7 +36,7 @@ def plot_tp(tp: fp.LocalThreePoint = None, niv_cut=-1, name=''):
         niv_cut = tp.niv
     A = tp
     plt.imshow(A.mat.real[:, tp.niv - niv_cut:tp.niv + niv_cut], cmap='RdBu',
-               extent=[A.iw[0], A.iw[-1], -niv_cut, niv_cut])
+               extent=[ -niv_cut, niv_cut, A.iw[0], A.iw[-1]])
     plt.colorbar()
     plt.title(r'$\Re$' + name + '-' + A.channel)
     plt.xlabel(r'$\nu$')

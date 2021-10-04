@@ -53,13 +53,13 @@ path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset
 
 do_pairing_vertex = True
 t0 = time.time()
-Nk = 16
+Nk = 8
 t_x = 1. / 4.
 t_y = t_x
 t_z = 0
-t_xy = -0.25 * t_x * 0
+t_xy = -0.25 * t_x
 t_yx = t_xy
-t2_x = 0.12 * t_x * 0
+t2_x = 0.12 * t_x
 t2_y = t2_x
 t2_z = 0
 nivp = 5
@@ -198,7 +198,9 @@ plt.ylabel('Sigma-imag')
 plt.savefig(path + 'dga_local_sde_check.png')
 plt.show()
 
-# ---------------------------------------------- NON-LOCAL BUBBLE  -----------------------------------------------------
+realt.print_time('Local Part ')
+
+# ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
 importlib.reload(twop)
 qiw = ind.qiw(qgrid=qgrid, iw=iw)
 
@@ -263,6 +265,8 @@ for iqw in range(qiw.my_size):
     chi0q_urange_full.mat[qiw.my_indizes[iqw]] = chi0q_urange.chi0
     chi0q_asympt_full.mat[qiw.my_indizes[iqw]] = chi0q_asympt.chi0
 
+realt.print_time('Non-local chi ')
+
 chi_dens_asympt.mat_to_array()
 chi_magn_asympt.mat_to_array()
 
@@ -288,6 +292,8 @@ chi_magn_asympt_lambda.mat_to_array()
 
 sigma_dens = sde.sde_dga(vrg=vrg_dens, chir=chi_dens_asympt_lambda, g_generator=g_generator, mu=dmft1p['mu'])
 sigma_magn = sde.sde_dga(vrg=vrg_magn, chir=chi_magn_asympt_lambda, g_generator=g_generator, mu=dmft1p['mu'])
+
+realt.print_time('Non-local SDE ')
 
 sigma_dens_ksum = sigma_dens.mean(axis=(0,1,2))
 sigma_magn_ksum = sigma_magn.mean(axis=(0,1,2))
@@ -354,6 +360,16 @@ plt.ylabel(r'$\chi_{dens}$')
 plt.show()
 
 plt.imshow(vrg_magn.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1, 2 * niv_urange).mean(axis=(0, 1, 2)).real, cmap='RdBu')
+plt.colorbar()
+plt.show()
+
+plt.imshow(vrg_magn.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1, 2 * niv_urange)[:,:,0,niw_core,niv_urange].real, cmap='RdBu')
+plt.colorbar()
+plt.show()
+
+plot.plot_tp(tp=vrg_magn_loc, niv_cut=niv_core, name=r'$\gamma$')
+
+plt.imshow(chi_magn_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1)[:,:,0,niw_core].real, cmap='RdBu')
 plt.colorbar()
 plt.show()
 
