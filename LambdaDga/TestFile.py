@@ -53,7 +53,8 @@ path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset
 
 do_pairing_vertex = True
 t0 = time.time()
-Nk = 8
+Nk = 16
+Nq = 8
 t_x = 1. / 4.
 t_y = t_x
 t_z = 0
@@ -75,8 +76,8 @@ iv_urange = np.arange(-niv_urange, niv_urange)
 Nkx = Nk
 Nky = Nk
 Nkz = 1
-Nqx = Nk
-Nqy = Nk
+Nqx = Nq
+Nqy = Nq
 Nqz = 1
 
 box_sizes = {
