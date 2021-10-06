@@ -153,7 +153,7 @@ class LocalFourPoint():
     ''' Parent class for local four-point correlation '''
 
     def __init__(self, matrix=None, giw=None, channel='dens', beta=1.0, iw=None):
-        assert (matrix.shape[0] == iw.size), 'Size of iw does not match first dimension of four_point'
+        assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
 
         self._channel = channel
         self._mat = matrix
@@ -229,7 +229,7 @@ class LocalSusceptibility():
     ''' Parent class for local susceptibilities'''
 
     def __init__(self, matrix=None, giw=None, channel='dens', beta=1.0, iw=None):
-        assert (matrix.shape[0] == iw.size), 'Size of iw does not match first dimension of four_point'
+        assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
 
         self._channel = channel
         self._mat = matrix
@@ -278,7 +278,7 @@ class LocalSusceptibility():
 def local_chi_phys_from_chi_aux(chi_aux=None, chi0_urange:LocalBubble=None, chi0_core:LocalBubble=None, u=1.0):
     u_r = get_ur(u=u, channel=chi_aux.channel)
     chi = 1. / (1. / (chi_aux.mat + chi0_urange.chi0 - chi0_core.chi0) + u_r)
-    return LocalSusceptibility(matrix=chi, giw=chi_aux.giw, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.iw)
+    return LocalSusceptibility(matrix=chi, giw=chi_aux.giw, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.iw_core)
 
 def local_susceptibility_from_four_point(four_point: LocalFourPoint = None):
         return LocalSusceptibility(matrix=four_point.contract_legs(), giw=four_point.giw, channel=four_point.channel

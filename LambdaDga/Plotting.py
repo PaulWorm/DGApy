@@ -10,7 +10,7 @@ import FourPoint as fp
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def plot_susc(susc=None):
-    plt.plot(susc.iw, susc.mat.real, 'o')
+    plt.plot(susc.iw_core, susc.mat.real, 'o')
     plt.xlim([-2, susc.beta])
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'\chi')

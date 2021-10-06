@@ -58,7 +58,7 @@ class local_four_point_factory():
         gammar = np.array(
             [self.gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0_urange=self.gchi0_urange[wn], niv_core=self.niv_core,
                                        beta=gchir.beta, u=u_r) for wn in gchir.iw_ind])
-        return LocalFourPoint(matrix=gammar, giw=gchir.giw, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
+        return LocalFourPoint(matrix=gammar, giw=gchir.giw, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw_core)
 
     @classmethod
     def gammar_from_gchir_wn(self, gchir=None, gchi0_urange=None, niv_core=10, beta=1.0, u=1.0):
@@ -77,7 +77,7 @@ class local_four_point_factory():
         gchi_aux = np.array(
             [self.gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=self.gchi0_core[wn], beta=gammar.beta,
                                           u=u_r) for wn in gammar.iw_ind])
-        return LocalFourPoint(matrix=gchi_aux, giw=gammar.giw, channel=gammar.channel, beta=gammar.beta, iw=gammar.iw)
+        return LocalFourPoint(matrix=gchi_aux, giw=gammar.giw, channel=gammar.channel, beta=gammar.beta, iw=gammar.iw_core)
 
     @classmethod
     def gchi_aux_from_gammar_wn(self, gammar=None, gchi0=None, beta=1.0, u=1.0):

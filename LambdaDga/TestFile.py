@@ -50,6 +50,9 @@ dataset = ''
 path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 
+fname_g2 = 'g4iw_sym.hdf5'
+fname_dmft = '1p-data.hdf5'
+
 do_pairing_vertex = True
 t0 = time.time()
 Nk = 16
@@ -69,7 +72,7 @@ niw_core = 19
 niv_core = 20
 niv_urange = 100
 niv_asympt = 5000
-iw = np.arange(-niw_core, niw_core + 1)
+iw_core = np.arange(-niw_core, niw_core + 1)
 iv_urange = np.arange(-niv_urange, niv_urange)
 
 Nkx = Nk
@@ -78,6 +81,7 @@ Nkz = 1
 Nqx = Nq
 Nqy = Nq
 Nqz = 1
+Nqtot = Nqx * Nqy * Nqz
 
 box_sizes = {
     "niw_core": niw_core,
@@ -102,7 +106,7 @@ qy = np.arange(0, Nqy) * 2 * np.pi / Nqy
 qz = np.arange(0, Nqz) * 2 * np.pi / Nqz
 qgrid = [qx, qy, qz]
 
-f1p = w2dyn_aux.w2dyn_file(fname=path + '1p-data.hdf5')
+f1p = w2dyn_aux.w2dyn_file(fname=path + fname_dmft)
 dmft1p = f1p.load_dmft1p_w2dyn()
 f1p.close()
 
@@ -112,23 +116,15 @@ giw = dmft1p['gloc']
 # ----------------------------------------------- MPI SETUP ------------------------------------------------------------
 
 comm = mpi.COMM_WORLD
-iw_distributor = mpiaux.MpiDistributor(ntasks=iw.size, comm=comm)
-my_iw = iw[iw_distributor.my_slice]
-
-
-# --------------------------------------------- LOCAL BUBBLE -----------------------------------------------------------
+iw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size, comm=comm)
+my_iw = iw_core[iw_distributor.my_slice]
 
 realt = real_time()
-
-chi0_core = fp.LocalBubble(giw=giw, beta=dmft1p['beta'], niv_sum=box_sizes['niv_core'], iw=my_iw)
-chi0_urange = fp.LocalBubble(giw=giw, beta=dmft1p['beta'], niv_sum=box_sizes['niv_urange'], iw=my_iw)
-chi0_asympt = copy.deepcopy(chi0_urange)
-chi0_asympt.add_asymptotic(niv_asympt=box_sizes['niv_asympt'])
 
 # -------------------------------------------LOAD G2 FROM W2DYN --------------------------------------------------------
 
 
-g2_file = w2dyn_aux.g4iw_file(fname=path + 'g4iw_sym.hdf5')
+g2_file = w2dyn_aux.g4iw_file(fname=path + fname_g2)
 niw_dmft_full = g2_file.get_niw(channel='dens')
 
 g2_dens_loc = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=my_iw), giw=giw, channel='dens',
@@ -139,51 +135,18 @@ g2_magn_loc = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=my_
 g2_dens_loc.cut_iv(niv_cut=box_sizes['niv_core'])
 g2_magn_loc.cut_iv(niv_cut=box_sizes['niv_core'])
 
-gchi_dens_loc = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_dens_loc), giw=g2_dens_loc.giw,
-                                  channel=g2_dens_loc.channel,
-                                  beta=g2_dens_loc.beta, iw=g2_dens_loc.iw)
-gchi_magn_loc = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_magn_loc), giw=g2_magn_loc.giw,
-                                  channel=g2_magn_loc.channel,
-                                  beta=g2_magn_loc.beta, iw=g2_magn_loc.iw)
+dmft1p['g2_dens'] = g2_dens_loc
+dmft1p['g2_magn'] = g2_magn_loc
 
-gamma_dens_loc = fp.gammar_from_gchir(gchir=gchi_dens_loc, gchi0_urange=chi0_urange, u=dmft1p['u'])
-gamma_magn_loc = fp.gammar_from_gchir(gchir=gchi_magn_loc, gchi0_urange=chi0_urange, u=dmft1p['u'])
+# --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
 
-gchi_aux_dens_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_dens_loc, gchi0_core=chi0_core, u=dmft1p['u'])
-gchi_aux_magn_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_magn_loc, gchi0_core=chi0_core, u=dmft1p['u'])
+dmft_sde = sde.local_dmft_sde_from_g2(dmft_input = dmft1p, box_sizes = box_sizes)
 
-chi_aux_dens_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_dens_loc)
-chi_aux_magn_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_magn_loc)
 
-chi_dens_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_dens_loc, chi0_urange=chi0_urange,
-                                                     chi0_core=chi0_core,
-                                                     u=dmft1p['u'])
-chi_dens_asympt_loc = copy.deepcopy(chi_dens_urange_loc)
-chi_dens_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
-chi_magn_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_magn_loc, chi0_urange=chi0_urange,
-                                                     chi0_core=chi0_core,
-                                                     u=dmft1p['u'])
-chi_magn_asympt_loc = copy.deepcopy(chi_magn_urange_loc)
-chi_magn_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
+siw_sde_dens = dmft_sde['siw_dens']
+siw_sde_dens = dmft_sde['siw_magn']
+siw_sde = dmft_sde['siw']
 
-vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,
-                                                       chi_asympt=chi_dens_asympt_loc,
-                                                       chi_urange=chi_dens_urange_loc,
-                                                       niv_urange=box_sizes['niv_urange'],
-                                                       u=dmft1p["u"])
-
-vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
-                                                       chi_asympt=chi_dens_asympt_loc,
-                                                       chi_urange=chi_dens_urange_loc,
-                                                       niv_urange=box_sizes['niv_urange'],
-                                                       u=dmft1p["u"])
-
-# ---------------------------------------- LOCAL SCHWINGER DYSON EQUATION ----------------------------------------------
-
-siw_sde_dens = sde.local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_asympt_loc, u=dmft1p["u"])
-siw_sde_magn = sde.local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_asympt_loc, u=dmft1p["u"])
-
-siw_sde = siw_sde_dens + siw_sde_magn + dmft1p['u'] / 2. * dmft1p['n']
 
 niv_sde = siw_sde_dens.size // 2
 v_sde = np.arange(-niv_sde, niv_sde)
@@ -210,81 +173,12 @@ plt.show()
 realt.print_time('Local Part ')
 
 # # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
-# importlib.reload(twop)
-# qiw = ind.qiw(qgrid=qgrid, iw=iw)
-#
-# chi0q_core_full = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-# chi0q_urange_full = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-# chi0q_asympt_full = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-#
-# chi_dens_asympt = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-# chi_magn_asympt = fp.FullQ(channel='magn', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-#
-# chi_dens_asympt_lambda = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-# chi_magn_asympt_lambda = fp.FullQ(channel='magn', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=True)
-#
-# vrg_dens = fp.FullQ(channel='dens', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=False)
-# vrg_magn = fp.FullQ(channel='magn', beta=dmft1p['beta'], u=dmft1p['u'], qiw=qiw, is_master=False)
-#
-# g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=kgrid, hr=t_mat, sigma=dmft1p['sloc'])
-#
-# gk_urange = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_urange)
-# gk_core = copy.deepcopy(gk_urange)
-# gk_core.cut_self_iv(niv_cut=niv_core)
-#
-# for iqw in range(qiw.my_size):
-#     gkpq_urange = g_generator.generate_gk(mu=dmft1p['mu'], qiw=qiw.my_qiw[iqw], niv=niv_urange)
-#
-#     gkpq_core = copy.deepcopy(gkpq_urange)
-#     gkpq_core.cut_self_iv(niv_cut=niv_core)
-#
-#     chi0q_core = fp.Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta)
-#     chi0q_urange = fp.Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
-#     chi0q_asympt = copy.deepcopy(chi0q_urange)
-#     chi0q_asympt.add_asymptotic(niv_asympt=box_sizes['niv_asympt'], wn=qiw.my_iw[iqw])
-#
-#     gchi_aux_dens = fp.construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=dmft1p['u'], wn=qiw.wn(iqw))
-#     gchi_aux_magn = fp.construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=dmft1p['u'], wn=qiw.wn(iqw))
-#
-#     chi_aux_dens = fp.susceptibility_from_four_point(four_point=gchi_aux_dens)
-#     chi_aux_magn = fp.susceptibility_from_four_point(four_point=gchi_aux_magn)
-#
-#     chiq_dens_urange = fp.chi_phys_from_chi_aux(chi_aux=chi_aux_dens, chi0_urange=chi0q_urange, chi0_core=chi0q_core)
-#     chiq_magn_urange = fp.chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange, chi0_core=chi0q_core)
-#
-#     chiq_dens_asympt = copy.deepcopy(chiq_dens_urange)
-#     chiq_dens_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
-#
-#     chiq_magn_asympt = copy.deepcopy(chiq_magn_urange)
-#     chiq_magn_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
-#
-#     vrgq_dens = fp.fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens, gchi0=chi0q_core, chi_asympt=chiq_dens_asympt
-#                                                   , chi_urange=chiq_dens_urange, niv_urange=box_sizes['niv_urange'])
-#
-#     vrgq_magn = fp.fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn, gchi0=chi0q_core, chi_asympt=chiq_magn_asympt
-#                                                   , chi_urange=chiq_magn_urange, niv_urange=box_sizes['niv_urange'])
-#
-#     chi_dens_asympt.mat[qiw.my_indizes[iqw]] = chiq_dens_asympt.mat
-#     chi_magn_asympt.mat[qiw.my_indizes[iqw]] = chiq_magn_asympt.mat
-#
-#     vrg_dens.mat[qiw.my_indizes[iqw]] = vrgq_dens.mat
-#     vrg_magn.mat[qiw.my_indizes[iqw]] = vrgq_magn.mat
-#
-#     chi0q_core_full.mat[qiw.my_indizes[iqw]] = chi0q_core.chi0
-#     chi0q_urange_full.mat[qiw.my_indizes[iqw]] = chi0q_urange.chi0
-#     chi0q_asympt_full.mat[qiw.my_indizes[iqw]] = chi0q_asympt.chi0
-#
-# realt.print_time('Non-local chi ')
-#
-# chi_dens_asympt.mat_to_array()
-# chi_magn_asympt.mat_to_array()
-#
-# vrg_dens.mat_to_array()
-# vrg_magn.mat_to_array()
-#
-# chi0q_urange_full.mat_to_array()
-# chi0q_core_full.mat_to_array()
-# chi0q_asympt_full.mat_to_array()
+
+qiw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size * Nqtot, comm=comm)
+
+qiw = ind.qiw(qgrid=qgrid, iw_core=iw_core)
+qiw.my_qiw = qiw_distributor.my_slice
+
 #
 #
 # lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_asympt), chir=chi_dens_asympt,
@@ -348,10 +242,10 @@ realt.print_time('Local Part ')
 # plt.ylabel('Sigma-imag')
 # plt.show()
 #
-# plt.plot(iw, chi_magn_asympt_loc.mat.real, 'o', label='loc-asympt')
-# plt.plot(iw, chi_magn_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
+# plt.plot(iw_core, chi_magn_asympt_loc.mat.real, 'o', label='loc-asympt')
+# plt.plot(iw_core, chi_magn_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
 #          label='lambda-corrected')
-# plt.plot(iw, chi_magn_asympt.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
+# plt.plot(iw_core, chi_magn_asympt.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
 #          label='non-local')
 # plt.legend()
 # plt.xlim(-2)
@@ -359,8 +253,8 @@ realt.print_time('Local Part ')
 # plt.ylabel(r'$\chi_{magn}$')
 # plt.show()
 #
-# plt.plot(iw, chi_dens_asympt_loc.mat.real, 'o', label='loc-asympt')
-# plt.plot(iw, chi_dens_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
+# plt.plot(iw_core, chi_dens_asympt_loc.mat.real, 'o', label='loc-asympt')
+# plt.plot(iw_core, chi_dens_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o',
 #          label='lambda-corrected')
 # plt.legend()
 # plt.xlim(-2)
@@ -383,9 +277,9 @@ realt.print_time('Local Part ')
 # plt.show()
 #
 #
-# plt.plot(iw,chi0q_core_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: core')
-# plt.plot(iw,chi0q_urange_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: urange')
-# plt.plot(iw,chi0q_asympt_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: asympt')
+# plt.plot(iw_core,chi0q_core_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: core')
+# plt.plot(iw_core,chi0q_urange_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: urange')
+# plt.plot(iw_core,chi0q_asympt_full.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1).mean(axis=(0, 1, 2)).real, 'o', label='q-sum: asympt')
 # plt.legend()
 # plt.show()
 #
