@@ -16,7 +16,7 @@ def cen2lin(val=None, start=0):
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
 class MpiDistributor():
-    ''' Distributes ntot tasks among cores
+    ''' Distributes size tasks among cores
     '''
 
     def __init__(self, ntasks=1, comm: mpi.Comm=None):
@@ -82,6 +82,7 @@ class MpiDistributor():
 if __name__ == '__main__':
 
     comm = mpi.COMM_WORLD
+    print(comm.Get_rank())
     niw = 11
     iw = np.arange(-niw, niw+1)
     ntasks = iw.size

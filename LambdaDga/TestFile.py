@@ -1,5 +1,5 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
-
+# Dga conda distribution has to be loaded, otherwise the mpirun does not work properly!
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
@@ -47,8 +47,8 @@ class real_time():
 path = './'
 dataset = ''
 # path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-#path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+# path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 
 fname_g2 = 'g4iw_sym.hdf5'
 fname_dmft = '1p-data.hdf5'
@@ -112,12 +112,12 @@ f1p.close()
 
 giw = dmft1p['gloc']
 
-
 # ----------------------------------------------- MPI SETUP ------------------------------------------------------------
 
 comm = mpi.COMM_WORLD
 iw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size, comm=comm)
 my_iw = iw_core[iw_distributor.my_slice]
+print(f'My rank is {iw_distributor.my_rank} and I am doing: {my_iw=}')
 
 realt = real_time()
 
@@ -140,13 +140,23 @@ dmft1p['g2_magn'] = g2_magn_loc
 
 # --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
 
-dmft_sde = sde.local_dmft_sde_from_g2(dmft_input = dmft1p, box_sizes = box_sizes)
+dmft_sde = sde.local_dmft_sde_from_g2(dmft_input=dmft1p, box_sizes=box_sizes)
 
+chi_dens_loc_mat = iw_distributor.allgather(rank_result=dmft_sde['chi_dens'].mat)
+chi_magn_loc_mat = iw_distributor.allgather(rank_result=dmft_sde['chi_magn'].mat)
+
+chi_dens_loc = fp.LocalSusceptibility(matrix=chi_dens_loc_mat,giw=dmft_sde['chi_dens'].giw,channel=dmft_sde['chi_dens'].channel,
+                                      beta = dmft_sde['chi_dens'].beta,iw=iw_core)
+
+chi_magn_loc = fp.LocalSusceptibility(matrix=chi_magn_loc_mat,giw=dmft_sde['chi_magn'].giw,channel=dmft_sde['chi_magn'].channel,
+                                      beta = dmft_sde['chi_magn'].beta,iw=iw_core)
 
 siw_sde_dens = dmft_sde['siw_dens']
 siw_sde_dens = dmft_sde['siw_magn']
 siw_sde = dmft_sde['siw']
-
+siw_sde_reduce = np.zeros(np.shape(siw_sde), dtype=complex)
+comm.Allreduce(siw_sde, siw_sde_reduce)
+siw_sde_reduce = siw_sde_reduce + dmft_sde['hartree']
 
 niv_sde = siw_sde_dens.size // 2
 v_sde = np.arange(-niv_sde, niv_sde)
@@ -155,29 +165,69 @@ v_dmft = np.arange(-niv_dmft, niv_dmft)
 
 plt.subplot(211)
 plt.plot(v_dmft, dmft1p["sloc"].real)
-plt.plot(v_sde, siw_sde.real, 'o', ms=2,
+plt.plot(v_sde, siw_sde_reduce.real, 'o', ms=2,
          label='asympt-range')
 plt.xlim([0, dmft1p['beta']])
 plt.xlabel('w')
 plt.ylabel('Sigma-real')
 plt.subplot(212)
 plt.plot(v_dmft, dmft1p["sloc"].imag)
-plt.plot(v_sde, siw_sde.imag, 'o', ms=2, label='asympt-range')
+plt.plot(v_sde, siw_sde_reduce.imag, 'o', ms=2, label='asympt-range')
 plt.xlim([0, dmft1p['beta']])
 plt.legend()
 plt.xlabel('w')
 plt.ylabel('Sigma-imag')
-plt.savefig(path + 'dga_local_sde_check.png')
+plt.savefig(path + 'dga_local_sde_check_{}.png'.format(iw_distributor.my_rank))
 plt.show()
 
 realt.print_time('Local Part ')
 
-# # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
+# ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
+# ======================================================================================================================
+
 
 qiw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size * Nqtot, comm=comm)
 
-qiw = ind.qiw(qgrid=qgrid, iw_core=iw_core)
-qiw.my_qiw = qiw_distributor.my_slice
+qiw = ind.qiw(qgrid=qgrid, iw=iw_core, my_slice=qiw_distributor.my_slice)
+
+# ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
+
+dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_sde, hr=t_mat, kgrid=kgrid, box_sizes=box_sizes,
+                                 qiw=qiw)
+realt.print_time('Non-local Susceptibility: ')
+
+chi_dens_ladder_mat = qiw_distributor.allgather(rank_result = dga_susc['chi_dens_asympt'].mat)
+chi_magn_ladder_mat = qiw_distributor.allgather(rank_result = dga_susc['chi_magn_asympt'].mat)
+
+chi_dens_ladder = fp.LadderSusceptibility(qiw=qiw.qiw,channel='dens',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_dens_ladder.mat = chi_dens_ladder_mat
+
+chi_magn_ladder = fp.LadderSusceptibility(qiw=qiw.qiw,channel='magn',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_magn_ladder.mat = chi_magn_ladder_mat
+
+lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
+                                   chi_loc=chi_dens_loc, qiw=qiw)
+lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
+                                    chi_loc=chi_magn_loc, qiw=qiw)
+
+chi_dens_lambda = fp.LadderSusceptibility(qiw=qiw.qiw,channel='dens',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_dens_lambda.mat = 1./(1./chi_dens_ladder_mat + lambda_dens)
+
+chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw.qiw,channel='magn',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_magn_lambda.mat = 1./(1./chi_magn_ladder_mat + lambda_magn)
+
+chi_magn_lambda_qmean = qiw.q_mean_full(chi_magn_lambda.mat)
+chi_magn_ladder_qmean = qiw.q_mean_full(chi_magn_ladder.mat)
+
+plt.plot(iw_core, chi_magn_loc.mat.real, label='dmft')
+plt.plot(iw_core,chi_magn_lambda_qmean.real, 'o',ms=6, label=r'$\lambda: q-mean$')
+plt.plot(iw_core,chi_magn_ladder_qmean.real, 's',ms=3, label=r'$ladder: q-mean$')
+plt.legend()
+plt.title(r'$\chi_{magn}$')
+plt.xlim([-2,20])
+plt.show()
+
+# --------------------------------------------- LAMBDA CORRECTIONS -----------------------------------------------------
 
 #
 #
@@ -270,7 +320,7 @@ qiw.my_qiw = qiw_distributor.my_slice
 # plt.colorbar()
 # plt.show()
 #
-# plot.plot_tp(tp=vrg_magn_loc, niv_cut=niv_core, name=r'$\gamma$')
+# plot.plot_tp(twop=vrg_magn_loc, niv_cut=niv_core, name=r'$\gamma$')
 #
 # plt.imshow(chi_magn_asympt_lambda.mat.reshape(Nqx, Nqy, Nqz, 2 * niw_core + 1)[:,:,0,niw_core].real, cmap='RdBu')
 # plt.colorbar()
@@ -283,7 +333,7 @@ qiw.my_qiw = qiw_distributor.my_slice
 # plt.legend()
 # plt.show()
 #
-# # plot.plot_tp(tp=vrg_magn_loc, niv_cut=niv_core, name=r'$\gamma$')
+# # plot.plot_tp(twop=vrg_magn_loc, niv_cut=niv_core, name=r'$\gamma$')
 # #
 # # iv_dmft = np.arange(-niv_dmft,niv_dmft)
 # # plt.plot(iv_dmft,dmft1p['gloc'].real, 'o', label='loc')

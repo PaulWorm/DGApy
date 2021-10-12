@@ -20,13 +20,13 @@ class qiw():
         Indizes must be of increasing value. q's must start at 0, iw_core can start in the negative
     '''
 
-    def __init__(self, qgrid=None, iw=None):
+    def __init__(self, qgrid=None, iw=None, my_slice=None):
         self._qx = qgrid[0]
         self._qy = qgrid[1]
         self._qz = qgrid[2]
         self._iw = iw
         self.set_qiw()
-        self._my_qiw = None
+        self.my_slice = my_slice
 
     @property
     def qx(self):
@@ -61,8 +61,8 @@ class qiw():
         return self.iw.size
 
     @property
-    def ntot(self):
-        return self.nqx * self.nqy * self.nqz * self.niw
+    def size(self):
+        return self.qiw.shape[0]
 
     @property
     def qiw(self):
@@ -70,23 +70,19 @@ class qiw():
 
     @property
     def my_size(self):
-        return self._my_size
+        return self.my_qiw.shape[0]
 
     @property
     def my_slice(self):
         return self._my_slice
 
-    @property
-    def my_indizes(self):
-        return self._my_indizes
+    @my_slice.setter
+    def my_slice(self, value):
+        self._my_slice = value
 
     @property
     def my_qiw(self):
-        return self._my_qiw
-
-    @my_qiw.setter
-    def my_qiw(self, slice):
-        self._my_qiw = self.qiw[slice]
+        return self.qiw[self.my_slice]
 
     @property
     def my_qx(self):
@@ -108,6 +104,7 @@ class qiw():
     def my_wn(self):
         return cen2lin(self.my_iw, self.iw[0])
 
+    @property
     def nq(self):
         return self.nqx * self.nqy * self.nqz
 
@@ -116,6 +113,17 @@ class qiw():
 
     def set_qiw(self):
         self._qiw = np.array(np.meshgrid(self.qx, self.qy, self.qz, self.iw)).reshape(4, -1).T
+
+    def reshape_full(self, mat=None):
+        ''' qiw-axis has to be first. Also array must be known on the whole {q,iw} space'''
+        old_shape = mat.shape[1:]
+        return np.reshape(mat, newshape=(self.nqx,self.nqy,self.nqz,self.niw) + old_shape)
+
+    def q_mean_full(self, mat=None):
+        mat_reshape = self.reshape_full(mat=mat)
+        return mat_reshape.mean(axis=(0,1,2))
+
+
 
 
 

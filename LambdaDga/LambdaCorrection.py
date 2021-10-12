@@ -4,22 +4,23 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import FourPoint as fp
+import Indizes as ind
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 
-def get_lambda_start(chi: fp.FullQ = None):
-    is_w0 = chi.qiw.qiw[:,-1] == 0
+def get_lambda_start(chi: fp.LadderSusceptibility = None):
+    is_w0 = chi.qiw[:,-1] == 0
     return -np.min(1. / (chi.mat[is_w0].real))
 
 
-def lambda_correction(lambda_start = 0, chir: fp.FullQ = None, chi_loc: fp.LocalSusceptibility = None,
-                      maxiter = 1000, eps=1e-7, delta=0.1):
+def lambda_correction(lambda_start = 0, chir: fp.LadderSusceptibility = None, chi_loc: fp.LocalSusceptibility = None,
+                      maxiter = 1000, eps=1e-7, delta=0.1, qiw: ind.qiw = None):
     beta = chir.beta
     chi_loc_sum = 1. / beta * np.sum(chi_loc.mat)
     lambda_old = lambda_start + delta
     lambda_ = lambda_old
-    nq = chir.qiw.nq()
+    nq = qiw.nq
 
     for i in range(maxiter):
         chir_sum = 1. / (beta * nq) * np.sum(1. / (1. / chir.mat + lambda_))
