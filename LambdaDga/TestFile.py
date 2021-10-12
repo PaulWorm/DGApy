@@ -1,6 +1,6 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
 # Dga conda distribution has to be loaded, otherwise the mpirun does not work properly!
-
+# Always (!!!) check hoppings before starting testing.
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import copy
@@ -47,7 +47,7 @@ class real_time():
 path = './'
 dataset = ''
 # path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 
 fname_g2 = 'g4iw_sym.hdf5'
@@ -60,9 +60,9 @@ Nq = 8
 t_x = 1. / 4.
 t_y = t_x
 t_z = 0
-t_xy = -0.25 * t_x
+t_xy = -0.25 * t_x * 0
 t_yx = t_xy
-t2_x = 0.12 * t_x
+t2_x = 0.12 * t_x * 0
 t2_y = t2_x
 t2_z = 0
 nivp = 5
@@ -190,6 +190,15 @@ qiw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size * Nqtot, comm=comm)
 
 qiw = ind.qiw(qgrid=qgrid, iw=iw_core, my_slice=qiw_distributor.my_slice)
 
+g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=kgrid, hr=t_mat, sigma=dmft1p['sloc'])
+
+gk = g_generator.generate_gk(mu=dmft1p['mu'],qiw=[0,0,0,0], niv=niv_urange)
+
+plt.plot(v_dmft,dmft1p['gloc'].real,'o')
+plt.plot(iv_urange,gk.gk.mean(axis=(0,1,2)).real,'s')
+plt.xlim(-20,20)
+plt.show()
+
 # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 
 dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_sde, hr=t_mat, kgrid=kgrid, box_sizes=box_sizes,
@@ -205,7 +214,7 @@ chi_dens_ladder.mat = chi_dens_ladder_mat
 chi_magn_ladder = fp.LadderSusceptibility(qiw=qiw.qiw,channel='magn',u=dmft1p['u'], beta=dmft1p['beta'])
 chi_magn_ladder.mat = chi_magn_ladder_mat
 
-lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
+lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder,
                                    chi_loc=chi_dens_loc, qiw=qiw)
 lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
                                     chi_loc=chi_magn_loc, qiw=qiw)
@@ -216,8 +225,11 @@ chi_dens_lambda.mat = 1./(1./chi_dens_ladder_mat + lambda_dens)
 chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw.qiw,channel='magn',u=dmft1p['u'], beta=dmft1p['beta'])
 chi_magn_lambda.mat = 1./(1./chi_magn_ladder_mat + lambda_magn)
 
-chi_magn_lambda_qmean = qiw.q_mean_full(chi_magn_lambda.mat)
+chi_dens_lambda_qmean = qiw.q_mean_full(chi_dens_lambda.mat)
+chi_dens_ladder_qmean = qiw.q_mean_full(chi_dens_ladder.mat)
+
 chi_magn_ladder_qmean = qiw.q_mean_full(chi_magn_ladder.mat)
+chi_magn_lambda_qmean = qiw.q_mean_full(chi_magn_lambda.mat)
 
 plt.plot(iw_core, chi_magn_loc.mat.real, label='dmft')
 plt.plot(iw_core,chi_magn_lambda_qmean.real, 'o',ms=6, label=r'$\lambda: q-mean$')
@@ -227,8 +239,77 @@ plt.title(r'$\chi_{magn}$')
 plt.xlim([-2,20])
 plt.show()
 
-# --------------------------------------------- LAMBDA CORRECTIONS -----------------------------------------------------
+plt.plot(iw_core, chi_dens_loc.mat.real, label='dmft')
+plt.plot(iw_core,chi_dens_lambda_qmean.real, 'o',ms=6, label=r'$\lambda: q-mean$')
+plt.plot(iw_core,chi_dens_ladder_qmean.real, 's',ms=3, label=r'$ladder: q-mean$')
+plt.legend()
+plt.title(r'$\chi_{dens}$')
+plt.xlim([-2,20])
+plt.show()
 
+vrg_magn_qsum = qiw.q_mean_full(mat=dga_susc['vrg_magn'].mat)
+vrg_dens_qsum = qiw.q_mean_full(mat=dga_susc['vrg_dens'].mat)
+
+plt.plot(vrg_magn_qsum.mean(axis=1).real, 'o')
+plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=1).real,'o')
+plt.show()
+
+plt.plot(vrg_magn_qsum.mean(axis=0).real, 'o')
+plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=0).real,'o')
+plt.show()
+
+plt.plot(vrg_dens_qsum.mean(axis=1).real, 'o')
+plt.plot(dmft_sde['vrg_dens'].mat.mean(axis=1).real,'o')
+plt.show()
+
+chi0_core_qsum = qiw.q_mean_full(dga_susc['chi0q_core'].mat)
+chi0_urange_qsum = qiw.q_mean_full(dga_susc['chi0q_urange'].mat)
+
+plt.plot(dmft_sde['chi0_core'].chi0.real,'o')
+#plt.plot(dmft_sde['chi0_urange'].chi0.real,'o')
+plt.plot(chi0_core_qsum.real,'s')
+#plt.plot(chi0_urange_qsum.real,'s')
+plt.show()
+
+
+
+
+realt.print_time('Lambda correction: ')
+# ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
+
+chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw.my_qiw,channel='dens',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_dens_lambda_my_qiw.mat = chi_dens_lambda.mat[qiw.my_slice]
+
+chi_magn_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw.my_qiw,channel='magn',u=dmft1p['u'], beta=dmft1p['beta'])
+chi_magn_lambda_my_qiw.mat = chi_magn_lambda.mat[qiw.my_slice]
+
+
+
+
+
+sigma_dens_dga  = sde.sde_dga(dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator, mu=dmft1p['mu'], qiw=qiw)
+sigma_magn_dga  = sde.sde_dga(dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator, mu=dmft1p['mu'], qiw=qiw)
+
+
+sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
+comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
+sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
+comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
+
+sigma_dga = sigma_dens_dga + 3. * sigma_magn_dga - siw_sde_reduce + dmft_sde['hartree']
+
+sigma_dga_ksum = sigma_dga.mean(axis=(0,1,2))
+
+
+plt.plot(v_dmft, dmft1p["sloc"].imag, label=r'dmft')
+plt.plot(v_sde, siw_sde_reduce.imag, 'o', ms=2,
+         label='asympt-range')
+plt.plot(iv_urange,sigma_dga_ksum.imag, 'o', ms=2, label=r'$\Sigma_{dga}: k-sum$')
+plt.legend()
+plt.xlim(0,2*niv_core)
+plt.show()
+
+realt.print_time('DGA Schwinger-Dyson equation: ')
 #
 #
 # lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_asympt), chir=chi_dens_asympt,

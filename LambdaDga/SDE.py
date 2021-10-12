@@ -26,16 +26,16 @@ def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility 
                               axis=0)  # - np.sign(u_r) * 1./chir.beta
 
 
-def sde_dga(vrg: fp.FullQ = None, chir: fp.FullQ = None, g_generator: twop.GreensFunctionGenerator = None, mu=0):
+def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv = vrg.mat.shape[-1] // 2
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv), dtype=complex)
-    for iqw in range(vrg.qiw.my_size):
-        gkpq = g_generator.generate_gk(mu=mu, qiw=vrg.qiw.my_qiw[iqw], niv=niv)
+    for iqw, qiw_ in enumerate(qiw.my_qiw):
+        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv)
         sigma += - vrg.u_r / (2.0) * (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) + np.sign(
             vrg.u_r) * 0.5 / vrg.beta) * gkpq.gk
-        # + vrg.u * 0.5 / vrg.beta
-    sigma = 1. / (vrg.qiw.nq()) * sigma
+    sigma = 1. / (qiw.nq) * sigma
     return sigma
 
 
@@ -96,8 +96,8 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
                                                            u=u)
 
     vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
-                                                           chi_asympt=chi_dens_asympt_loc,
-                                                           chi_urange=chi_dens_urange_loc,
+                                                           chi_asympt=chi_magn_asympt_loc,
+                                                           chi_urange=chi_magn_urange_loc,
                                                            niv_urange=niv_urange,
                                                            u=u)
 
@@ -107,8 +107,13 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
     siw = siw_dens + siw_magn
 
     dmft_sde = {
+        'chi0_core': chi0_core,
+        'chi0_urange': chi0_urange,
+        'chi0_asympt': chi0_asympt,
         'gamma_dens': gamma_dens,
         'gamma_magn': gamma_magn,
+        'vrg_dens': vrg_dens_loc,
+        'vrg_magn': vrg_magn_loc,
         'chi_dens': chi_dens_asympt_loc,
         'chi_magn': chi_magn_asympt_loc,
         'siw_dens': siw_dens,
@@ -119,9 +124,7 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
 
     return dmft_sde
 
-
 # ======================================================================================================================
-
 
 
 # class local_sde():
