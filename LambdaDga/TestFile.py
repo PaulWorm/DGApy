@@ -261,32 +261,29 @@ plt.title(r'$\chi_{dens}$')
 plt.xlim([-2,20])
 plt.show()
 
-vrg_magn_qsum = qiw.q_mean_full(mat=dga_susc['vrg_magn'].mat)
-vrg_dens_qsum = qiw.q_mean_full(mat=dga_susc['vrg_dens'].mat)
-
-plt.plot(vrg_magn_qsum.mean(axis=1).real, 'o')
-plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=1).real,'o')
-plt.show()
-
-plt.plot(vrg_magn_qsum.mean(axis=0).real, 'o')
-plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=0).real,'o')
-plt.show()
-
-plt.plot(vrg_dens_qsum.mean(axis=1).real, 'o')
-plt.plot(dmft_sde['vrg_dens'].mat.mean(axis=1).real,'o')
-plt.show()
-
-chi0_core_qsum = qiw.q_mean_full(dga_susc['chi0q_core'].mat)
-chi0_urange_qsum = qiw.q_mean_full(dga_susc['chi0q_urange'].mat)
-
-plt.plot(dmft_sde['chi0_core'].chi0.real,'o')
-#plt.plot(dmft_sde['chi0_urange'].chi0.real,'o')
-plt.plot(chi0_core_qsum.real,'s')
-#plt.plot(chi0_urange_qsum.real,'s')
-plt.show()
-
-
-
+# vrg_magn_qsum = qiw.q_mean_full(mat=dga_susc['vrg_magn'].mat)
+# vrg_dens_qsum = qiw.q_mean_full(mat=dga_susc['vrg_dens'].mat)
+#
+# plt.plot(vrg_magn_qsum.mean(axis=1).real, 'o')
+# plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=1).real,'o')
+# plt.show()
+#
+# plt.plot(vrg_magn_qsum.mean(axis=0).real, 'o')
+# plt.plot(dmft_sde['vrg_magn'].mat.mean(axis=0).real,'o')
+# plt.show()
+#
+# plt.plot(vrg_dens_qsum.mean(axis=1).real, 'o')
+# plt.plot(dmft_sde['vrg_dens'].mat.mean(axis=1).real,'o')
+# plt.show()
+#
+# chi0_core_qsum = qiw.q_mean_full(dga_susc['chi0q_core'].mat)
+# chi0_urange_qsum = qiw.q_mean_full(dga_susc['chi0q_urange'].mat)
+#
+# plt.plot(dmft_sde['chi0_core'].chi0.real,'o')
+# #plt.plot(dmft_sde['chi0_urange'].chi0.real,'o')
+# plt.plot(chi0_core_qsum.real,'s')
+# #plt.plot(chi0_urange_qsum.real,'s')
+# plt.show()
 
 realt.print_time('Lambda correction: ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
@@ -310,7 +307,7 @@ comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
 sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
 comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
 
-sigma_dga = sigma_dens_dga + 3. * sigma_magn_dga - siw_sde_reduce + dmft_sde['hartree']
+sigma_dga = sigma_dens_dga_reduce + 3. * sigma_magn_dga_reduce - siw_sde_reduce + dmft_sde['hartree']
 
 sigma_dga_ksum = sigma_dga.mean(axis=(0,1,2))
 
