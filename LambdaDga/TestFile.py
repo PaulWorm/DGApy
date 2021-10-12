@@ -151,6 +151,20 @@ chi_dens_loc = fp.LocalSusceptibility(matrix=chi_dens_loc_mat,giw=dmft_sde['chi_
 chi_magn_loc = fp.LocalSusceptibility(matrix=chi_magn_loc_mat,giw=dmft_sde['chi_magn'].giw,channel=dmft_sde['chi_magn'].channel,
                                       beta = dmft_sde['chi_magn'].beta,iw=iw_core)
 
+
+
+gamma_dens = fp.LocalFourPoint(matrix=iw_distributor.allgather(rank_result = dmft_sde['gamma_dens'].mat),giw=dmft_sde['gamma_dens'].giw,
+                               channel=dmft_sde['gamma_dens'].channel, beta=dmft_sde['gamma_dens'].beta, iw=iw_core)
+
+gamma_magn = fp.LocalFourPoint(matrix=iw_distributor.allgather(rank_result = dmft_sde['gamma_magn'].mat),giw=dmft_sde['gamma_magn'].giw,
+                               channel=dmft_sde['gamma_magn'].channel, beta=dmft_sde['gamma_magn'].beta, iw=iw_core)
+
+dmft_gamma = {
+    'gamma_dens': gamma_dens,
+    'gamma_magn': gamma_magn
+
+}
+
 siw_sde_dens = dmft_sde['siw_dens']
 siw_sde_dens = dmft_sde['siw_magn']
 siw_sde = dmft_sde['siw']
@@ -201,7 +215,7 @@ plt.show()
 
 # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 
-dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_sde, hr=t_mat, kgrid=kgrid, box_sizes=box_sizes,
+dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=t_mat, kgrid=kgrid, box_sizes=box_sizes,
                                  qiw=qiw)
 realt.print_time('Non-local Susceptibility: ')
 

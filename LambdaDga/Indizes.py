@@ -104,6 +104,10 @@ class qiw():
     def my_wn(self):
         return cen2lin(self.my_iw, self.iw[0])
 
+    # @property
+    # def my_wn_indizes(self):
+    #     return np.arange(0,np.size(self.my_iw))
+
     @property
     def nq(self):
         return self.nqx * self.nqy * self.nqz
