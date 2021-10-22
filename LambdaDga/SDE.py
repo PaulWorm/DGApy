@@ -27,15 +27,15 @@ def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility 
 
 
 def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
-            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None):
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv = vrg.mat.shape[-1] // 2
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv), dtype=complex)
-    for iqw, qiw_ in enumerate(qiw.my_qiw):
+    for iqw, qiw_ in enumerate(qiw):
         gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv)
         sigma += - vrg.u_r / (2.0) * (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) + np.sign(
             vrg.u_r) * 0.5 / vrg.beta) * gkpq.gk
-    sigma = 1. / (qiw.nq) * sigma
+    sigma = 1. / (nq) * sigma
     return sigma
 
 

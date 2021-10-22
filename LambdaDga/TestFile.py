@@ -17,6 +17,7 @@ import LambdaCorrection as lc
 import SDE as sde
 import matplotlib.pyplot as plt
 import Plotting as plot
+import Realtime as rt
 
 importlib.reload(twop)
 importlib.reload(fp)
@@ -27,20 +28,7 @@ importlib.reload(sde)
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
-class real_time():
-    ''' simple class to keep track of real time '''
 
-    def __init__(self):
-        self._ts = time.time()
-        self._tm = []
-        self._tm.append(0)
-
-    def measure_time(self):
-        self._tm.append(time.time() - self._ts - self._tm[-1])
-
-    def print_time(self, string=''):
-        self.measure_time()
-        print(string + 'took {} seconds'.format(self._tm[-1]))
 
 
 # ----------------------------------------------- PARAMETERS -----------------------------------------------------------
@@ -119,7 +107,7 @@ iw_distributor = mpiaux.MpiDistributor(ntasks=iw_core.size, comm=comm)
 my_iw = iw_core[iw_distributor.my_slice]
 print(f'My rank is {iw_distributor.my_rank} and I am doing: {my_iw=}')
 
-realt = real_time()
+realt = rt.real_time()
 
 # -------------------------------------------LOAD G2 FROM W2DYN --------------------------------------------------------
 

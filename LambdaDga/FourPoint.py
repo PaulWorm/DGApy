@@ -9,6 +9,7 @@ import TwoPoint as tp
 import copy
 import numpy as np
 import Indizes as ind
+import MatsubaraFrequencies as mf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -703,9 +704,9 @@ class LadderObject():
 
 # ======================================================================================================================
 
-def construct_gchi_aux(gammar: LocalFourPoint = None, gchi0: Bubble = None, u=1.0, wn=0):
+def construct_gchi_aux(gammar: LocalFourPoint = None, gchi0: Bubble = None, u=1.0, wn_lin=0):
     u_r = get_ur(u=u, channel=gammar.channel)
-    return FourPoint(matrix=gchi_aux_from_gammar(gammar=gammar.mat[wn], gchi0=gchi0.gchi0, beta=gammar.beta, u=u_r)
+    return FourPoint(matrix=gchi_aux_from_gammar(gammar=gammar.mat[wn_lin], gchi0=gchi0.gchi0, beta=gammar.beta, u=u_r)
                      , channel=gammar.channel, beta=gammar.beta, u=u)
 
 
@@ -765,7 +766,17 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw=None):
+def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, niw=None):
+    '''
+
+    :param dmft_input: Dictionary containing input from DMFT.
+    :param local_sde:
+    :param hr:
+    :param kgrid:
+    :param box_sizes:
+    :param qiw_grid: [nqx*nqy*nqz*2*niw,4] flattened meshgrid. Layout: {qx,qy,qz,iw}
+    :return:
+    '''
     beta = dmft_input['beta']
     u = dmft_input['u']
     mu = dmft_input['mu']
@@ -776,15 +787,15 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gamma_dens_loc = local_sde['gamma_dens']
     gamma_magn_loc = local_sde['gamma_magn']
 
-    chi0q_core_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw.my_qiw)
-    chi0q_urange_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw.my_qiw)
-    chi0q_asympt_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw.my_qiw)
+    chi0q_core_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
+    chi0q_urange_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
+    chi0q_asympt_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
 
-    chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw.my_qiw)
-    chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw.my_qiw)
+    chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
+    chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
 
-    vrg_dens = LadderObject(qiw=qiw.my_qiw,channel='dens', beta=beta, u=u)
-    vrg_magn = LadderObject(qiw=qiw.my_qiw,channel='magn', beta=beta, u=u)
+    vrg_dens = LadderObject(qiw=qiw_grid,channel='dens', beta=beta, u=u)
+    vrg_magn = LadderObject(qiw=qiw_grid,channel='magn', beta=beta, u=u)
 
     g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr, sigma=siw)
 
@@ -792,8 +803,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
 
-    for iqw in range(qiw.my_size):
-        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw.my_qiw[iqw], niv=niv_urange)
+    for iqw in range(qiw_grid.shape[0]):
+        wn = qiw_grid[iqw][-1]
+        wn_lin = np.array(mf.cen2lin(wn,-niw), dtype=int)
+        #print(f'{wn_lin=}')
+        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw_grid[iqw], niv=niv_urange)
 
         gkpq_core = copy.deepcopy(gkpq_urange)
         gkpq_core.cut_self_iv(niv_cut=niv_core)
@@ -801,10 +815,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chi0q_core = Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta)
         chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
         chi0q_asympt = copy.deepcopy(chi0q_urange)
-        chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=qiw.my_iw[iqw])
+        chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
-        gchi_aux_dens = construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=u, wn=qiw.wn(iqw))
-        gchi_aux_magn = construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=u, wn=qiw.wn(iqw))
+
+        gchi_aux_dens = construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
+        gchi_aux_magn = construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
 
         chi_aux_dens = susceptibility_from_four_point(four_point=gchi_aux_dens)
         chi_aux_magn = susceptibility_from_four_point(four_point=gchi_aux_magn)

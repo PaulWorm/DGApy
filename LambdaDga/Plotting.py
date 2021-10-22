@@ -3,8 +3,14 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
+import itertools
 import matplotlib.pyplot as plt
 import FourPoint as fp
+
+# -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
+
+# __markers__ = itertools.cycle(('o','s','v','8','v','^','<','>','p','*','h','H','+','x','D','d','1','2','3','4'))
+__markers__ = ('o', 's', 'v', '8', 'v', '^', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '1', '2', '3', '4')
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -36,7 +42,7 @@ def plot_tp(tp: fp.LocalThreePoint = None, niv_cut=-1, name=''):
         niv_cut = tp.niv
     A = tp
     plt.imshow(A.mat.real[:, tp.niv - niv_cut:tp.niv + niv_cut], cmap='RdBu',
-               extent=[ -niv_cut, niv_cut, A.iw[0], A.iw[-1]])
+               extent=[-niv_cut, niv_cut, A.iw[0], A.iw[-1]])
     plt.colorbar()
     plt.title(r'$\Re$' + name + '-' + A.channel)
     plt.xlabel(r'$\nu$')
@@ -46,7 +52,56 @@ def plot_tp(tp: fp.LocalThreePoint = None, niv_cut=-1, name=''):
     plt.imshow(A.mat.imag[:, tp.niv - niv_cut:tp.niv + niv_cut], cmap='RdBu',
                extent=[A.iw[0], A.iw[-1], -niv_cut, niv_cut])
     plt.colorbar()
-    plt.title(r'$\Im$' +name + '-' + A.channel)
+    plt.title(r'$\Im$' + name + '-' + A.channel)
     plt.xlabel(r'$\nu$')
     plt.ylabel(r'$\omega$')
     plt.show()
+
+
+def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot_dir=None, niw_plot=20):
+    markers = __markers__
+    np = len(wn_list)
+    assert np < len(markers), 'More plot-lines requires, than markers available.'
+
+    size = 2 * np + 1
+
+    for i in range(len(wn_list)):
+        plt.plot(wn_list[i], chiw_list[i].real, markers[i], ms=size - 2 * i, label=labels_list[i])
+    plt.legend()
+    plt.xlim(-2,niw_plot)
+    plt.xlabel(r'$\omega$')
+    plt.ylabel(r'$\chi$')
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'chiw_{}.png'.format(channel))
+    try:
+        plt.show()
+    except:
+        plt.close()
+
+def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot=200):
+    markers = __markers__
+    np = len(vn_list)
+    assert np < len(markers), 'More plots-lines requires, than markers avaiable.'
+
+    size = 2 * np + 1
+
+    plt.subplot(211)
+    for i in range(len(vn_list)):
+        plt.plot(vn_list[i], siw_list[i].real, markers[i], ms=size - 2 * i, label=labels_list[i])
+    plt.legend()
+    plt.xlim([0, niv_plot])
+    plt.xlabel(r'$\omega$')
+    plt.ylabel(r'$\Re \Sigma$')
+    plt.subplot(212)
+    for i in range(len(vn_list)):
+        plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size - 2 * i, label=labels_list[i])
+    plt.xlim([0, niv_plot])
+    plt.legend()
+    plt.xlabel(r'$\omega$')
+    plt.ylabel(r'$\Im \Sigma$')
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'siw_check.png')
+    try:
+        plt.show()
+    except:
+        plt.close()

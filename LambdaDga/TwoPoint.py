@@ -179,7 +179,7 @@ class GreensFunctionGenerator():
         assert (np.size(self.kgrid) == np.size(q)), 'Kgrid and q have different dimensions.'
         kgrid = []
         for i in range(np.size(q)):
-            kgrid.append(self._kgrid[i] + q[i])
+            kgrid.append(self.kgrid[i] + q[i])
         return kgrid
 
 

@@ -1,0 +1,107 @@
+import numpy as np
+
+
+def grid_2d(nk=16, name='k'):
+    kx = np.arange(0, nk) * 2 * np.pi / nk
+    ky = np.arange(0, nk) * 2 * np.pi / nk
+    kz = np.arange(0, 1)
+    grid = {
+        '{}x'.format(name): kx,
+        '{}y'.format(name): ky,
+        '{}z'.format(name): kz
+    }
+    return grid
+
+
+def grid(nk=None, name='k'):
+    kx = np.arange(0, nk[0]) * 2 * np.pi / nk[0]
+    ky = np.arange(0, nk[1]) * 2 * np.pi / nk[1]
+    kz = np.arange(0, nk[2]) * 2 * np.pi / nk[2]
+    grid = {
+        '{}x'.format(name): kx,
+        '{}y'.format(name): ky,
+        '{}z'.format(name): kz
+    }
+    return grid
+
+
+class KGrid():
+    ''' Class that contains information about the k-grid'''
+
+    def __init__(self, nk=None, name='k', type='fbz'):
+        self.nk = nk
+        self.name = name
+        self.type = type
+        if(type == 'fbz'):
+            self.grid = grid(nk=self.nk, name=self.name)
+        else:
+            raise NotImplementedError
+
+        self.axes = ('x','y','z')
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self,value):
+        self._type = value
+
+    @property
+    def nk(self):
+        return self._nk
+
+    @nk.setter
+    def nk(self, value):
+        self._nk = value
+
+    @property
+    def grid(self):
+        return self._grid
+
+    @grid.setter
+    def grid(self, value):
+        self._grid = value
+
+    def axis_float_to_string(self, ax=0):
+        if(ax==0):
+            return self.axes[0]
+        if(ax==1):
+            return self.axes[1]
+        if(ax==2):
+            return self.axes[2]
+
+    def nk_tot(self):
+        return np.prod(self.nk)
+
+    def get_k(self, ax='x'):
+        if(type(ax) is not str):
+            ax = self.axis_float_to_string(ax=ax)
+        return self.grid['{}{}'.format(self.name,ax)]
+
+    def get_grid_as_tuple(self):
+        grid = tuple([self.get_k(ax=ax) for ax in self.axes])
+        return grid
+
+
+if __name__ == '__main__':
+    nk = 8
+    grid_k = grid_2d(nk=8)
+    grid_q = grid_2d(nk=8, name='q')
+
+    qgrid = KGrid(nk=(nk, nk, 1), name='q')
+    qx = qgrid.get_k(ax=0.)
+    print(f'{qx=}')
+
+    nk_tot = qgrid.nk_tot()
+
+    grid = qgrid.get_grid_as_tuple()
+

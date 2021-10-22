@@ -15,6 +15,115 @@ def cen2lin(val=None, start=0):
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
+class IndexGrids():
+    ''' Class for handling index distribution among mpi cores. Does not do the distribution itself, but rather takes
+        a slice (my_slice) as input, which determines the tasks of the current process.
+        The default for my_slice is a slice over the whole array.
+    '''
+
+    def __init__(self, grid_arrays=None, keys=None, my_slice=slice(0, None, None)):
+
+        if keys is None:
+            keys = tuple([ind for ind in range(len(grid_arrays))])
+        assert len(keys) == len(np.unique(keys)), "Keys are ambiguous"
+        assert len(keys) == len(grid_arrays), "Number of keys does not match number of passed grids"
+
+        self.my_slice = my_slice
+        self.grid_arrays = grid_arrays
+        self.keys = keys  # np.array(keys)
+        self.set_meshgrid()
+
+    @property
+    def my_slice(self):
+        return self._my_slice
+
+    @my_slice.setter
+    def my_slice(self, value):
+        self._my_slice = value
+
+    @property
+    def grid_arrays(self):
+        return self._grid_arrays
+
+    @grid_arrays.setter
+    def grid_arrays(self, value):
+        self._grid_arrays = value
+
+    @property
+    def keys(self):
+        return self._keys
+
+    @keys.setter
+    def keys(self, value):
+        self._keys = value
+
+    @property
+    def n_indizes(self):
+        return len(self.grid_arrays)
+
+    @property
+    def meshgrid(self):
+        return self._meshgrid
+
+    @property
+    def my_mesh(self):
+        return self.meshgrid[self.my_slice]
+
+    def grid_sizes(self):
+        return tuple([self.grid_size(ind=ind) for ind in range(self.n_indizes)])
+
+    def grid_size(self, ind=None, key=None):
+        assert key is not ind, 'Only key OR ind as input accepted.'
+        if (key is not None):
+            ind = self.key2ind(key=key)
+        return np.size(self.grid_arrays[ind])
+
+    def mesh_size(self, indizes=None):
+        if indizes is None:
+            return np.prod([self.grid_size(ind) for ind in range(self.n_indizes)])
+        else:
+            return np.prod([self.grid_size(ind) for ind in np.atleast_1d(indizes)])
+
+    def key2ind(self, key=None):
+        ind = np.argwhere(self.keys == key)[0, 0]
+        return ind
+
+    def ind2key(self, ind=0):
+        return self.keys[ind]
+
+    def grid_size_by_key(self, key=None):
+        ind = self.key2ind(key=key)
+        assert np.size(ind) == 1, 'Key is ambiguous'
+        return np.size(self.grid_arrays[ind])
+
+    def get_array_by_key(self, key=None):
+        ind = self.key2ind(key=key)
+        return self.grid_arrays[ind]
+
+    def get_nth_array(self, ind=0):
+        return self.grid_arrays[ind]
+
+    def get_nth_key(self, ind=0):
+        return self.keys[ind]
+
+    def get_my_array(self, ind=0):
+        return np.unique(self.my_mesh[:,ind])
+
+    def set_meshgrid(self):
+        # unpack tuple with star
+        # reshape to be a long array, where each column represents one index
+        self._meshgrid = np.array(np.meshgrid(*self.grid_arrays, )).reshape(self.n_indizes, -1).T
+
+    def reshape_matrix(self, mat=None):
+        ''' The first dimension of the input matrix, must match the size of the meshgrid.'''
+        old_shape = mat.shape[1:]
+        new_shape = self.grid_sizes()
+        return np.reshape(mat, newshape=new_shape + old_shape)
+
+    def mean(self, mat=None, axes=None):
+        mat = self.reshape_matrix(mat=mat)
+        return np.mean(mat, axis=axes)
+
 class qiw():
     ''' Class for handling {q,iw_core} four-indizes
         Indizes must be of increasing value. q's must start at 0, iw_core can start in the negative
@@ -113,7 +222,7 @@ class qiw():
         return self.nqx * self.nqy * self.nqz
 
     def wn(self, ind):
-        return int(cen2lin(val=self.my_qiw[ind,-1],start=self.iw[0]))
+        return int(cen2lin(val=self.my_qiw[ind, -1], start=self.iw[0]))
 
     def set_qiw(self):
         self._qiw = np.array(np.meshgrid(self.qx, self.qy, self.qz, self.iw)).reshape(4, -1).T
@@ -121,14 +230,25 @@ class qiw():
     def reshape_full(self, mat=None):
         ''' qiw-axis has to be first. Also array must be known on the whole {q,iw} space'''
         old_shape = mat.shape[1:]
-        return np.reshape(mat, newshape=(self.nqx,self.nqy,self.nqz,self.niw) + old_shape)
+        return np.reshape(mat, newshape=(self.nqx, self.nqy, self.nqz, self.niw) + old_shape)
 
     def q_mean_full(self, mat=None):
         mat_reshape = self.reshape_full(mat=mat)
-        return mat_reshape.mean(axis=(0,1,2))
+        return mat_reshape.mean(axis=(0, 1, 2))
 
 
+class TestClass():
 
+    def __init__(self, arr=None):
+        self.arr = arr
+
+    @property
+    def arr(self):
+        return self._arr
+
+    @arr.setter
+    def arr(self, value):
+        self._arr = value
 
 
 if __name__ == '__main__':
@@ -136,9 +256,15 @@ if __name__ == '__main__':
     qy = np.arange(0, 7)
     qz = np.arange(0, 1)
     iw = np.arange(-10, 11)
-    qgrid = [qx,qy,qz]
+    qgrid = [qx, qy, qz]
     indizes = qiw(qgrid=qgrid, iw=iw)
-    my_slice = slice(1,5,None)
-    indizes.my_qiw = my_slice
+    my_slice = slice(1, 5, None)
 
-    print(indizes.my_qiw)
+    my_slice = slice(-1)
+    mpi_indizes = IndexGrids(grid_arrays=(qx, qy, qz, iw), keys=('qx', 'qy', 'qz', 'iw'), my_slice=my_slice)
+    print(mpi_indizes.grid_size(ind=0))
+
+    matrix = np.random.rand(mpi_indizes.mesh_size(),10)
+
+    #matrix = mpi_indizes.reshape_matrix(mat=matrix)
+    matrix = mpi_indizes.mean(mat=matrix,axes=(0,1))

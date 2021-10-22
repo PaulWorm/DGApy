@@ -174,6 +174,7 @@ class w2dyn_file:
             "u": u,
             "mu": mu_dmft,
             "n": totdens,
+            "niv": sloc.shape[0] // 2,
             "gloc": gloc,
             "sloc": sloc
         }
