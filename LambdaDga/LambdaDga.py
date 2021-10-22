@@ -187,6 +187,8 @@ def lambda_dga(config=None):
     sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
     comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
 
+    sigma_dens_dga = sigma_dens_dga_reduce
+    sigma_magn_dga = sigma_magn_dga_reduce
     sigma_dga = sigma_dens_dga_reduce + 3. * sigma_magn_dga_reduce - siw_sde_reduce + dmft_sde['hartree']
 
     realt.print_time('DGA Schwinger-Dyson equation: ')

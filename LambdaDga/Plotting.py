@@ -70,7 +70,7 @@ def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot
     plt.legend()
     plt.xlim(-2,niw_plot)
     plt.xlabel(r'$\omega$')
-    plt.ylabel(r'$\chi$')
+    plt.ylabel(r'$\chi_{}$'.format(channel))
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'chiw_{}.png'.format(channel))
     try:
