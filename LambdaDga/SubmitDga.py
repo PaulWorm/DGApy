@@ -40,8 +40,8 @@ niv_urange = 100
 niv_asympt = 5000
 
 # Define k-ranges:
-nk = (16,16,1)
-nq = (8,8,1)
+nk = (16, 16, 1)
+nq = (8, 8, 1)
 
 # Generate k-meshes:
 k_grid = bz.KGrid(nk=nk, name='k')
@@ -108,39 +108,43 @@ config = {
 
 dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config)
 
-siw_dga_ksum = dga_sde['sigma'].mean(axis=(0,1,2))
-siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0,1,2))
-siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0,1,2))
+siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
+siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
+siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
 
+qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_core'],), keys=('qx', 'qy', 'qz', 'iw'),
+                          my_slice=None)
 
-qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_core'],), keys=('qx','qy','qz','iw'), my_slice=None)
-
-vn_list = [grids['vn_dmft'],grids['vn_urange'],grids['vn_urange'],grids['vn_urange'],grids['vn_urange']]
+vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
 siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum, siw_dens_ksum, siw_magn_ksum]
-labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DMFT-SDE}(\nu)$',r'$\Sigma_{DGA}(\nu)$',r'$\Sigma_{DGA-dens}(\nu)$',r'$\Sigma_{DGA-magn}(\nu)$']
+labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-dens}(\nu)$',
+          r'$\Sigma_{DGA-magn}(\nu)$']
 plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=40)
 
-wn_list = [grids['wn_core'],grids['wn_core'],grids['wn_core']]
+wn_list = [grids['wn_core'], grids['wn_core'], grids['wn_core']]
 chi_magn_lambda_qsum = dga_sde['chi_magn_lambda'].mat
-chi_magn_lambda_qsum = qiw_grid.mean(mat=chi_magn_lambda_qsum, axes=(0,1,2))
+chi_magn_lambda_qsum = qiw_grid.mean(mat=chi_magn_lambda_qsum, axes=(0, 1, 2))
 chi_magn_ladder_qsum = dga_sde['chi_magn_ladder'].mat
-chi_magn_ladder_qsum = qiw_grid.mean(mat=chi_magn_ladder_qsum, axes=(0,1,2))
+chi_magn_ladder_qsum = qiw_grid.mean(mat=chi_magn_ladder_qsum, axes=(0, 1, 2))
 chiw_list_magn = [dmft_sde['chi_magn'].mat, chi_magn_lambda_qsum, chi_magn_ladder_qsum]
-labels = [r'$\chi_{magn;DMFT}(\omega)$',r'$\chi_{magn;\lambda}(\omega)$',r'$\chi_{magn;D\Gamma A}(\omega)$']
-plotting.plot_chiw(wn_list=wn_list, chiw_list=chiw_list_magn, labels_list=labels, channel='magn', plot_dir=output_path, niw_plot=20)
+labels = [r'$\chi_{magn;DMFT}(\omega)$', r'$\chi_{magn;\lambda}(\omega)$', r'$\chi_{magn;D\Gamma A}(\omega)$']
+plotting.plot_chiw(wn_list=wn_list, chiw_list=chiw_list_magn, labels_list=labels, channel='magn', plot_dir=output_path,
+                   niw_plot=20)
 
-wn_list = [grids['wn_core'],grids['wn_core'],grids['wn_core']]
+wn_list = [grids['wn_core'], grids['wn_core'], grids['wn_core']]
 chi_dens_lambda_qsum = dga_sde['chi_dens_lambda'].mat
-chi_dens_lambda_qsum = qiw_grid.mean(mat=chi_dens_lambda_qsum, axes=(0,1,2))
+chi_dens_lambda_qsum = qiw_grid.mean(mat=chi_dens_lambda_qsum, axes=(0, 1, 2))
 chi_dens_ladder_qsum = dga_sde['chi_dens_ladder'].mat
-chi_dens_ladder_qsum = qiw_grid.mean(mat=chi_dens_ladder_qsum, axes=(0,1,2))
+chi_dens_ladder_qsum = qiw_grid.mean(mat=chi_dens_ladder_qsum, axes=(0, 1, 2))
 chiw_list_dens = [dmft_sde['chi_dens'].mat, chi_dens_lambda_qsum, chi_dens_ladder_qsum]
-labels = [r'$\chi_{magn;DMFT}(\omega)$',r'$\chi_{dens;\lambda}(\omega)$',r'$\chi_{dens;D\Gamma A}(\omega)$']
-plotting.plot_chiw(wn_list=wn_list, chiw_list=chiw_list_dens, labels_list=labels, channel='dens', plot_dir=output_path, niw_plot=20)
+labels = [r'$\chi_{magn;DMFT}(\omega)$', r'$\chi_{dens;\lambda}(\omega)$', r'$\chi_{dens;D\Gamma A}(\omega)$']
+plotting.plot_chiw(wn_list=wn_list, chiw_list=chiw_list_dens, labels_list=labels, channel='dens', plot_dir=output_path,
+                   niw_plot=20)
 
-wn_list = [grids['wn_core'],grids['wn_core']]
+wn_list = [grids['wn_core'], grids['wn_core']]
 chi0q_urange_qsum = dga_sde['chi0q_urange']
-chi0q_urange_qsum = qiw_grid.mean(mat=chi0q_urange_qsum, axes=(0,1,2))
+chi0q_urange_qsum = qiw_grid.mean(mat=chi0q_urange_qsum, axes=(0, 1, 2))
 chi0q_list = [dmft_sde['chi0_urange'], chi0q_urange_qsum]
-labels = [r'$\chi_{0;loc}(\omega)$',r'$\chi_{0;q-sum}(\omega)$']
-plotting.plot_chiw(wn_list=wn_list, chiw_list=chi0q_list, labels_list=labels, channel='dens', plot_dir=output_path, niw_plot=20)
+labels = [r'$\chi_{0;loc}(\omega)$', r'$\chi_{0;q-sum}(\omega)$']
+plotting.plot_chiw(wn_list=wn_list, chiw_list=chi0q_list, labels_list=labels, channel='dens', plot_dir=output_path,
+                   niw_plot=20)
