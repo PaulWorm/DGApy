@@ -29,14 +29,14 @@ from mpi4py import MPI as mpi
 comm = mpi.COMM_WORLD
 
 # Define paths of datasets:
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 output_path = input_path
 fname_dmft = '1p-data.hdf5'
 fname_g2 = 'g4iw_sym.hdf5'
 # Define frequency box-sizes:
-niw_core = 19
-niv_core = 20
-niv_urange = 100
+niw_core = 59
+niv_core = 40
+niv_urange = 500
 niv_asympt = 5000
 
 # Define k-ranges:
@@ -119,6 +119,11 @@ vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_u
 siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum, siw_dens_ksum, siw_magn_ksum]
 labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-dens}(\nu)$',
           r'$\Sigma_{DGA-magn}(\nu)$']
+plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=40)
+
+vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
+siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum]
+labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$']
 plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=40)
 
 wn_list = [grids['wn_core'], grids['wn_core'], grids['wn_core']]
