@@ -4,6 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import Hk as hk
+import jax.numpy as jnp
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -112,10 +113,6 @@ class GreensFunction(object):
         return arr[...,niv-niv_cut:niv+niv_cut]
 
 
-
-
-
-
 class GreensFunctionGenerator():
     '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
 
@@ -182,8 +179,16 @@ class GreensFunctionGenerator():
             kgrid.append(self.kgrid[i] + q[i])
         return kgrid
 
+# ======================================================================================================================
+# ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------
+# ======================================================================================================================
 
 
+# class MultiOrbGreensFunctionGenerator():
+#     ''' Multi-orbital Green's function generator'''
+
+# def get_gkw_multi_orbital(v=None, hk=None, sw=None, dc=None, mu=None):
+#     return jnp.linalg.inverse()
 
 
 

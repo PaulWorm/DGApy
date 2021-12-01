@@ -62,12 +62,21 @@ class IndexGrids():
         return len(self.grid_arrays)
 
     @property
+    def indizes(self):
+        return self._indizes
+
+    @property
     def meshgrid(self):
         return self._meshgrid
 
     @property
     def my_mesh(self):
         return self.meshgrid[self.my_slice]
+
+    @property
+    def my_indizes(self):
+        return self.indizes[self.my_slice]
+
 
     def grid_sizes(self):
         return tuple([self.grid_size(ind=ind) for ind in range(self.n_indizes)])
@@ -113,6 +122,8 @@ class IndexGrids():
         # unpack tuple with star
         # reshape to be a long array, where each column represents one index
         self._meshgrid = np.array(np.meshgrid(*self.grid_arrays, )).reshape(self.n_indizes, -1).T
+        indizes = [np.arange(0,grid_size) for grid_size in self.grid_sizes()]
+        self._indizes = np.array(np.meshgrid(*indizes, )).reshape(self.n_indizes, -1).T
 
     def reshape_matrix(self, mat=None):
         ''' The first dimension of the input matrix, must match the size of the meshgrid.'''
@@ -260,7 +271,7 @@ if __name__ == '__main__':
     indizes = qiw(qgrid=qgrid, iw=iw)
     my_slice = slice(1, 5, None)
 
-    my_slice = slice(-1)
+    #my_slice = slice(-1)
     mpi_indizes = IndexGrids(grid_arrays=(qx, qy, qz, iw), keys=('qx', 'qy', 'qz', 'iw'), my_slice=my_slice)
     print(mpi_indizes.grid_size(ind=0))
 

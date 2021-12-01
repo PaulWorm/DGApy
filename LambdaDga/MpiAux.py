@@ -4,6 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
+import h5py
 from mpi4py import MPI as mpi
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -19,10 +20,19 @@ class MpiDistributor():
     ''' Distributes size tasks among cores
     '''
 
-    def __init__(self, ntasks=1, comm: mpi.Comm=None):
+    def __init__(self, ntasks=1, comm: mpi.Comm=None, output_path = None, name=''):
         self._comm = comm
         self._ntasks = ntasks
         self.distribute_tasks()
+
+        if(output_path is not None):
+            self.file = h5py.File(output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5','w')
+        else:
+            self.file = None
+
+    def __del__(self):
+        if(self.file is not None):
+            self.file.close()
 
     @property
     def comm(self):
@@ -86,12 +96,16 @@ if __name__ == '__main__':
     niw = 11
     iw = np.arange(-niw, niw+1)
     ntasks = iw.size
-    mpi_distributor = MpiDistributor(ntasks=ntasks,comm=comm)
+    mpi_distributor = MpiDistributor(ntasks=ntasks,comm=comm,output_path='./', name='Test')
     print(f'{mpi_distributor.my_rank} and I am doing slice: {mpi_distributor.my_slice}')
     print(f'My iw: {iw[mpi_distributor.my_slice]}')
     my_iw = iw[mpi_distributor.my_slice]
 
     gather_iw = mpi_distributor.allgather(rank_result=my_iw)
+    mpi_distributor.file['iw/my_iw'] = my_iw
+    mpi_distributor.file['iw/gather_iw'] = gather_iw
+    mpi_distributor.file['iw/complex'] = gather_iw*1j
+    mpi_distributor.file.close()
 
     print(f'Full iw: {gather_iw}')
 

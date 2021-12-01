@@ -5,6 +5,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
+import h5py
 import matplotlib.pyplot as plt
 import w2dyn_aux
 import MpiAux as mpiaux
@@ -14,7 +15,7 @@ import SDE as sde
 import RealTime as rt
 import Indizes as ind
 import LambdaCorrection as lc
-
+import sys,os
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
 
@@ -37,6 +38,7 @@ def lambda_dga(config=None):
     box_sizes = config['box_sizes']
     giw = config['dmft1p']['gloc']
     dmft1p = config['dmft1p']
+    output_path = config['names']['output_path']
 
     k_grid = config['grids']['k_grid']
     q_grid = config['grids']['q_grid']
@@ -44,7 +46,7 @@ def lambda_dga(config=None):
     nq_tot = q_grid.nk_tot()
 
     # ----------------------------------------------- MPI DISTRIBUTION -------------------------------------------------
-    iw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size, comm=comm)
+    iw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size, comm=comm, output_path=None)
     my_iw = wn_core[iw_distributor.my_slice]
     print(f'My rank is {iw_distributor.my_rank} and I am doing: {my_iw=}')
 
@@ -120,7 +122,7 @@ def lambda_dga(config=None):
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm)
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm, output_path=output_path, name='Qiw')
     index_grid_keys = ('qx','qy','qz','iw')
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_core,), keys=index_grid_keys, my_slice=qiw_distributor.my_slice)
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr, sigma=dmft1p['sloc'])
@@ -131,7 +133,7 @@ def lambda_dga(config=None):
 
     dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
                                      box_sizes=box_sizes,
-                                     qiw_grid=qiw_grid.my_mesh, niw=niw_core)
+                                     qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core, file=qiw_distributor.file)
     realt.print_time('Non-local Susceptibility: ')
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
@@ -192,6 +194,18 @@ def lambda_dga(config=None):
     sigma_dga = sigma_dens_dga_reduce + 3. * sigma_magn_dga_reduce - siw_sde_reduce + dmft_sde['hartree']
 
     realt.print_time('DGA Schwinger-Dyson equation: ')
+
+    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+    if(qiw_distributor.my_rank == 0):
+        file_out = h5py.File(output_path+'LadderVertex.hdf5','w')
+        for ir in range(qiw_distributor.mpi_size):
+            file_in = h5py.File(output_path+'QiwRank{:05d}'.format(ir) + '.hdf5','r')
+            for key1 in list(file_in.keys()):
+                for key2 in list(file_in[key1].keys()):
+                    file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
+
+            file_in.close()
+        file_out.close()
 
     dga_sde = {
         'chi_dens_lambda': chi_dens_lambda,

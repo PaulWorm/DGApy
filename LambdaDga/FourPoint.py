@@ -738,10 +738,10 @@ def fermi_bose_asympt(vrg: ThreePoint = None, chi_asympt: Susceptibility = None,
 
 def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = None,
                                    chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None, niv_urange=-1):
-    vrg = fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
-    vrg = fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
+    vrg_core = fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
+    vrg = fermi_bose_urange(vrg=vrg_core, niv_urange=niv_urange)
     vrg = fermi_bose_asympt(vrg=vrg, chi_asympt=chi_asympt, chi_urange=chi_urange)
-    return vrg
+    return vrg, vrg_core
 
 
 # ==================================================================================================================
@@ -760,13 +760,13 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
                           , beta=four_point.beta, u=four_point.u)
 
 
-# ======================================================================================================================
+
 
 # ------------------------------------- WRAPPER FUNCTIONS FOR NONLOCAL SUSCEPTIBILITY CLASS ----------------------------
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, niw=None):
+def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, qiw_indizes=None, niw=None, file=None):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -835,11 +835,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chiq_magn_asympt = copy.deepcopy(chiq_magn_urange)
         chiq_magn_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
 
-        vrgq_dens = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
+        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
                                                    chi_asympt=chiq_dens_asympt
                                                    , chi_urange=chiq_dens_urange, niv_urange=niv_urange)
 
-        vrgq_magn = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
+        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
                                                    chi_asympt=chiq_magn_asympt
                                                    , chi_urange=chiq_magn_urange, niv_urange=niv_urange)
 
@@ -852,6 +852,15 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chi0q_core_full.mat[iqw] = chi0q_core.chi0
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
         chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
+
+        if(file is not None):
+            group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
+            file['gchi_aux_dens' + group] = gchi_aux_dens.mat
+            file['gchi_aux_magn' + group] = gchi_aux_magn.mat
+            file['vrgq_dens_core' + group] = vrgq_dens_core.mat
+            file['vrgq_magn_core' + group] = vrgq_magn_core.mat
+            file['gchi0_core' + group] = chi0q_core.gchi0
+
 
     chi_dens_asympt.mat_to_array()
     chi_magn_asympt.mat_to_array()
