@@ -120,7 +120,12 @@ class GreensFunctionGenerator():
         self._beta = beta
         self._kgrid = kgrid
         self._hr = hr
-        self._sigma = sigma
+
+        # Add k-dimensions for local self-energy
+        if(len(sigma.shape)==1):
+            self._sigma = sigma[None,None,None,:]
+        else:
+            self._sigma = sigma
 
     @property
     def beta(self) -> float:
@@ -158,7 +163,7 @@ class GreensFunctionGenerator():
         ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
         sigma = self.cut_sigma(niv_cut=niv, wn=wn)
         iv = self.get_iv(niv=niv, wn=wn)
-        return GreensFunction(iv=iv[None,None,None,:], beta=self.beta, mu=mu, ek=ek[:,:,:,None], sigma=sigma[None,None,None,:])
+        return GreensFunction(iv=iv[None,None,None,:], beta=self.beta, mu=mu, ek=ek[:,:,:,None], sigma=sigma)
 
     def get_iv(self, niv=0, wn=0):
         if(niv==-1):

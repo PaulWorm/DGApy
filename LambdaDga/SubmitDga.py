@@ -50,7 +50,7 @@ niv_urange = 200
 niv_asympt = 5000
 
 # Define k-ranges:
-nk = (16, 16, 1)
+nk = (8, 8, 1)
 nq = (8, 8, 1)
 
 # Generate k-meshes:
@@ -179,55 +179,83 @@ plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_d
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
 #%%
 
-import PairingVertex as pv
-import h5py
-fname = output_path + 'LadderVertex.hdf5'
-file = h5py.File(fname, 'r')
-
-def load_qiw(key1=None):
-    arr = []
-    for key2 in list(file[key1].keys()):
-        arr.append(file[key1 + '/' + key2][()])
-    return np.array(arr)
-
-gchi0 = load_qiw(key1='gchi0_core')
-
-gchi_aux_magn = load_qiw(key1='gchi_aux_magn')
-vrg_magn = load_qiw(key1='vrgq_magn_core')
-chi_magn_lambda = dga_sde['chi_magn_lambda'].mat
-
-gchi_aux_dens = load_qiw(key1='gchi_aux_dens')
-vrg_dens = load_qiw(key1='vrgq_dens_core')
-chi_dens_lambda = dga_sde['chi_dens_lambda'].mat
-
-f_magn = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_magn, vrg=vrg_magn, chir=chi_magn_lambda, gchi0=gchi0, beta=dmft1p['beta']
-                                       , u_r=dga_sde['chi_magn_lambda'].u_r)
-f_dens = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_dens, vrg=vrg_dens, chir=chi_dens_lambda, gchi0=gchi0, beta=dmft1p['beta']
-                                       , u_r=dga_sde['chi_dens_lambda'].u_r)
-
-f_magn = f_magn.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
-f_dens = f_dens.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
-
-f_dens_pp = pv.ph_to_pp_notation(mat_ph=f_dens)
-f_magn_pp = pv.ph_to_pp_notation(mat_ph=f_magn)
-
-f_sing = -1.5 * f_magn_pp + 0.5 * f_dens_pp
-f_trip = -0.5 * f_magn_pp - 0.5 * f_dens_pp
-
-
-f_sing_loc = f_sing.mean(axis=0)
-f_trip_loc = f_trip.mean(axis=0)
-
-import matplotlib.pyplot as plt
-plt.imshow(f_sing_loc.real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-plt.imshow(f_trip_loc.real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-
-
-
-
+# import PairingVertex as pv
+# import h5py
+# fname = output_path + 'LadderVertex.hdf5'
+# file = h5py.File(fname, 'r')
+#
+# def load_qiw(key1=None):
+#     arr = []
+#     for key2 in list(file[key1].keys()):
+#         arr.append(file[key1 + '/' + key2][()])
+#     return np.array(arr)
+#
+# gchi0 = load_qiw(key1='gchi0_core')
+#
+# gchi_aux_magn = load_qiw(key1='gchi_aux_magn')
+# vrg_magn = load_qiw(key1='vrgq_magn_core')
+# chi_magn_lambda = dga_sde['chi_magn_lambda'].mat
+#
+# gchi_aux_dens = load_qiw(key1='gchi_aux_dens')
+# vrg_dens = load_qiw(key1='vrgq_dens_core')
+# chi_dens_lambda = dga_sde['chi_dens_lambda'].mat
+#
+# f_magn = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_magn, vrg=vrg_magn, chir=chi_magn_lambda, gchi0=gchi0, beta=dmft1p['beta']
+#                                        , u_r=dga_sde['chi_magn_lambda'].u_r)
+# f_dens = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_dens, vrg=vrg_dens, chir=chi_dens_lambda, gchi0=gchi0, beta=dmft1p['beta']
+#                                        , u_r=dga_sde['chi_dens_lambda'].u_r)
+#
+# f_magn = f_magn.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
+# f_dens = f_dens.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
+#
+# f_dens_pp = pv.ph_to_pp_notation(mat_ph=f_dens)
+# f_magn_pp = pv.ph_to_pp_notation(mat_ph=f_magn)
+#
+# f_sing = -1.5 * f_magn_pp + 0.5 * f_dens_pp
+# f_trip = -0.5 * f_magn_pp - 0.5 * f_dens_pp
+#
+#
+# f_sing_loc = f_sing.mean(axis=0)
+# f_trip_loc = f_trip.mean(axis=0)
+#
+# import matplotlib.pyplot as plt
+# plt.imshow(f_sing_loc.real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+# plt.imshow(f_trip_loc.real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+# # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
+# #%%
+# import TwoPoint as twop
+# gamma_sing = f_sing.reshape(8,8,1,20,20)
+# gammax_sing = np.fft.fftn(gamma_sing, axes=(0,1,2))
+# g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr, sigma=dga_sde['sigma'])
+# gk_dga = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_core//2).gk
+# gmk_dga = np.flip(gk_dga)
+#
+# Delta = np.random.random_sample(np.shape(gmk_dga))
+#
+# Delta_old = Delta
+# lambda_old = 10
+# eps = 10**-6
+# max_count = 10000
+# converged = False
+# count = 0
+# while(not converged):
+#     count += 1
+#     Delta_tilde = np.fft.ifftn(Delta_old * gk_dga * gmk_dga, axes=(0, 1, 2))
+#     Delta_new = 1./(8*8) * np.sum(gammax_sing * Delta_tilde[...,None,:],axis=-1)
+#     Delta_new = np.fft.fftn(Delta_new,axes=(0,1,2))
+#     lambda_r = np.sum(np.conj(Delta_old)*Delta_new)/np.sum((np.conj(Delta_old)*Delta_old))
+#     Delta_old = Delta_new/lambda_r
+#     if(np.abs(lambda_r-lambda_old)<eps or count > max_count):
+#         converged = True
+#     lambda_old = lambda_r
+#
+#
+# plt.imshow(Delta_old[:,:,0,10].real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
