@@ -196,16 +196,16 @@ def lambda_dga(config=None):
     realt.print_time('DGA Schwinger-Dyson equation: ')
 
     # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    if(qiw_distributor.my_rank == 0):
-        file_out = h5py.File(output_path+'LadderVertex.hdf5','w')
-        for ir in range(qiw_distributor.mpi_size):
-            file_in = h5py.File(output_path+'QiwRank{:05d}'.format(ir) + '.hdf5','r')
-            for key1 in list(file_in.keys()):
-                for key2 in list(file_in[key1].keys()):
-                    file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
-
-            file_in.close()
-        file_out.close()
+    # if(qiw_distributor.my_rank == 0):
+    #     file_out = h5py.File(output_path+'LadderVertex.hdf5','w')
+    #     for ir in range(qiw_distributor.mpi_size):
+    #         file_in = h5py.File(output_path+'QiwRank{:05d}'.format(ir) + '.hdf5','r')
+    #         for key1 in list(file_in.keys()):
+    #             for key2 in list(file_in[key1].keys()):
+    #                 file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
+    #
+    #         file_in.close()
+    #     file_out.close()
 
     dga_sde = {
         'chi_dens_lambda': chi_dens_lambda,

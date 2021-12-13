@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-# SBATCH -N 2
-# SBATCH -J LambdaDga_Nk16
-# SBATCH --ntasks-per-node=48
-# SBATCH --partition=mem_0096
-# SBATCH --qos=p71282_0096
-# SBATCH --time=06:00:00
+#SBATCH -N 2
+#SBATCH -J LambdaDga_Nk16
+#SBATCH --ntasks-per-node=16
+#SBATCH --partition=vsc3plus_0064
+#SBATCH --qos=vsc3plus_0064
+#SBATCH --time=06:00:00
 
-# SBATCH --mail-type=ALL                              # first have to state the type of event to occur
-# SBATCH --mail-user=<p.worm@a1.net>   # and then your email address
+#SBATCH --mail-type=ALL                              # first have to state the type of event to occur
+#SBATCH --mail-user=<p.worm@a1.net>   # and then your email address
 
 
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
@@ -32,36 +32,48 @@ comm = mpi.COMM_WORLD
 
 # Define paths of datasets:
 input_path = './'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U10.0_tp1.0_tpp0.0_beta10_n1.0/'
 output_path = input_path
-output_folder = 'LambdaDga'
-output_path = output.uniquify(output_path+output_folder) + '/'
+
 fname_dmft = '1p-data.hdf5'
-fname_g2 = 'g4iw_sym.hdf5'
+fname_g2 ='Vertex_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex'
 
 # Define options:
-do_ladder_vertex = True
+do_ladder_vertex = False
+lattice = 'triangular'
+
+# Set up real-space Wannier Hamiltonian:
+t = 1.00
+tp = 1.00 * t
+tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 20
-niv_core = 20
+niw_core = 40
+niv_core = 40
 niv_urange = 200
 niv_asympt = 5000
 
 # Define k-ranges:
-nk = (8, 8, 1)
-nq = (8, 8, 1)
+nk = (24, 24, 1)
+nq = (24, 24, 1)
+
+output_folder = 'LambdaDga_Nk{}_Nq{}'.format(np.prod(nk),np.prod(nq))
+output_path = output.uniquify(output_path+output_folder) + '/'
 
 # Generate k-meshes:
 k_grid = bz.KGrid(nk=nk, name='k')
 q_grid = bz.KGrid(nk=nq, name='q')
 
-# Set up real-space Wannier Hamiltonian:
-t = 0.25
-tp = -0.25 * t * 0
-tpp = 0.12 * t * 0
-hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+if(lattice=='square'):
+    hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+elif(lattice=='triangular'):
+    hr = hr.one_band_2d_triangular_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+else:
+    raise NotImplementedError('Only square or triangular lattice implemented at the moment.')
 
 # load contents from w2dynamics DMFT file:
 f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
@@ -145,7 +157,13 @@ qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_co
 vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
 siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum]
 labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$']
-plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=40)
+plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
+
+
+plotting.plot_siwk_fs(siwk=dga_sde['sigma'],plot_dir=output_path,kgrid=k_grid, do_shift=True)
+
+# import matplotlib.pyplot as plt
+# plt.imshow(dga_sde['sigma'][:,:,0,box_sizes['niv_core']], )
 
 # wn_list = [grids['wn_core'], grids['wn_core'], grids['wn_core']]
 # chi_magn_lambda_qsum = dga_sde['chi_magn_lambda'].mat

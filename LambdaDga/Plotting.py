@@ -105,3 +105,42 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
         plt.show()
     except:
         plt.close()
+
+
+def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
+    if(niv_plot==None):
+        niv_plot = np.shape(siwk)[-1] // 2
+
+    siwk_plot = np.copy(siwk)
+    kx = kgrid._grid['kx']
+    ky = kgrid._grid['ky']
+    if(do_shift):
+        siwk_plot = np.roll(siwk_plot,kgrid.nk[0]//2,0)
+        siwk_plot = np.roll(siwk_plot,kgrid.nk[1]//2,1)
+        kx = kx - np.pi
+        ky = ky - np.pi
+
+
+
+    fig = plt.figure(figsize=(10,5))
+    plt.subplot(121)
+    plt.imshow(siwk_plot[:,:,kz,niv_plot].real,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
+    plt.colorbar()
+    plt.xlabel(r'$k_x$')
+    plt.ylabel(r'$k_y$')
+    plt.title(r'$\Re \Sigma$')
+    plt.subplot(122)
+    plt.imshow(siwk_plot[:,:,kz,niv_plot].imag,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
+    plt.colorbar()
+    plt.xlabel(r'$k_x$')
+    plt.ylabel(r'$k_y$')
+    plt.title(r'$\Im \Sigma$')
+
+    plt.tight_layout()
+
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'siwk_kz{}_Niv{}.png'.format(kz,niv_plot))
+    try:
+        plt.show()
+    except:
+        plt.close()
