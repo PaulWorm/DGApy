@@ -14,6 +14,7 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
+import sys,os
 import Hr as hr
 import Indizes as ind
 import w2dyn_aux
@@ -21,7 +22,7 @@ import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import LambdaDga as ldga
 import Output as output
-import sys,os
+
 import Plotting as plotting
 from mpi4py import MPI as mpi
 
@@ -35,31 +36,32 @@ input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
-input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U10.0_tp1.0_tpp0.0_beta10_n1.0/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
+#input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U10.0_tp1.0_tpp0.0_beta10_n1.0/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
-fname_g2 ='Vertex_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
+fname_g2 = 'g4iw_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex'
 
 # Define options:
 do_ladder_vertex = False
-lattice = 'triangular'
+lattice = 'square'
 
 # Set up real-space Wannier Hamiltonian:
 t = 1.00
-tp = 1.00 * t
+tp = 0.00 * t
 tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 40
-niv_core = 40
+niw_core = 20
+niv_core = 20
 niv_urange = 200
 niv_asympt = 5000
 
 # Define k-ranges:
-nk = (24, 24, 1)
-nq = (24, 24, 1)
+nk = (8, 8, 1)
+nq = (8, 8, 1)
 
 output_folder = 'LambdaDga_Nk{}_Nq{}'.format(np.prod(nk),np.prod(nq))
 output_path = output.uniquify(output_path+output_folder) + '/'

@@ -4,6 +4,10 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import itertools
+import matplotlib
+import os
+if('DISPLAY' not in os.environ):
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import FourPoint as fp
 
