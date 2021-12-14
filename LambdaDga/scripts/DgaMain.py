@@ -1,6 +1,6 @@
-
-
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
+# WARNING: Currently there cannot be more processes than Niw*1+2. This is because my MpiDistibutor cannot handle slaves
+# that have nothing to do.
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/bin/bash
 #SBATCH -N 2
 #SBATCH -J LambdaDga_Nk16
 #SBATCH --ntasks-per-node=48
@@ -8,7 +8,7 @@
 #SBATCH --mail-type=ALL                              # first have to state the type of event to occur
 #SBATCH --mail-user=<p.worm@a1.net>   # and then your email address
 
-mpiexec -np 4 python -m mpi4py DgaMain.py
+mpiexec -np $SLURM_NTASKS python -m mpi4py DgaMain.py
 
 
 
