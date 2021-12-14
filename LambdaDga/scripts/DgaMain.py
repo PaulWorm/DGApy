@@ -8,12 +8,14 @@ import sys,os
 sys.path.append('../src/')
 sys.path.append(os.environ['HOME']+"/Programs/dga/LambdaDga/src")
 import Hr as hr
+import Hk as hamk
 import Indizes as ind
 import w2dyn_aux
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import LambdaDga as ldga
 import Output as output
+import ChemicalPotential as chempot
 
 import Plotting as plotting
 from mpi4py import MPI as mpi
@@ -148,11 +150,6 @@ if(comm.rank == 0):
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_core'],), keys=('qx', 'qy', 'qz', 'iw'),
                               my_slice=None)
 
-# vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
-# siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum, siw_dens_ksum, siw_magn_ksum]
-# labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-dens}(\nu)$',
-#           r'$\Sigma_{DGA-magn}(\nu)$']
-
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$']
@@ -160,6 +157,17 @@ if(comm.rank == 0):
 
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'],plot_dir=output_path,kgrid=k_grid, do_shift=True)
+
+
+    # Adjust the new chamical potential and generate the DGA Green's function:
+    iv = mf.iv(beta=dmft1p['beta'], n=box_sizes['niv_urange'])
+    iv_dmft = mf.iv(beta=dmft1p['beta'], n=dmft1p['niv'])
+    smom = chempot.fit_smom(iv=iv, siwk=dga_sde['sigma'])
+    mu0 = dmft1p['mu']
+    hk = hamk.ek_3d(kgrid=k_grid.get_grid_as_tuple(),hr=hr)
+    mu_dga = chempot.update_mu(mu0=mu0,target_filling=dmft1p['n'],iv=iv,hk=hk,siwk=dga_sde['sigma'],beta=dmft1p['beta'],smom0=smom[0])
+    mu_dmft = chempot.update_mu(mu0=mu0/2,target_filling=dmft1p['n'],iv=iv_dmft,hk=hk,siwk=dmft1p['sloc'][None,None,None,:],beta=dmft1p['beta'],smom0=dmft1p['smom'][0])
+
 
 # import matplotlib.pyplot as plt
 # plt.imshow(dga_sde['sigma'][:,:,0,box_sizes['niv_core']], )

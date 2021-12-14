@@ -15,7 +15,8 @@ import SDE as sde
 import RealTime as rt
 import Indizes as ind
 import LambdaCorrection as lc
-import sys,os
+import sys, os
+
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
 
@@ -122,10 +123,13 @@ def lambda_dga(config=None):
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm, output_path=output_path, name='Qiw')
-    index_grid_keys = ('qx','qy','qz','iw')
-    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_core,), keys=index_grid_keys, my_slice=qiw_distributor.my_slice)
-    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr, sigma=dmft1p['sloc'])
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm, output_path=output_path,
+                                            name='Qiw')
+    index_grid_keys = ('qx', 'qy', 'qz', 'iw')
+    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_core,), keys=index_grid_keys,
+                              my_slice=qiw_distributor.my_slice)
+    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+                                               sigma=dmft1p['sloc'])
 
     gk = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_urange)
 
@@ -133,7 +137,8 @@ def lambda_dga(config=None):
 
     dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
                                      box_sizes=box_sizes,
-                                     qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core, file=qiw_distributor.file)
+                                     qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
+                                     file=qiw_distributor.file)
     realt.print_time('Non-local Susceptibility: ')
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
@@ -173,10 +178,12 @@ def lambda_dga(config=None):
     realt.print_time('Lambda correction: ')
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
-    chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='dens', u=dmft1p['u'], beta=dmft1p['beta'])
+    chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='dens', u=dmft1p['u'],
+                                                     beta=dmft1p['beta'])
     chi_dens_lambda_my_qiw.mat = chi_dens_lambda.mat[qiw_grid.my_slice]
 
-    chi_magn_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
+    chi_magn_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='magn', u=dmft1p['u'],
+                                                     beta=dmft1p['beta'])
     chi_magn_lambda_my_qiw.mat = chi_magn_lambda.mat[qiw_grid.my_slice]
 
     sigma_dens_dga = sde.sde_dga(dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
@@ -209,9 +216,9 @@ def lambda_dga(config=None):
 
     dga_sde = {
         'chi_dens_lambda': chi_dens_lambda,
-        'chi_magn_lambda':chi_magn_lambda,
-        'chi_dens_ladder':chi_dens_ladder,
-        'chi_magn_ladder':chi_magn_ladder,
+        'chi_magn_lambda': chi_magn_lambda,
+        'chi_dens_ladder': chi_dens_ladder,
+        'chi_magn_ladder': chi_magn_ladder,
         'sigma_dens': sigma_dens_dga,
         'sigma_magn': sigma_magn_dga,
         'sigma': sigma_dga,

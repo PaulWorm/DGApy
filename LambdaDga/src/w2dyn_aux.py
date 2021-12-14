@@ -169,6 +169,8 @@ class w2dyn_file:
         except:
             sloc = 0.5 * np.sum(self.get_siw(), axis=(0, 1))
 
+        smom = np.squeeze(np.diagonal(0.5 * np.trace(self.get_smom_full(),axis2=1,axis1=3),axis2=1,axis1=0))
+
         dmft1p = {
             "beta": beta,
             "u": u,
@@ -176,7 +178,8 @@ class w2dyn_file:
             "n": totdens,
             "niv": sloc.shape[0] // 2,
             "gloc": gloc,
-            "sloc": sloc
+            "sloc": sloc,
+            "smom": smom
         }
 
         return dmft1p
