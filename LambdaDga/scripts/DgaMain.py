@@ -2,6 +2,8 @@
 # WARNING: Currently there cannot be more processes than Niw*1+2. This is because my MpiDistibutor cannot handle slaves
 # that have nothing to do.
 
+# Warning: many of the files I prepared from Motoharu do not have smom stored.
+
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import sys,os
@@ -16,6 +18,7 @@ import BrillouinZone as bz
 import LambdaDga as ldga
 import Output as output
 import ChemicalPotential as chempot
+import TwoPoint as twop
 
 import Plotting as plotting
 from mpi4py import MPI as mpi
@@ -50,7 +53,7 @@ tpp = 0.12 * t * 0
 # Define frequency box-sizes:
 niw_core = 20
 niv_core = 20
-niv_urange = 200
+niv_urange = 40
 niv_asympt = 5000
 
 # Define k-ranges:
@@ -136,12 +139,13 @@ if(comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft, greens_functions = ldga.lambda_dga(config=config)
 
 if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy',gamma_dmft,allow_pickle=True)
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
+    np.save(output_path + 'greens_functions.npy',greens_functions,allow_pickle=True)
 
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
@@ -158,16 +162,20 @@ if(comm.rank == 0):
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'],plot_dir=output_path,kgrid=k_grid, do_shift=True)
 
+    gk_dga = greens_functions['dga']['gk']
+    gk_dmft = greens_functions['dmft']['gk']
+    gk_tb = greens_functions['tight_binding']['gk']
+    plotting.plot_giwk_fs(giwk=gk_dga.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dga')
+    plotting.plot_giwk_fs(giwk=gk_dmft.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dmft')
+    plotting.plot_giwk_fs(giwk=gk_tb.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='tb')
 
-    # Adjust the new chamical potential and generate the DGA Green's function:
-    iv = mf.iv(beta=dmft1p['beta'], n=box_sizes['niv_urange'])
-    iv_dmft = mf.iv(beta=dmft1p['beta'], n=dmft1p['niv'])
-    smom = chempot.fit_smom(iv=iv, siwk=dga_sde['sigma'])
-    mu0 = dmft1p['mu']
-    hk = hamk.ek_3d(kgrid=k_grid.get_grid_as_tuple(),hr=hr)
-    mu_dga = chempot.update_mu(mu0=mu0,target_filling=dmft1p['n'],iv=iv,hk=hk,siwk=dga_sde['sigma'],beta=dmft1p['beta'],smom0=smom[0])
-    mu_dmft = chempot.update_mu(mu0=mu0/2,target_filling=dmft1p['n'],iv=iv_dmft,hk=hk,siwk=dmft1p['sloc'][None,None,None,:],beta=dmft1p['beta'],smom0=dmft1p['smom'][0])
-
+    chi_magn_lambda = dga_sde['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core*2+1,))
+    
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.imshow(chi_magn_lambda[:,:,0,niw_core].real, cmap='RdBu')
+    plt.savefig(output_path + 'chi_magn_w0.png')
+    plt.show()
 
 # import matplotlib.pyplot as plt
 # plt.imshow(dga_sde['sigma'][:,:,0,box_sizes['niv_core']], )

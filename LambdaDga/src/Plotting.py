@@ -6,11 +6,10 @@ import numpy as np
 import itertools
 import matplotlib
 import os
-if('DISPLAY' not in os.environ):
-    matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import FourPoint as fp
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
 # __markers__ = itertools.cycle(('o','s','v','8','v','^','<','>','p','*','h','H','+','x','D','d','1','2','3','4'))
@@ -112,6 +111,30 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
 
 
 def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
+    fig, ax = plot_fs(siwk=siwk, kgrid=kgrid, do_shift=do_shift, kz=kz,niv_plot=niv_plot)
+    ax[0].set_title('\Re \Sigma')
+    ax[1].set_title('\Im \Sigma')
+
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'siwk_fermi_surface.png'.format(kz,niv_plot))
+    try:
+        plt.show()
+    except:
+        plt.close()
+
+def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
+    fig, ax = plot_fs(siwk=giwk, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot)
+    ax[0].set_title('$\Re G$')
+    ax[1].set_title('$\Im G$')
+
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'giwk_fermi_surface_{}.png'.format(name))
+    try:
+        plt.show()
+    except:
+        plt.close()
+
+def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     if(niv_plot==None):
         niv_plot = np.shape(siwk)[-1] // 2
 
@@ -126,25 +149,21 @@ def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_
 
 
 
-    fig = plt.figure(figsize=(10,5))
-    plt.subplot(121)
-    plt.imshow(siwk_plot[:,:,kz,niv_plot].real,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
-    plt.colorbar()
-    plt.xlabel(r'$k_x$')
-    plt.ylabel(r'$k_y$')
-    plt.title(r'$\Re \Sigma$')
-    plt.subplot(122)
-    plt.imshow(siwk_plot[:,:,kz,niv_plot].imag,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
-    plt.colorbar()
-    plt.xlabel(r'$k_x$')
-    plt.ylabel(r'$k_y$')
-    plt.title(r'$\Im \Sigma$')
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10,5))
+    im = ax[0].imshow(siwk_plot[:,:,kz,niv_plot].real,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
+    divider = make_axes_locatable(ax[0])
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+    ax[0].set_xlabel(r'$k_x$')
+    ax[0].set_ylabel(r'$k_y$')
+
+    im = ax[1].imshow(siwk_plot[:,:,kz,niv_plot].imag,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
+    divider = make_axes_locatable(ax[1])
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+    ax[1].set_xlabel(r'$k_x$')
+    ax[1].set_ylabel(r'$k_y$')
 
     plt.tight_layout()
 
-    if (plot_dir is not None):
-        plt.savefig(plot_dir + 'siwk_kz{}_Niv{}.png'.format(kz,niv_plot))
-    try:
-        plt.show()
-    except:
-        plt.close()
+    return fig, ax

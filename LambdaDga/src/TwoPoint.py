@@ -4,7 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import Hk as hk
-
+import ChemicalPotential as chempot
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
@@ -125,6 +125,8 @@ class GreensFunctionGenerator():
         else:
             self._sigma = sigma
 
+        self.set_smom()
+
     @property
     def beta(self) -> float:
         return self._beta
@@ -142,6 +144,10 @@ class GreensFunctionGenerator():
         return self._sigma
 
     @property
+    def smom(self):
+        return self._smom
+
+    @property
     def niv_sigma(self):
         return self._sigma.shape[-1] // 2
 
@@ -154,7 +160,7 @@ class GreensFunctionGenerator():
     def nkz(self):
         return self.kgrid[2].size
 
-    def generate_gk(self, mu=0, qiw=None, niv=-1):
+    def generate_gk(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
         q = qiw[:3]
         wn = int(qiw[-1])
         kgrid = self.add_q_to_kgrid(q=q)
@@ -181,6 +187,18 @@ class GreensFunctionGenerator():
         for i in range(np.size(q)):
             kgrid.append(self.kgrid[i] + q[i])
         return kgrid
+
+    def set_smom(self):
+        iv = self.get_iv(niv=-1, wn=0)
+        smom = chempot.fit_smom(iv=iv, siwk=self.sigma)
+        self._smom = smom
+
+    def adjust_mu(self, n=None, mu0=0):
+        iv = self.get_iv(niv=-1, wn=0)
+        ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
+        mu = chempot.update_mu(mu0=mu0, target_filling=n, iv=iv, hk=ek, siwk=self.sigma,
+                                   beta=self.beta, smom0=self.smom[0])
+        return mu
 
 # ======================================================================================================================
 # ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------

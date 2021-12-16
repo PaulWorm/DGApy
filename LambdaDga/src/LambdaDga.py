@@ -7,6 +7,8 @@
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import Hk as hamk
+import ChemicalPotential as chempot
 import w2dyn_aux
 import MpiAux as mpiaux
 import TwoPoint as twop
@@ -214,6 +216,46 @@ def lambda_dga(config=None):
     #         file_in.close()
     #     file_out.close()
 
+    # Compute the chemical potential and Green's functions:
+
+    # Adjust the new chamical potential and generate the DGA Green's function:
+
+    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=sigma_dga)
+    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
+    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
+
+    gk_dmft_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dmft1p['sloc'])
+    gk_dmft = gk_dmft_generator.generate_gk(mu=dmft1p['mu'])
+
+    sloc_tb = (0*dmft1p['sloc']+dmft_sde['hartree']-1j*0.1)[None,None,None,:]
+    gk_tb_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=sloc_tb)
+    mu_tb = gk_tb_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
+    gk_tb = gk_tb_generator.generate_gk(mu=mu_tb)
+
+    giwk_dga = {
+        'gk': gk_dga,
+        'n': dmft1p['n'],
+        'mu': mu_dga
+    }
+
+    giwk_dmft = {
+        'gk': gk_dmft,
+        'n': dmft1p['n'],
+        'mu': dmft1p['mu']
+    }
+
+    giwk_tb = {
+        'gk': gk_tb,
+        'n': dmft1p['n'],
+        'mu': mu_tb
+    }
+
+    greens_functions = {
+        'dga': giwk_dga,
+        'dmft': giwk_dmft,
+        'tight_binding': giwk_tb
+    }
+
     dga_sde = {
         'chi_dens_lambda': chi_dens_lambda,
         'chi_magn_lambda': chi_magn_lambda,
@@ -229,4 +271,4 @@ def lambda_dga(config=None):
         'chi0q_asympt': chi0q_asympt
     }
 
-    return dga_sde, dmft_sde, dmft_gamma
+    return dga_sde, dmft_sde, dmft_gamma, greens_functions
