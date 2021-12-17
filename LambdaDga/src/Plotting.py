@@ -112,8 +112,8 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
 
 def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     fig, ax = plot_fs(siwk=siwk, kgrid=kgrid, do_shift=do_shift, kz=kz,niv_plot=niv_plot)
-    ax[0].set_title('\Re \Sigma')
-    ax[1].set_title('\Im \Sigma')
+    ax[0].set_title('$\Re \Sigma$')
+    ax[1].set_title('$\Im \Sigma$')
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'siwk_fermi_surface.png'.format(kz,niv_plot))
