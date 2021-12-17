@@ -54,12 +54,13 @@ tpp = 0.12 * t * 0
 # Define frequency box-sizes:
 niw_core = 20
 niv_core = 20
-niv_urange = 40
+niv_urange = 20
 niv_asympt = 5000
 
 # Define k-ranges:
-nk = (32, 32, 1)
-nq = (32, 32, 1)
+nkf = 8
+nk = (nkf, nkf, 1)
+nq = (nkf, nkf, 1)
 
 output_folder = 'LambdaDga_Nk{}_Nq{}'.format(np.prod(nk),np.prod(nq))
 output_path = output.uniquify(output_path+output_folder) + '/'
@@ -156,7 +157,14 @@ if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy',gamma_dmft,allow_pickle=True)
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
-    np.save(output_path + 'greens_functions.npy',greens_functions,allow_pickle=True)
+
+    gf_dict = {
+        'gk': greens_functions['dga']['gk']._gk,
+        'mu': greens_functions['dga']['gk']._mu,
+        'iv': greens_functions['dga']['gk']._iv,
+        'beta': greens_functions['dga']['gk']._beta
+    }
+    np.save(output_path + 'gk_dga.npy',gf_dict,allow_pickle=True)
 
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
