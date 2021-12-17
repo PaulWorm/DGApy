@@ -151,20 +151,15 @@ if(comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, greens_functions = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft, gk_dga = ldga.lambda_dga(config=config)
 
 if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy',gamma_dmft,allow_pickle=True)
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
 
-    gf_dict = {
-        'gk': greens_functions['dga']['gk']._gk,
-        'mu': greens_functions['dga']['gk']._mu,
-        'iv': greens_functions['dga']['gk']._iv,
-        'beta': greens_functions['dga']['gk']._beta
-    }
-    np.save(output_path + 'gk_dga.npy',gf_dict,allow_pickle=True)
+
+    np.save(output_path + 'gk_dga.npy',gk_dga,allow_pickle=True)
 
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
