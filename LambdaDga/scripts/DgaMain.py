@@ -151,15 +151,13 @@ if(comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, gk_dga = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config)
 
 if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy',gamma_dmft,allow_pickle=True)
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
 
-
-    np.save(output_path + 'gk_dga.npy',gk_dga,allow_pickle=True)
 
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
@@ -176,12 +174,20 @@ if(comm.rank == 0):
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'],plot_dir=output_path,kgrid=k_grid, do_shift=True)
 
-    gk_dga = greens_functions['dga']['gk']
-    gk_dmft = greens_functions['dmft']['gk']
-    gk_tb = greens_functions['tight_binding']['gk']
+    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dga_sde['sigma'])
+    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
+    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
+
+    gf_dict = {
+        'gk': gk_dga._gk,
+        'mu': gk_dga._mu,
+        'iv': gk_dga._iv,
+        'beta': gk_dga._beta
+    }
+
+    np.save(output_path + 'gk_dga.npy',gk_dga,allow_pickle=True)
+
     plotting.plot_giwk_fs(giwk=gk_dga.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dga')
-    plotting.plot_giwk_fs(giwk=gk_dmft.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dmft')
-    plotting.plot_giwk_fs(giwk=gk_tb.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='tb')
 
     chi_magn_lambda = dga_sde['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core*2+1,))
     

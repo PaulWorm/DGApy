@@ -220,9 +220,7 @@ def lambda_dga(config=None):
 
     # Adjust the new chamical potential and generate the DGA Green's function:
 
-    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=sigma_dga)
-    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
-    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
+
 
     # gk_dmft_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dmft1p['sloc'])
     # gk_dmft = gk_dmft_generator.generate_gk(mu=dmft1p['mu'])
@@ -231,13 +229,6 @@ def lambda_dga(config=None):
     # gk_tb_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=sloc_tb)
     # mu_tb = gk_tb_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
     # gk_tb = gk_tb_generator.generate_gk(mu=mu_tb)
-
-    gf_dict = {
-        'gk': gk_dga._gk,
-        'mu': gk_dga._mu,
-        'iv': gk_dga._iv,
-        'beta': gk_dga._beta
-    }
 
     # giwk_dga = {
     #     'gk': gk_dga,
@@ -278,4 +269,4 @@ def lambda_dga(config=None):
         'chi0q_asympt': chi0q_asympt
     }
 
-    return dga_sde, dmft_sde, dmft_gamma, gf_dict
+    return dga_sde, dmft_sde, dmft_gamma
