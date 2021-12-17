@@ -81,33 +81,31 @@ def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot
     except:
         plt.close()
 
-def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot=200):
+def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot=200, name='siw_check', ncol=1):
     markers = __markers__
     np = len(vn_list)
     assert np < len(markers), 'More plots-lines requires, than markers avaiable.'
 
-    size = 2 * np + 1
+    size = 2
 
     plt.subplot(211)
     for i in range(len(vn_list)):
-        plt.plot(vn_list[i], siw_list[i].real, markers[i], ms=size - 2 * i, label=labels_list[i])
+        plt.plot(vn_list[i], siw_list[i].real, markers[i], ms=size, label=labels_list[i])
     plt.legend()
     plt.xlim([0, niv_plot])
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Re \Sigma$')
     plt.subplot(212)
     for i in range(len(vn_list)):
-        plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size - 2 * i, label=labels_list[i])
+        plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size, label=labels_list[i])
     plt.xlim([0, niv_plot])
-    plt.legend()
+    plt.legend(ncol=ncol)
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Im \Sigma$')
     if (plot_dir is not None):
-        plt.savefig(plot_dir + 'siw_check.png')
-    try:
-        plt.show()
-    except:
-        plt.close()
+        plt.savefig(plot_dir + '{}.png'.format(name))
+
+    plt.close()
 
 
 def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):

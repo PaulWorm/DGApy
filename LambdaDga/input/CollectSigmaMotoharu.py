@@ -79,7 +79,9 @@ dict = {
     'siwk': siwk,
     'siwk_d': siwk_d,
     'siwk_m': siwk_m,
-    'siwk_rest': siwk_rest
+    'siwk_rest': siwk_rest,
+    'Nk': Nk,
+    'Niv': Niv
 }
 
 np.save(path+'siwk.npy', dict)
