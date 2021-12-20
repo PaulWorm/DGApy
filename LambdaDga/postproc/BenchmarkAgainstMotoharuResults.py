@@ -11,8 +11,8 @@ import MatsubaraFrequencies as mf
 
 # Parameters:
 
-input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk6400_Nq6400_1/'
+input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk6400_Nq6400_core59_urange240/'
 output_path = input_path
 
 # Load Python Data:
@@ -55,7 +55,7 @@ plt.plot(iv, sigma_node.imag, 'ro', label=labels[0], ms=4)
 plt.plot(iv, sigma_anti_node.imag, 'bo', label=labels[1], ms=4)
 plt.plot(iv_moto, sigma_moto_node.imag, 'gs', label=labels[2], ms=2)
 plt.plot(iv_moto, sigma_moto_anti_node.imag, 'gs', label=labels[3],ms=2)
-plt.xlim([0,10])
+plt.xlim([0,30])
 plt.legend()
 plt.savefig(output_path + 'BM_Motoharu.png')
 plt.show()

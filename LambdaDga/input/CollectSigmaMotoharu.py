@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 #path = 'C:/Users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.95/RawDataMotoharu/klist/'
 #path = 'C:/Users/pworm/Research/HubbardModel/2DSquare_U8_tp-0.25_tpp0.12_beta100_n0.85/from_Motoharu/klist/'
 #path = 'mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
-#path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
-path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/RawDataMotoharu/klist/'
+path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
+#path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/RawDataMotoharu/klist/'
 
 Nk   = 120
 Niv = 1024
