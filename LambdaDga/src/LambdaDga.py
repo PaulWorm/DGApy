@@ -42,6 +42,7 @@ def lambda_dga(config=None):
     giw = config['dmft1p']['gloc']
     dmft1p = config['dmft1p']
     output_path = config['names']['output_path']
+    do_pairing_vertex = config['options']['do_pairing_vertex']
 
     k_grid = config['grids']['k_grid']
     q_grid = config['grids']['q_grid']
@@ -140,7 +141,7 @@ def lambda_dga(config=None):
     dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
                                      box_sizes=box_sizes,
                                      qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
-                                     file=qiw_distributor.file)
+                                     file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex)
     realt.print_time('Non-local Susceptibility: ')
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
@@ -203,56 +204,6 @@ def lambda_dga(config=None):
     sigma_dga = sigma_dens_dga_reduce + 3. * sigma_magn_dga_reduce - siw_sde_reduce + dmft_sde['hartree']
 
     realt.print_time('DGA Schwinger-Dyson equation: ')
-
-    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    # if(qiw_distributor.my_rank == 0):
-    #     file_out = h5py.File(output_path+'LadderVertex.hdf5','w')
-    #     for ir in range(qiw_distributor.mpi_size):
-    #         file_in = h5py.File(output_path+'QiwRank{:05d}'.format(ir) + '.hdf5','r')
-    #         for key1 in list(file_in.keys()):
-    #             for key2 in list(file_in[key1].keys()):
-    #                 file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
-    #
-    #         file_in.close()
-    #     file_out.close()
-
-    # Compute the chemical potential and Green's functions:
-
-    # Adjust the new chamical potential and generate the DGA Green's function:
-
-
-
-    # gk_dmft_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dmft1p['sloc'])
-    # gk_dmft = gk_dmft_generator.generate_gk(mu=dmft1p['mu'])
-    #
-    # sloc_tb = (0*dmft1p['sloc']+dmft_sde['hartree']-1j*0.1)[None,None,None,:]
-    # gk_tb_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=sloc_tb)
-    # mu_tb = gk_tb_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
-    # gk_tb = gk_tb_generator.generate_gk(mu=mu_tb)
-
-    # giwk_dga = {
-    #     'gk': gk_dga,
-    #     'n': dmft1p['n'],
-    #     'mu': mu_dga
-    # }
-    #
-    # giwk_dmft = {
-    #     'gk': gk_dmft,
-    #     'n': dmft1p['n'],
-    #     'mu': dmft1p['mu']
-    # }
-    #
-    # giwk_tb = {
-    #     'gk': gk_tb,
-    #     'n': dmft1p['n'],
-    #     'mu': mu_tb
-    # }
-    #
-    # greens_functions = {
-    #     'dga': giwk_dga,
-    #     'dmft': giwk_dmft,
-    #     'tight_binding': giwk_tb
-    # }
 
     dga_sde = {
         'chi_dens_lambda': chi_dens_lambda,

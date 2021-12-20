@@ -37,26 +37,27 @@ input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
 fname_g2 = 'g4iw_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
-fname_ladder_vertex = 'LadderVertex'
+fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_ladder_vertex = False
+do_pairing_vertex = True
+keep_ladder_vertex = False
 lattice = 'square'
 
 # Set up real-space Wannier Hamiltonian:
 t = 1.00
-tp = -0.20 * t
-tpp = 0.10 * t
+tp = -0.25 * t
+tpp = 0.12 * t
 
 # Define frequency box-sizes:
-niw_core = 16
-niv_core = 16
-niv_urange = 16
+niw_core = 30
+niv_core = 30
+niv_urange = 60
 niv_asympt = 5000
 
 # Define k-ranges:
@@ -66,6 +67,7 @@ nq = (nkf, nkf, 1)
 
 output_folder = 'LambdaDga_Nk{}_Nq{}_core{}_urange{}'.format(np.prod(nk),np.prod(nq),niw_core,niv_urange)
 output_path = output.uniquify(output_path+output_folder) + '/'
+fname_ladder_vertex = output_path + fname_ladder_vertex
 
 # Generate k-meshes:
 k_grid = bz.KGrid(nk=nk, name='k')
@@ -88,7 +90,7 @@ niv_dmft = dmft1p['niv']
 # Note: I want this to be decoupled from dmft1p, because of later RPA/FLEX stuff.
 
 options = {
-    'do_ladder_vertex': do_ladder_vertex
+    'do_pairing_vertex': do_pairing_vertex
 }
 
 system = {
@@ -154,6 +156,7 @@ if(comm.rank == 0):
 comm.Barrier()
 
 dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config)
+comm.Barrier()
 
 if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
@@ -199,6 +202,29 @@ if(comm.rank == 0):
     plt.savefig(output_path + 'chi_magn_w0.png')
     plt.show()
 
+
+# Collect the ladder vertex from subfiles:
+if(do_pairing_vertex and comm.rank==0):
+    import MpiAux as mpiaux
+    import h5py
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm, output_path=output_path,
+                                            name='Qiw')
+
+    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+    if(do_pairing_vertex):
+        if(qiw_distributor.my_rank == 0):
+            file_out = h5py.File(fname_ladder_vertex,'w')
+            for ir in range(qiw_distributor.mpi_size):
+                fname_input = output_path+'QiwRank{:05d}'.format(ir) + '.hdf5'
+                file_in = h5py.File(fname_input,'r')
+                for key1 in list(file_in.keys()):
+                    for key2 in list(file_in[key1].keys()):
+                        file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
+
+                file_in.close()
+                os.remove(fname_input)
+            file_out.close()
+
 # import matplotlib.pyplot as plt
 # plt.imshow(dga_sde['sigma'][:,:,0,box_sizes['niv_core']], )
 
@@ -234,83 +260,95 @@ if(comm.rank == 0):
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
 #%%
 
-# import PairingVertex as pv
-# import h5py
-# fname = output_path + 'LadderVertex.hdf5'
-# file = h5py.File(fname, 'r')
+if(do_pairing_vertex and comm.rank==0):
+    import RealTime as rt
+    realt = rt.real_time()
+
+    realt.print_time('Start pairing vertex:')
+
+    import PairingVertex as pv
+    import h5py
+
+    file = h5py.File(fname_ladder_vertex, 'r')
+
+    def load_qiw(key1=None):
+        arr = []
+        for key2 in list(file[key1].keys()):
+            arr.append(file[key1 + '/' + key2][()])
+        return np.array(arr)
+
+    gchi0 = load_qiw(key1='gchi0_core')
+
+    gchi_aux_magn = load_qiw(key1='gchi_aux_magn')
+    vrg_magn = load_qiw(key1='vrgq_magn_core')
+    chi_magn_lambda = dga_sde['chi_magn_lambda'].mat
+
+    gchi_aux_dens = load_qiw(key1='gchi_aux_dens')
+    vrg_dens = load_qiw(key1='vrgq_dens_core')
+    chi_dens_lambda = dga_sde['chi_dens_lambda'].mat
+
+    f_magn = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_magn, vrg=vrg_magn, chir=chi_magn_lambda, gchi0=gchi0, beta=dmft1p['beta']
+                                           , u_r=dga_sde['chi_magn_lambda'].u_r)
+    f_dens = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_dens, vrg=vrg_dens, chir=chi_dens_lambda, gchi0=gchi0, beta=dmft1p['beta']
+                                           , u_r=dga_sde['chi_dens_lambda'].u_r)
+
+    f_magn = f_magn.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
+    f_dens = f_dens.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
+
+    f_dens_pp = pv.ph_to_pp_notation(mat_ph=f_dens)
+    f_magn_pp = pv.ph_to_pp_notation(mat_ph=f_magn)
+
+    f_sing = -1.5 * f_magn_pp + 0.5 * f_dens_pp
+    f_trip = -0.5 * f_magn_pp - 0.5 * f_dens_pp
+
+    pairing_vertices = {
+        'f_sing':f_sing,
+        'f_trip':f_trip
+    }
+
+    np.save(output_path + 'pairing_vertices.npy',pairing_vertices)
+
+
+    f_sing_loc = f_sing.mean(axis=0)
+    f_trip_loc = f_trip.mean(axis=0)
+
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    plt.imshow(f_sing_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f_sing_loc.png')
+    plt.close()
+
+    fig = plt.figure()
+    plt.imshow(f_trip_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f_trip_loc.png')
+    plt.close()
+
+    realt.print_time('End pairing vertex:')
 #
-# def load_qiw(key1=None):
-#     arr = []
-#     for key2 in list(file[key1].keys()):
-#         arr.append(file[key1 + '/' + key2][()])
-#     return np.array(arr)
-#
-# gchi0 = load_qiw(key1='gchi0_core')
-#
-# gchi_aux_magn = load_qiw(key1='gchi_aux_magn')
-# vrg_magn = load_qiw(key1='vrgq_magn_core')
-# chi_magn_lambda = dga_sde['chi_magn_lambda'].mat
-#
-# gchi_aux_dens = load_qiw(key1='gchi_aux_dens')
-# vrg_dens = load_qiw(key1='vrgq_dens_core')
-# chi_dens_lambda = dga_sde['chi_dens_lambda'].mat
-#
-# f_magn = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_magn, vrg=vrg_magn, chir=chi_magn_lambda, gchi0=gchi0, beta=dmft1p['beta']
-#                                        , u_r=dga_sde['chi_magn_lambda'].u_r)
-# f_dens = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_dens, vrg=vrg_dens, chir=chi_dens_lambda, gchi0=gchi0, beta=dmft1p['beta']
-#                                        , u_r=dga_sde['chi_dens_lambda'].u_r)
-#
-# f_magn = f_magn.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
-# f_dens = f_dens.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
-#
-# f_dens_pp = pv.ph_to_pp_notation(mat_ph=f_dens)
-# f_magn_pp = pv.ph_to_pp_notation(mat_ph=f_magn)
-#
-# f_sing = -1.5 * f_magn_pp + 0.5 * f_dens_pp
-# f_trip = -0.5 * f_magn_pp - 0.5 * f_dens_pp
-#
-#
-# f_sing_loc = f_sing.mean(axis=0)
-# f_trip_loc = f_trip.mean(axis=0)
-#
-# import matplotlib.pyplot as plt
-# plt.imshow(f_sing_loc.real,cmap='RdBu')
-# plt.colorbar()
-# plt.show()
-#
-# plt.imshow(f_trip_loc.real,cmap='RdBu')
-# plt.colorbar()
-# plt.show()
-#
-# # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
-# #%%
-# import TwoPoint as twop
-# gamma_sing = f_sing.reshape(8,8,1,20,20)
-# gammax_sing = np.fft.fftn(gamma_sing, axes=(0,1,2))
-# g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr, sigma=dga_sde['sigma'])
-# gk_dga = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_core//2).gk
-# gmk_dga = np.flip(gk_dga)
-#
-# Delta = np.random.random_sample(np.shape(gmk_dga))
-#
-# Delta_old = Delta
-# lambda_old = 10
-# eps = 10**-6
-# max_count = 10000
-# converged = False
-# count = 0
-# while(not converged):
-#     count += 1
-#     Delta_tilde = np.fft.ifftn(Delta_old * gk_dga * gmk_dga, axes=(0, 1, 2))
-#     Delta_new = 1./(8*8) * np.sum(gammax_sing * Delta_tilde[...,None,:],axis=-1)
-#     Delta_new = np.fft.fftn(Delta_new,axes=(0,1,2))
-#     lambda_r = np.sum(np.conj(Delta_old)*Delta_new)/np.sum((np.conj(Delta_old)*Delta_old))
-#     Delta_old = Delta_new/lambda_r
-#     if(np.abs(lambda_r-lambda_old)<eps or count > max_count):
-#         converged = True
-#     lambda_old = lambda_r
-#
-#
-# plt.imshow(Delta_old[:,:,0,10].real,cmap='RdBu')
-# plt.colorbar()
-# plt.show()
+# ----------------------------------------------- Eliashberg Equation --------------------------------------------------
+#%%
+
+if(do_pairing_vertex and comm.rank == 0):
+    import TwoPoint as twop
+    import EliashbergEquation as eq
+    gamma_sing = f_sing.reshape(nk + (niv_core, niv_core))
+    gamma_trip = f_trip.reshape(nk + (niv_core, niv_core))
+    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
+                                               sigma=dga_sde['sigma'])
+    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
+    gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_core // 2).gk
+    lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps = 10**-6, max_count = 10000, norm=np.prod(nk)*dmft1p['beta'])
+    lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps = 10**-6, max_count = 10000, norm=np.prod(nk)*dmft1p['beta'])
+
+    eliashberg = {
+        'lambda_sing': lambda_sing[1].real,
+        'lambda_trip': lambda_trip[1].real,
+        'delta_sing': delta_sing[1].real,
+        'delta_trip': delta_trip[1].real,
+    }
+
+    plotting.plot_gap_function(delta=delta_sing[1].real, pdir = output_path, name='sing', kgrid=k_grid)
+    plotting.plot_gap_function(delta=delta_trip[1].real, pdir = output_path, name='trip', kgrid=k_grid)
+

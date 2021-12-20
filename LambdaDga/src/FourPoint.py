@@ -766,7 +766,7 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, qiw_indizes=None, niw=None, file=None):
+def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, qiw_indizes=None, niw=None, file=None, do_pairing_vertex=False):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -853,13 +853,16 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
         chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
 
-        # if(file is not None):
-        #     group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
-        #     file['gchi_aux_dens' + group] = gchi_aux_dens.mat
-        #     file['gchi_aux_magn' + group] = gchi_aux_magn.mat
-        #     file['vrgq_dens_core' + group] = vrgq_dens_core.mat
-        #     file['vrgq_magn_core' + group] = vrgq_magn_core.mat
-        #     file['gchi0_core' + group] = chi0q_core.gchi0
+        # print(file)
+        # print(do_pairing_vertex)
+        # if(do_pairing_vertex):
+        #     if(file is not None):
+        group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
+        file['gchi_aux_dens' + group] = gchi_aux_dens.mat
+        file['gchi_aux_magn' + group] = gchi_aux_magn.mat
+        file['vrgq_dens_core' + group] = vrgq_dens_core.mat
+        file['vrgq_magn_core' + group] = vrgq_magn_core.mat
+        file['gchi0_core' + group] = chi0q_core.gchi0
 
 
     chi_dens_asympt.mat_to_array()

@@ -165,3 +165,43 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     plt.tight_layout()
 
     return fig, ax
+
+
+def plot_gap_function(delta=None, pdir = None, name='', kgrid=None, do_shift=False):
+    niv = np.shape(delta)[-1] // 2
+    kx = kgrid._grid['kx']
+    ky = kgrid._grid['ky']
+
+    delta_plot = np.copy(delta)
+    if(do_shift):
+        delta_plot = np.roll(delta,kgrid.nk[0]//2,0)
+        delta_plot = np.roll(delta,kgrid.nk[1]//2,1)
+        kx = kx - np.pi
+        ky = ky - np.pi
+
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10,5))
+
+    # First positive Matsubara frequency:
+
+    im = ax[0].imshow(delta_plot[:, :, 0, niv].real, cmap='RdBu', origin='lower', extent=[kx[0],kx[-1],ky[0],ky[-1]])
+    divider = make_axes_locatable(ax[0])
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
+    # First negative Matsubara frequency:
+    im = ax[1].imshow(delta_plot[:, :, 0, niv-1].real, cmap='RdBu', origin='lower', extent=[kx[0],kx[-1],ky[0],ky[-1]])
+    divider = make_axes_locatable(ax[1])
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
+
+    ax[0].set_xlabel(r'$k_x$')
+    ax[0].set_ylabel(r'$k_y$')
+    ax[0].set_title(r'$\nu_{n=0}$')
+
+    ax[1].set_xlabel(r'$k_x$')
+    ax[1].set_ylabel(r'$k_y$')
+    ax[1].set_title(r'$\nu_{n=-1}$')
+
+    plt.savefig(pdir + 'GapFunction_{}.png'.format(name))
+    plt.close()

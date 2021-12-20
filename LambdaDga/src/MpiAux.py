@@ -27,7 +27,8 @@ class MpiDistributor():
         self.file = None
 
         if(output_path is not None):
-            self.file = h5py.File(output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5','w')
+            # Read/write file. Create if it does not exist.
+            self.file = h5py.File(output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5','a')
 
     def __del__(self):
         if(self.file is not None):
