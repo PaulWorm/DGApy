@@ -348,6 +348,7 @@ if(do_pairing_vertex and comm.rank == 0):
         'delta_sing': delta_sing[1].real,
         'delta_trip': delta_trip[1].real,
     }
+    np.save(output_path+'eliashberg.npy',eliashberg)
 
     plotting.plot_gap_function(delta=delta_sing[1].real, pdir = output_path, name='sing', kgrid=k_grid)
     plotting.plot_gap_function(delta=delta_trip[1].real, pdir = output_path, name='trip', kgrid=k_grid)
