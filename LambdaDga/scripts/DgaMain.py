@@ -34,9 +34,10 @@ input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
+#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -45,21 +46,21 @@ fname_ladder_vertex = 'LadderVertex'
 
 # Define options:
 do_ladder_vertex = False
-lattice = 'triangular'
+lattice = 'square'
 
 # Set up real-space Wannier Hamiltonian:
 t = 1.00
-tp = 1.00 * t
-tpp = 0.12 * t * 0
+tp = -0.20 * t
+tpp = 0.10 * t
 
 # Define frequency box-sizes:
-niw_core = 40
-niv_core = 40
-niv_urange = 40
+niw_core = 16
+niv_core = 16
+niv_urange = 16
 niv_asympt = 5000
 
 # Define k-ranges:
-nkf = 42
+nkf = 16
 nk = (nkf, nkf, 1)
 nq = (nkf, nkf, 1)
 
