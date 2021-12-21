@@ -855,14 +855,14 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
         # print(file)
         # print(do_pairing_vertex)
-        # if(do_pairing_vertex):
-        #     if(file is not None):
-        group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
-        file['gchi_aux_dens' + group] = gchi_aux_dens.mat
-        file['gchi_aux_magn' + group] = gchi_aux_magn.mat
-        file['vrgq_dens_core' + group] = vrgq_dens_core.mat
-        file['vrgq_magn_core' + group] = vrgq_magn_core.mat
-        file['gchi0_core' + group] = chi0q_core.gchi0
+        if(do_pairing_vertex):
+            if(file is not None):
+                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
+                file['gchi_aux_dens' + group] = gchi_aux_dens.mat
+                file['gchi_aux_magn' + group] = gchi_aux_magn.mat
+                file['vrgq_dens_core' + group] = vrgq_dens_core.mat
+                file['vrgq_magn_core' + group] = vrgq_magn_core.mat
+                file['gchi0_core' + group] = chi0q_core.gchi0
 
 
     chi_dens_asympt.mat_to_array()
@@ -885,3 +885,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         'chi0q_asympt': chi0q_asympt_full
     }
     return dga_susc
+
+
+if __name__ == "__main__":
+    pass 

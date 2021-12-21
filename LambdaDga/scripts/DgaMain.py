@@ -36,8 +36,9 @@ input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -45,19 +46,22 @@ fname_g2 = 'g4iw_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lattice = 'square'
 
 # Set up real-space Wannier Hamiltonian:
 t = 1.00
-tp = -0.25 * t
-tpp = 0.12 * t
+tp = -0.20 * t
+tpp = 0.10 * t
+# t = 0.25
+# tp = -0.00 * t
+# tpp = 0.00 * t
 
 # Define frequency box-sizes:
-niw_core = 30
-niv_core = 30
-niv_urange = 60
+niw_core = 20
+niv_core = 20
+niv_urange = 240
 niv_asympt = 5000
 
 # Define k-ranges:
@@ -164,6 +168,7 @@ if(comm.rank == 0):
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
 
 
+    siw_dga_ksum_nfsc = dga_sde['sigma_nfsc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
     siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
@@ -171,9 +176,9 @@ if(comm.rank == 0):
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_core'],), keys=('qx', 'qy', 'qz', 'iw'),
                               my_slice=None)
 
-    vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
-    siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum]
-    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$']
+    vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
+    siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum_nfsc,siw_dga_ksum]
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-FC}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
 
 
