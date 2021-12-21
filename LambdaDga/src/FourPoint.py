@@ -302,7 +302,7 @@ def gammar_from_gchir(gchir: LocalFourPoint = None, gchi0_urange: LocalBubble = 
     return LocalFourPoint(matrix=gammar, giw=gchir.giw, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
 
 
-def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=10, beta=1.0, u=1.0):
+def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
     full = u / (beta * beta) + np.diag(1. / gchi0_urange)
     inv_full = np.linalg.inv(full)
     inv_core = cut_iv(inv_full, niv_core)
@@ -344,21 +344,16 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
     return LocalThreePoint(matrix=vrg_urange, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
-def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_asympt: LocalSusceptibility = None,
-                            chi_urange: LocalSusceptibility = None,
-                            u=1.0):
-    vrg_asympt = vrg.mat * (1 - u * chi_urange.mat[:, None]) / (1 - u * chi_asympt.mat[:, None])
-    return LocalThreePoint(matrix=vrg_asympt, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
+# def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_asympt: LocalSusceptibility = None,
+#                             chi_urange: LocalSusceptibility = None,
+#                             u=1.0):
+#     vrg_asympt = vrg.mat * (1 - u * chi_urange.mat[:, None]) / (1 - u * chi_asympt.mat[:, None])
+#     return LocalThreePoint(matrix=vrg_asympt, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
-def local_fermi_bose_from_chi_aux_asympt(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None,
-                                         chi_asympt: LocalSusceptibility = None, chi_urange: LocalSusceptibility = None,
-                                         niv_urange=-1,
-                                         u=1.0):
-    u_r = get_ur(u=u, channel=gchi_aux.channel)
+def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None,niv_urange=-1,u=None):
     vrg = local_fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
     vrg = local_fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
-    vrg = local_fermi_bose_asympt(vrg=vrg, chi_asympt=chi_asympt, chi_urange=chi_urange, u=u_r)
     return vrg
 
 
@@ -731,16 +726,14 @@ def fermi_bose_urange(vrg: ThreePoint = None, niv_urange=-1):
     return ThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, u=vrg.u)
 
 
-def fermi_bose_asympt(vrg: ThreePoint = None, chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None):
-    vrg_asympt = vrg.mat * (1 - vrg.u_r * chi_urange.mat) / (1 - vrg.u_r * chi_asympt.mat)
-    return ThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, u=vrg.u)
+# def fermi_bose_asympt(vrg: ThreePoint = None, chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None):
+#     vrg_asympt = vrg.mat * (1 - vrg.u_r * chi_urange.mat) / (1 - vrg.u_r * chi_asympt.mat)
+#     return ThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, u=vrg.u)
 
 
-def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = None,
-                                   chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None, niv_urange=-1):
+def fermi_bose_from_chi_aux_urange(gchi_aux: FourPoint = None, gchi0: Bubble = None, niv_urange=-1):
     vrg_core = fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
     vrg = fermi_bose_urange(vrg=vrg_core, niv_urange=niv_urange)
-    vrg = fermi_bose_asympt(vrg=vrg, chi_asympt=chi_asympt, chi_urange=chi_urange)
     return vrg, vrg_core
 
 
@@ -782,20 +775,21 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     mu = dmft_input['mu']
     niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']
-    niv_asympt = box_sizes['niv_asympt']
     siw = dmft_input['sloc']
     gamma_dens_loc = local_sde['gamma_dens']
     gamma_magn_loc = local_sde['gamma_magn']
 
     chi0q_core_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
     chi0q_urange_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
-    chi0q_asympt_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
 
-    chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
-    chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
+    chi_dens_urange = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
+    chi_magn_urange = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
 
     vrg_dens = LadderObject(qiw=qiw_grid,channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid,channel='magn', beta=beta, u=u)
+
+    vrg_dens_core = LadderObject(qiw=qiw_grid,channel='dens', beta=beta, u=u)
+    vrg_magn_core = LadderObject(qiw=qiw_grid,channel='magn', beta=beta, u=u)
 
     g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr, sigma=siw)
 
@@ -814,9 +808,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
         chi0q_core = Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta)
         chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
-        chi0q_asympt = copy.deepcopy(chi0q_urange)
-        chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
-
 
         gchi_aux_dens = construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
         gchi_aux_magn = construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
@@ -829,29 +820,21 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chiq_magn_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
 
-        chiq_dens_asympt = copy.deepcopy(chiq_dens_urange)
-        chiq_dens_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
+        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core, niv_urange=niv_urange)
 
-        chiq_magn_asympt = copy.deepcopy(chiq_magn_urange)
-        chiq_magn_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
+        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core, niv_urange=niv_urange)
 
-        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
-                                                   chi_asympt=chiq_dens_asympt
-                                                   , chi_urange=chiq_dens_urange, niv_urange=niv_urange)
-
-        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
-                                                   chi_asympt=chiq_magn_asympt
-                                                   , chi_urange=chiq_magn_urange, niv_urange=niv_urange)
-
-        chi_dens_asympt.mat[iqw] = chiq_dens_asympt.mat
-        chi_magn_asympt.mat[iqw] = chiq_magn_asympt.mat
+        chi_dens_urange.mat[iqw] = chiq_dens_urange.mat
+        chi_magn_urange.mat[iqw] = chiq_magn_urange.mat
 
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
 
+        vrg_dens_core.ladder[iqw] = vrgq_dens
+        vrg_magn_core.ladder[iqw] = vrgq_magn
+
         chi0q_core_full.mat[iqw] = chi0q_core.chi0
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
-        chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
 
         # print(file)
         # print(do_pairing_vertex)
@@ -865,27 +848,30 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                 file['gchi0_core' + group] = chi0q_core.gchi0
 
 
-    chi_dens_asympt.mat_to_array()
-    chi_magn_asympt.mat_to_array()
+    chi_dens_urange.mat_to_array()
+    chi_magn_urange.mat_to_array()
 
     vrg_dens.set_qiw_mat()
     vrg_magn.set_qiw_mat()
 
+    vrg_dens_core.set_qiw_mat()
+    vrg_magn_core.set_qiw_mat()
+
     chi0q_urange_full.mat_to_array()
     chi0q_core_full.mat_to_array()
-    chi0q_asympt_full.mat_to_array()
 
     dga_susc = {
-        'chi_dens_asympt': chi_dens_asympt,
-        'chi_magn_asympt': chi_magn_asympt,
+        'chi_dens_urange': chi_dens_urange,
+        'chi_magn_urange': chi_magn_urange,
         'vrg_dens': vrg_dens,
         'vrg_magn': vrg_magn,
+        'vrg_dens_core': vrg_dens_core,
+        'vrg_magn_core': vrg_magn_core,
         'chi0q_core': chi0q_core_full,
-        'chi0q_urange': chi0q_urange_full,
-        'chi0q_asympt': chi0q_asympt_full
+        'chi0q_urange': chi0q_urange_full
     }
     return dga_susc
 
 
 if __name__ == "__main__":
-    pass 
+    pass

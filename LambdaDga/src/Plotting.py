@@ -92,13 +92,13 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
     for i in range(len(vn_list)):
         plt.plot(vn_list[i], siw_list[i].real, markers[i], ms=size, label=labels_list[i])
     plt.legend()
-    plt.xlim([0, niv_plot])
+    plt.xlim([-10, niv_plot])
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Re \Sigma$')
     plt.subplot(212)
     for i in range(len(vn_list)):
         plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size, label=labels_list[i])
-    plt.xlim([0, niv_plot])
+    plt.xlim([-10, niv_plot])
     plt.legend(ncol=ncol)
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Im \Sigma$')

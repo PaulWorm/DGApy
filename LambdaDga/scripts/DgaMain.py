@@ -61,8 +61,7 @@ tpp = 0.10 * t
 # Define frequency box-sizes:
 niw_core = 20
 niv_core = 20
-niv_urange = 240
-niv_asympt = 5000
+niv_urange = 120
 
 # Define k-ranges:
 nkf = 16
@@ -116,7 +115,6 @@ box_sizes = {
     "niw_core": niw_core,
     "niv_core": niv_core,
     "niv_urange": niv_urange,
-    "niv_asympt": niv_asympt,
     "nk": nk,
     "nq": nq
 }
@@ -125,7 +123,6 @@ grids = {
     "vn_dmft": mf.vn(n=niv_dmft),
     "vn_core": mf.vn(n=niv_core),
     "vn_urange": mf.vn(n=niv_urange),
-    "vn_asympt": mf.vn(n=niv_asympt),
     "wn_core": mf.wn(n=niw_core),
     "k_grid": k_grid,
     "q_grid": q_grid

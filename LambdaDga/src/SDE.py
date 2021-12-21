@@ -27,7 +27,7 @@ def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility 
 
 
 def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
-            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None):
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None, box_sizes=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv = vrg.mat.shape[-1] // 2
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv), dtype=complex)
@@ -55,12 +55,9 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
 
     niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']
-    niv_asympt = box_sizes['niv_asympt']
 
     chi0_core = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_core, iw=iw)
     chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
-    chi0_asympt = copy.deepcopy(chi0_urange)
-    chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
 
     gchi_dens_loc = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_dens), giw=g2_dens.giw,
                                       channel=g2_dens.channel,
@@ -81,41 +78,29 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
     chi_dens_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_dens_loc, chi0_urange=chi0_urange,
                                                          chi0_core=chi0_core,
                                                          u=u)
-    chi_dens_asympt_loc = copy.deepcopy(chi_dens_urange_loc)
-    chi_dens_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
+
     chi_magn_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_magn_loc, chi0_urange=chi0_urange,
                                                          chi0_core=chi0_core,
                                                          u=u)
-    chi_magn_asympt_loc = copy.deepcopy(chi_magn_urange_loc)
-    chi_magn_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
 
-    vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,
-                                                           chi_asympt=chi_dens_asympt_loc,
-                                                           chi_urange=chi_dens_urange_loc,
-                                                           niv_urange=niv_urange,
-                                                           u=u)
+    vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
 
-    vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
-                                                           chi_asympt=chi_magn_asympt_loc,
-                                                           chi_urange=chi_magn_urange_loc,
-                                                           niv_urange=niv_urange,
-                                                           u=u)
+    vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
 
-    siw_dens = local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_asympt_loc, u=u)
-    siw_magn = local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_asympt_loc, u=u)
+    siw_dens = local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_urange_loc, u=u)
+    siw_magn = local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_urange_loc, u=u)
 
     siw = siw_dens + siw_magn
 
     dmft_sde = {
         'chi0_core': chi0_core,
         'chi0_urange': chi0_urange,
-        'chi0_asympt': chi0_asympt,
         'gamma_dens': gamma_dens,
         'gamma_magn': gamma_magn,
         'vrg_dens': vrg_dens_loc,
         'vrg_magn': vrg_magn_loc,
-        'chi_dens': chi_dens_asympt_loc,
-        'chi_magn': chi_magn_asympt_loc,
+        'chi_dens': chi_dens_urange_loc,
+        'chi_magn': chi_magn_urange_loc,
         'siw_dens': siw_dens,
         'siw_magn': siw_magn,
         'siw': siw,
