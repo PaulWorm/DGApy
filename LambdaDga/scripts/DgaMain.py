@@ -59,12 +59,12 @@ tp = -0.25 * t
 tpp = 0.12 * t
 
 # Define frequency box-sizes:
-niw_core = 20
-niv_core = 20
-niv_urange = 120
+niw_core = 10
+niv_core = 10
+niv_urange = 40
 
 # Define k-ranges:
-nkf = 32
+nkf = 42
 nk = (nkf, nkf, 1)
 nq = (nkf, nkf, 1)
 
