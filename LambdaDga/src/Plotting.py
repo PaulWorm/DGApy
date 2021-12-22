@@ -99,7 +99,7 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
     for i in range(len(vn_list)):
         plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size, label=labels_list[i])
     plt.xlim([-10, niv_plot])
-    plt.legend(ncol=ncol)
+    plt.legend(ncol=ncol, loc='upper right')
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Im \Sigma$')
     if (plot_dir is not None):
@@ -108,13 +108,13 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
     plt.close()
 
 
-def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
+def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None, name=''):
     fig, ax = plot_fs(siwk=siwk, kgrid=kgrid, do_shift=do_shift, kz=kz,niv_plot=niv_plot)
     ax[0].set_title('$\Re \Sigma$')
     ax[1].set_title('$\Im \Sigma$')
 
     if (plot_dir is not None):
-        plt.savefig(plot_dir + 'siwk_fermi_surface.png'.format(kz,niv_plot))
+        plt.savefig(plot_dir + 'siwk_fermi_surface_{}.png'.format(name))
     try:
         plt.show()
     except:

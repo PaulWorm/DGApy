@@ -22,8 +22,8 @@ def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility 
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     u_r = fp.get_ur(u=u, channel=vrg.channel)
     giw_grid = wn_slices(mat=chir.giw, n_cut=vrg.niv, iw=chir.iw)
-    return -u_r / 2. * np.sum((vrg.mat * (1. - u_r * chir.mat[:, None])) * giw_grid,
-                              axis=0)  # - np.sign(u_r) * 1./chir.beta
+    return -u_r / 2. * np.sum((vrg.mat * (1. - u_r * chir.mat[:, None]) - 1./chir.beta) * giw_grid,
+                              axis=0)  # The -1./chir.beta is is cancled in the sum. This is only relevant for Fluctuation diagnostics.
 
 
 def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
@@ -33,9 +33,8 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv), dtype=complex)
     for iqw, qiw_ in enumerate(qiw):
         gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv)
-        sigma += - vrg.u_r / (2.0) * (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) + np.sign(
-            vrg.u_r) * 0.5 / vrg.beta) * gkpq.gk
-    sigma = 1. / (nq) * sigma
+        sigma += - vrg.u_r / (2.0) * (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1./vrg.beta) * gkpq.gk
+    sigma = 1. / (nq) * sigma #
     return sigma
 
 

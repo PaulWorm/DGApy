@@ -189,8 +189,8 @@ def lambda_dga(config=None):
 
     sigma_dens_dga = sigma_dens_dga_reduce
     sigma_magn_dga = sigma_magn_dga_reduce
-    sigma_dga_nfsc = sigma_dens_dga_reduce + 3. * sigma_magn_dga_reduce - siw_sde_reduce + dmft_sde['hartree']
-    sigma_dga = sigma_dga_nfsc - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
+    sigma_dga_nc = sigma_dens_dga_reduce + sigma_magn_dga_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
+    sigma_dga = sigma_dens_dga_reduce + 3*sigma_magn_dga_reduce - 2*siw_sde_magn_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
 
     realt.print_time('DGA Schwinger-Dyson equation: ')
 
@@ -202,7 +202,7 @@ def lambda_dga(config=None):
         'sigma_dens': sigma_dens_dga,
         'sigma_magn': sigma_magn_dga,
         'sigma': sigma_dga,
-        'sigma_nfsc': sigma_dga_nfsc,
+        'sigma_nc': sigma_dga_nc,
         'lambda_dens': lambda_dens,
         'lambda_magn': lambda_magn,
         'chi0q_core': chi0q_core,

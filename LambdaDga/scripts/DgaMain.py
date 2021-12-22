@@ -32,13 +32,13 @@ comm = mpi.COMM_WORLD
 input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -51,12 +51,12 @@ keep_ladder_vertex = False
 lattice = 'square'
 
 # Set up real-space Wannier Hamiltonian:
-t = 1.00
-tp = -0.20 * t
-tpp = 0.10 * t
-# t = 0.25
-# tp = -0.00 * t
-# tpp = 0.00 * t
+# t = 1.00
+# tp = -0.20 * t
+# tpp = 0.10 * t
+t = 0.25
+tp = -0.25 * t
+tpp = 0.12 * t
 
 # Define frequency box-sizes:
 niw_core = 20
@@ -64,7 +64,7 @@ niv_core = 20
 niv_urange = 120
 
 # Define k-ranges:
-nkf = 16
+nkf = 32
 nk = (nkf, nkf, 1)
 nq = (nkf, nkf, 1)
 
@@ -165,7 +165,7 @@ if(comm.rank == 0):
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
 
 
-    siw_dga_ksum_nfsc = dga_sde['sigma_nfsc'].mean(axis=(0, 1, 2))
+    siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
     siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
@@ -174,12 +174,12 @@ if(comm.rank == 0):
                               my_slice=None)
 
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
-    siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum_nfsc,siw_dga_ksum]
-    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-FC}(\nu)$']
+    siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum,siw_dga_ksum_nc]
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
 
-
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'],plot_dir=output_path,kgrid=k_grid, do_shift=True)
+    plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'],plot_dir=output_path,kgrid=k_grid, do_shift=True,name='nc')
 
     gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dga_sde['sigma'])
     mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
@@ -196,12 +196,40 @@ if(comm.rank == 0):
 
     plotting.plot_giwk_fs(giwk=gk_dga.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dga')
 
+    gk_dga_generator_nc = twop.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=k_grid.get_grid_as_tuple(),hr=hr,sigma=dga_sde['sigma_nc'])
+    mu_dga_nc = gk_dga_generator_nc.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
+    gk_dga_nc = gk_dga_generator_nc.generate_gk(mu=mu_dga_nc)
+
+    gf_dict_nc = {
+        'gk': gk_dga_nc._gk,
+        'mu': gk_dga_nc._mu,
+        'iv': gk_dga_nc._iv,
+        'beta': gk_dga_nc._beta
+    }
+
+    np.save(output_path + 'gk_dga_nc.npy', gk_dga_nc, allow_pickle=True)
+
+
+    plotting.plot_giwk_fs(giwk=gk_dga_nc.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dga_nc')
+
     chi_magn_lambda = dga_sde['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core*2+1,))
     
     import matplotlib.pyplot as plt
     plt.figure()
     plt.imshow(chi_magn_lambda[:,:,0,niw_core].real, cmap='RdBu')
     plt.savefig(output_path + 'chi_magn_w0.png')
+    plt.show()
+
+    plt.figure()
+    plt.imshow(gamma_dmft['gamma_magn'].mat[niw_core,:, :].real, cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'gamma_magn.png')
+    plt.show()
+
+    plt.figure()
+    plt.imshow(gamma_dmft['gamma_dens'].mat[niw_core,:, :].real, cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'gamma_dens.png')
     plt.show()
 
 
