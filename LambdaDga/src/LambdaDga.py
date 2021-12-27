@@ -195,18 +195,24 @@ def lambda_dga(config=None):
     realt.print_time('DGA Schwinger-Dyson equation: ')
 
     dga_sde = {
-        'chi_dens_lambda': chi_dens_lambda,
-        'chi_magn_lambda': chi_magn_lambda,
-        'chi_dens_ladder': chi_dens_ladder,
-        'chi_magn_ladder': chi_magn_ladder,
         'sigma_dens': sigma_dens_dga,
         'sigma_magn': sigma_magn_dga,
         'sigma': sigma_dga,
         'sigma_nc': sigma_dga_nc,
+    }
+
+    chi_lambda = {
+        'chi_dens_lambda': chi_dens_lambda,
+        'chi_magn_lambda': chi_magn_lambda,
         'lambda_dens': lambda_dens,
-        'lambda_magn': lambda_magn,
+        'lambda_magn': lambda_magn
+    }
+
+    chi_ladder = {
+        'chi_dens_ladder': chi_dens_ladder,
+        'chi_magn_ladder': chi_magn_ladder,
         'chi0q_core': chi0q_core,
         'chi0q_urange': chi0q_urange
     }
 
-    return dga_sde, dmft_sde, dmft_gamma
+    return dga_sde, dmft_sde, dmft_gamma, chi_lambda,  chi_ladder

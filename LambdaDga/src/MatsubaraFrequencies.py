@@ -9,6 +9,11 @@ def cut_v_1d(arr=None, niv_cut=0):
     niv = arr.shape[0] // 2
     return arr[niv-niv_cut:niv+niv_cut]
 
+def cut_iv_2d(arr=None, niv_cut=0):
+    assert np.size(np.shape(arr)) == 2, 'Array is not 2D.'
+    niv = arr.shape[-1] // 2
+    return arr[niv-niv_cut:niv+niv_cut,niv-niv_cut:niv+niv_cut]
+
 def cut_v(arr=None,niv_cut=0,axes=(0,)):
     axes = np.flip(np.sort(axes))
     tmp = arr
@@ -41,6 +46,9 @@ def w(beta=1.0, n=10):
 def iw(beta=1.0, n=10):
     return v(beta=beta, n=n) * 1j
 
+def wnfind(niw=None,n=None):
+    return n - niw
+
 
 if __name__=='__main__':
     niv = 10
@@ -55,3 +63,7 @@ if __name__=='__main__':
     mat = np.arange(0,n**2).reshape(n,n)
 
     mat_cut = cut_v(mat, niv_cut=1, axes=(0,1))
+
+    niw = 20
+    wn_a = wn(niw)
+    n = wnfind(niw,n=20)

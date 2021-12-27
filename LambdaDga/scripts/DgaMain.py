@@ -32,11 +32,12 @@ comm = mpi.COMM_WORLD
 input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 output_path = input_path
@@ -46,7 +47,7 @@ fname_g2 = 'g4iw_sym.hdf5' #'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = False
+do_pairing_vertex = True
 keep_ladder_vertex = False
 lattice = 'square'
 
@@ -55,16 +56,16 @@ lattice = 'square'
 # tp = -0.20 * t
 # tpp = 0.10 * t
 t = 0.25
-tp = -0.25 * t
-tpp = 0.12 * t
+tp = -0.25 * t * 0
+tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 10
-niv_core = 10
-niv_urange = 40
+niw_core = 20
+niv_core = 20
+niv_urange = 20
 
 # Define k-ranges:
-nkf = 42
+nkf = 8
 nk = (nkf, nkf, 1)
 nq = (nkf, nkf, 1)
 
@@ -156,13 +157,15 @@ if(comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config)
 comm.Barrier()
 
 if(comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy',dmft_sde,allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy',gamma_dmft,allow_pickle=True)
     np.save(output_path + 'dga_sde.npy',dga_sde,allow_pickle=True)
+    np.save(output_path + 'chi_lambda.npy',chi_lambda,allow_pickle=True)
+    np.save(output_path + 'chi_ladder.npy',chi_ladder,allow_pickle=True)
 
 
     siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
@@ -212,25 +215,25 @@ if(comm.rank == 0):
 
     plotting.plot_giwk_fs(giwk=gk_dga_nc.gk,plot_dir=output_path,kgrid=k_grid, do_shift=True, name='dga_nc')
 
-    chi_magn_lambda = dga_sde['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core*2+1,))
+    chi_magn_lambda = chi_lambda['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core*2+1,))
     
     import matplotlib.pyplot as plt
     plt.figure()
     plt.imshow(chi_magn_lambda[:,:,0,niw_core].real, cmap='RdBu')
     plt.savefig(output_path + 'chi_magn_w0.png')
-    plt.show()
+    plt.close()
 
     plt.figure()
     plt.imshow(gamma_dmft['gamma_magn'].mat[niw_core,:, :].real, cmap='RdBu')
     plt.colorbar()
     plt.savefig(output_path + 'gamma_magn.png')
-    plt.show()
+    plt.close()
 
     plt.figure()
     plt.imshow(gamma_dmft['gamma_dens'].mat[niw_core,:, :].real, cmap='RdBu')
     plt.colorbar()
     plt.savefig(output_path + 'gamma_dens.png')
-    plt.show()
+    plt.close()
 
 
 # Collect the ladder vertex from subfiles:
@@ -254,6 +257,7 @@ if(do_pairing_vertex and comm.rank==0):
                 file_in.close()
                 os.remove(fname_input)
             file_out.close()
+
 
 # import matplotlib.pyplot as plt
 # plt.imshow(dga_sde['sigma'][:,:,0,box_sizes['niv_core']], )
@@ -307,29 +311,66 @@ if(do_pairing_vertex and comm.rank==0):
             arr.append(file[key1 + '/' + key2][()])
         return np.array(arr)
 
-    gchi0 = load_qiw(key1='gchi0_core')
+    niv_pp = niv_core//2
+    f1_magn = load_qiw(key1='f1_magn').reshape(nq+(niv_pp*2,niv_pp*2))
+    f2_magn = load_qiw(key1='f2_magn').reshape(nq+(niv_pp*2,niv_pp*2))
+    f1_dens = load_qiw(key1='f1_dens').reshape(nq+(niv_pp*2,niv_pp*2))
+    f2_dens = load_qiw(key1='f2_dens').reshape(nq+(niv_pp*2,niv_pp*2))
 
-    gchi_aux_magn = load_qiw(key1='gchi_aux_magn')
-    vrg_magn = load_qiw(key1='vrgq_magn_core')
-    chi_magn_lambda = dga_sde['chi_magn_lambda'].mat
+    chi_dens_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_dens_lambda'].mat)
+    chi_magn_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_magn_lambda'].mat)
 
-    gchi_aux_dens = load_qiw(key1='gchi_aux_dens')
-    vrg_dens = load_qiw(key1='vrgq_dens_core')
-    chi_dens_lambda = dga_sde['chi_dens_lambda'].mat
+    chi_dens_lambda_pp = pv.reshape_chi(chi=chi_dens_lambda,niv_pp=niv_pp)
+    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_magn_lambda,niv_pp=niv_pp)
 
-    f_magn = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_magn, vrg=vrg_magn, chir=chi_magn_lambda, gchi0=gchi0, beta=dmft1p['beta']
-                                           , u_r=dga_sde['chi_magn_lambda'].u_r)
-    f_dens = pv.ladder_vertex_from_chi_aux(gchi_aux=gchi_aux_dens, vrg=vrg_dens, chir=chi_dens_lambda, gchi0=gchi0, beta=dmft1p['beta']
-                                           , u_r=dga_sde['chi_dens_lambda'].u_r)
+    f_magn = f1_magn + (1+dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
+    f_dens = f1_dens + (1-dmft1p['u'] * chi_dens_lambda_pp) * f2_dens
 
-    f_magn = f_magn.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
-    f_dens = f_dens.reshape(-1,niw_core*2+1,niv_core*2,2*niv_core)
+    f_sing = -1.5 * f_magn + 0.5 * f_dens
+    f_trip = -0.5 * f_magn - 0.5 * f_dens
 
-    f_dens_pp = pv.ph_to_pp_notation(mat_ph=f_dens)
-    f_magn_pp = pv.ph_to_pp_notation(mat_ph=f_magn)
+    f_magn_loc = f_magn.mean(axis=(0,1,2))
+    f1_magn_loc = f1_magn.mean(axis=(0,1,2))
+    f2_magn_loc = f2_magn.mean(axis=(0,1,2))
 
-    f_sing = -1.5 * f_magn_pp + 0.5 * f_dens_pp
-    f_trip = -0.5 * f_magn_pp - 0.5 * f_dens_pp
+    f_dens_loc = f_dens.mean(axis=(0,1,2))
+    f1_dens_loc = f1_dens.mean(axis=(0,1,2))
+    f2_dens_loc = f2_dens.mean(axis=(0,1,2))
+
+
+    fig = plt.figure()
+    plt.imshow(f_magn_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f_magn_loc.png')
+    plt.close()
+
+    fig = plt.figure()
+    plt.imshow(f1_magn_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f1_magn_loc.png')
+    plt.close()
+
+    fig = plt.figure()
+    plt.imshow(f2_magn_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f2_magn_loc.png')
+    plt.close()
+
+    fig = plt.figure()
+    plt.imshow(f_dens_loc.real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'f_dens_loc.png')
+    plt.close()
+
+    fig = plt.figure()
+    plt.imshow(chi_magn_lambda_pp.mean(axis=(0,1,2)).real,cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'chi_magn_lambda_pp_loc.png')
+    plt.close()
+
+
+
+
 
     pairing_vertices = {
         'f_sing':f_sing,
@@ -339,8 +380,8 @@ if(do_pairing_vertex and comm.rank==0):
     np.save(output_path + 'pairing_vertices.npy',pairing_vertices)
 
 
-    f_sing_loc = f_sing.mean(axis=0)
-    f_trip_loc = f_trip.mean(axis=0)
+    f_sing_loc = f_sing.mean(axis=(0,1,2))
+    f_trip_loc = f_trip.mean(axis=(0,1,2))
 
     import matplotlib.pyplot as plt
     fig = plt.figure()
@@ -363,8 +404,8 @@ if(do_pairing_vertex and comm.rank==0):
 if(do_pairing_vertex and comm.rank == 0):
     import TwoPoint as twop
     import EliashbergEquation as eq
-    gamma_sing = f_sing.reshape(nk + (niv_core, niv_core))
-    gamma_trip = f_trip.reshape(nk + (niv_core, niv_core))
+    gamma_sing = f_sing
+    gamma_trip = f_trip
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
                                                sigma=dga_sde['sigma'])
     mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])

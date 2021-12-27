@@ -770,10 +770,13 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     :param qiw_grid: [nqx*nqy*nqz*2*niw,4] flattened meshgrid. Layout: {qx,qy,qz,iw}
     :return:
     '''
+    if(do_pairing_vertex):
+        import PairingVertex as pv
     beta = dmft_input['beta']
     u = dmft_input['u']
     mu = dmft_input['mu']
     niv_core = box_sizes['niv_core']
+    niw_core = box_sizes['niw_core']
     niv_urange = box_sizes['niv_urange']
     siw = dmft_input['sloc']
     gamma_dens_loc = local_sde['gamma_dens']
@@ -796,6 +799,14 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
+
+    if (do_pairing_vertex):
+        if (file is not None):
+            file.require_group('f1_magn')
+            file.require_group('f2_magn')
+            file.require_group('f1_dens')
+            file.require_group('f2_dens')
+
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
@@ -840,13 +851,28 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         # print(do_pairing_vertex)
         if(do_pairing_vertex):
             if(file is not None):
-                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}'.format(*qiw_indizes[iqw])
-                file['gchi_aux_dens' + group] = gchi_aux_dens.mat
-                file['gchi_aux_magn' + group] = gchi_aux_magn.mat
-                file['vrgq_dens_core' + group] = vrgq_dens_core.mat
-                file['vrgq_magn_core' + group] = vrgq_magn_core.mat
-                file['gchi0_core' + group] = chi0q_core.gchi0
+                group = '/qx{:03d}qy{:03d}qz{:03d}'.format(*qiw_indizes[iqw])
 
+                file.require_dataset('f1_magn' + group, shape=(niv_core,niv_core), dtype=complex)
+                file.require_dataset('f2_magn' + group, shape=(niv_core,niv_core), dtype=complex)
+                file.require_dataset('f1_dens' + group, shape=(niv_core,niv_core), dtype=complex)
+                file.require_dataset('f2_dens' + group, shape=(niv_core,niv_core), dtype=complex)
+
+                ivn = np.arange(-niv_core//2, niv_core//2)*2+1
+                V, VP = np.meshgrid(ivn, ivn)
+                omega = V - VP
+                condition = omega == (wn*2)
+
+                f1_magn, f2_magn = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat, vrg=vrgq_magn_core.mat,
+                                                                            gchi0=chi0q_core.gchi0, beta=beta, u_r=get_ur(u=u, channel='magn'))
+                f1_dens, f2_dens = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
+                                                                            vrg=vrgq_dens_core.mat,
+                                                                            gchi0=chi0q_core.gchi0, beta=beta,
+                                                                            u_r=get_ur(u=u, channel='dens'))
+                file['f1_magn' + group][condition] = pv.get_pp_slice_4pt(mat=f1_magn,wn=wn)
+                file['f2_magn' + group][condition] = pv.get_pp_slice_4pt(mat=f2_magn,wn=wn)
+                file['f1_dens' + group][condition] = pv.get_pp_slice_4pt(mat=f1_dens,wn=wn)
+                file['f2_dens' + group][condition] = pv.get_pp_slice_4pt(mat=f2_dens,wn=wn)
 
     chi_dens_urange.mat_to_array()
     chi_magn_urange.mat_to_array()

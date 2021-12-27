@@ -7,6 +7,7 @@ import w2dyn_aux
 import numpy as np
 import TwoPoint as tp
 import FourPoint as fp
+import MatsubaraFrequencies as mf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -19,6 +20,11 @@ def ladder_vertex_from_chi_aux(gchi_aux=None, vrg=None, chir=None, gchi0=None, b
     f = beta ** 2 * 1. / gchi0[...,:,None] * (np.eye(gchi0.shape[-1]) - gchi_aux * 1. / gchi0[...,None,:]) + u_r * (
                 1.0 - u_r * chir[...,None,None]) * beta * vrg[...,:,None] * beta * vrg[...,None,:]
     return f
+
+def ladder_vertex_from_chi_aux_components(gchi_aux=None, vrg=None, gchi0=None, beta=None, u_r=None):
+    f1 = beta ** 2 * 1. / gchi0[...,:,None] * (np.eye(gchi0.shape[-1]) - gchi_aux * 1. / gchi0[...,None,:])
+    f2 =  u_r * beta * vrg[...,:,None] * beta * vrg[...,None,:]
+    return f1, f2
 
 def ph_to_pp_notation(mat_ph=None,wn=0):
     if(wn != 0):
@@ -38,6 +44,45 @@ def ph_to_pp_notation(mat_ph=None,wn=0):
             mat_pp[...,i,j] = mat_ph[...,wn,vn,vnp]
 
     return mat_pp
+
+# def get_pp_slice_4pt(mat=None, wn = None):
+#     niv = np.shape(mat)[-1] // 2
+#     niv_cut = niv//2
+#     mat = np.flip(mat,axis=-1)
+#     mat_cut = mf.cut_iv_2d(arr=mat,niv_cut=niv_cut)
+#
+#
+#     ivn = np.arange(-niv_cut,niv_cut)*2+1
+#     V,VP = np.meshgrid(ivn,ivn)
+#     omega = V-VP
+#     condition = omega == (wn*2)
+#     slice = mat_cut[condition].flatten()
+#     #slice = mat_cut[condition].flatten()
+#     return slice
+
+def get_pp_slice_4pt(mat=None, wn = None):
+    niv = np.shape(mat)[-1] // 2
+    niv_pp = niv // 2
+    ivn = np.arange(-niv_pp, niv_pp)
+    slice = []
+
+    for vi in ivn:
+        for vip in ivn:
+            vn = niv + vi
+            vnp = niv - (vip+1)
+            if((vi-vip) == wn):
+                slice.append(mat[...,vn,vnp])
+    return np.array(slice)
+
+def reshape_chi(chi=None, niv_pp=None):
+    iv = np.arange(-niv_pp,niv_pp)
+    niw = np.shape(chi)[-1] // 2
+    chi_pp = np.zeros(chi.shape[:-1]+(niv_pp*2,niv_pp*2), dtype=complex)
+    for i, ivn in enumerate(iv):
+        for j, ivnp in enumerate(iv):
+            wn = ivn - ivnp + niw
+            chi_pp[:,:,:,i,j] = chi[:,:,:,wn]
+    return chi_pp
 
 
 # def get_chi_aux_asympt(chi_aux: fp.FourPoint = None, chi_r_urange: , chi_r_asympt=None, u=1):
@@ -109,3 +154,4 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.show()
 
+    slice = get_pp_slice_4pt(mat=f_magn[0,0,0,21,:,:],wn=mf.wnfind(niw=20,n=21))

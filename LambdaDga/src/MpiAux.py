@@ -6,7 +6,7 @@
 import numpy as np
 import h5py
 from mpi4py import MPI as mpi
-
+import os, sys
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 
@@ -28,11 +28,14 @@ class MpiDistributor():
 
         if(output_path is not None):
             # Read/write file. Create if it does not exist.
-            self.file = h5py.File(output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5','a')
+            self.fname = output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
+            self.file = h5py.File(self.fname,'a')
 
     def __del__(self):
+        #self.__del__()
         if(self.file is not None):
             self.file.close()
+            #os.rm(self.fname)
 
     @property
     def comm(self):
