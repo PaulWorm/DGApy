@@ -157,7 +157,7 @@ if(comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder, f_ladder = ldga.lambda_dga(config=config)
 comm.Barrier()
 
 if(comm.rank == 0):
@@ -237,26 +237,26 @@ if(comm.rank == 0):
 
 
 # Collect the ladder vertex from subfiles:
-if(do_pairing_vertex and comm.rank==0):
-    import MpiAux as mpiaux
-    import h5py
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm, output_path=output_path,
-                                            name='Qiw')
-
-    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    if(do_pairing_vertex):
-        if(qiw_distributor.my_rank == 0):
-            file_out = h5py.File(fname_ladder_vertex,'w')
-            for ir in range(qiw_distributor.mpi_size):
-                fname_input = output_path+'QiwRank{:05d}'.format(ir) + '.hdf5'
-                file_in = h5py.File(fname_input,'r')
-                for key1 in list(file_in.keys()):
-                    for key2 in list(file_in[key1].keys()):
-                        file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
-
-                file_in.close()
-                os.remove(fname_input)
-            file_out.close()
+# if(do_pairing_vertex and comm.rank==0):
+#     import MpiAux as mpiaux
+#     import h5py
+#     qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm, output_path=output_path,
+#                                             name='Qiw')
+#
+#     # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+#     if(do_pairing_vertex):
+#         if(qiw_distributor.my_rank == 0):
+#             file_out = h5py.File(fname_ladder_vertex,'w')
+#             for ir in range(qiw_distributor.mpi_size):
+#                 fname_input = output_path+'QiwRank{:05d}'.format(ir) + '.hdf5'
+#                 file_in = h5py.File(fname_input,'r')
+#                 for key1 in list(file_in.keys()):
+#                     for key2 in list(file_in[key1].keys()):
+#                         file_out[key1+'/'+key2] = file_in[key1+'/'+key2][()]
+#
+#                 file_in.close()
+#                 os.remove(fname_input)
+#             file_out.close()
 
 
 # import matplotlib.pyplot as plt
@@ -301,21 +301,10 @@ if(do_pairing_vertex and comm.rank==0):
     realt.print_time('Start pairing vertex:')
 
     import PairingVertex as pv
-    import h5py
 
-    file = h5py.File(fname_ladder_vertex, 'r')
-
-    def load_qiw(key1=None):
-        arr = []
-        for key2 in list(file[key1].keys()):
-            arr.append(file[key1 + '/' + key2][()])
-        return np.array(arr)
 
     niv_pp = niv_core//2
-    f1_magn = load_qiw(key1='f1_magn').reshape(nq+(niv_pp*2,niv_pp*2))
-    f2_magn = load_qiw(key1='f2_magn').reshape(nq+(niv_pp*2,niv_pp*2))
-    f1_dens = load_qiw(key1='f1_dens').reshape(nq+(niv_pp*2,niv_pp*2))
-    f2_dens = load_qiw(key1='f2_dens').reshape(nq+(niv_pp*2,niv_pp*2))
+
 
     chi_dens_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_dens_lambda'].mat)
     chi_magn_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_magn_lambda'].mat)
@@ -323,20 +312,17 @@ if(do_pairing_vertex and comm.rank==0):
     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_dens_lambda,niv_pp=niv_pp)
     chi_magn_lambda_pp = pv.reshape_chi(chi=chi_magn_lambda,niv_pp=niv_pp)
 
-    f_magn = f1_magn + (1+dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
-    f_dens = f1_dens + (1-dmft1p['u'] * chi_dens_lambda_pp) * f2_dens
+    f_magn = f_ladder['f1_magn'] + (1+dmft1p['u'] * chi_magn_lambda_pp) * f_ladder['f2_magn']
+    f_dens = f_ladder['f1_dens'] + (1-dmft1p['u'] * chi_dens_lambda_pp) * f_ladder['f2_dens']
 
     f_sing = -1.5 * f_magn + 0.5 * f_dens
     f_trip = -0.5 * f_magn - 0.5 * f_dens
 
     f_magn_loc = f_magn.mean(axis=(0,1,2))
-    f1_magn_loc = f1_magn.mean(axis=(0,1,2))
-    f2_magn_loc = f2_magn.mean(axis=(0,1,2))
+    f1_magn_loc = f_ladder['f1_magn'].mean(axis=(0,1,2))
+    f2_magn_loc = f_ladder['f2_magn'].mean(axis=(0,1,2))
 
     f_dens_loc = f_dens.mean(axis=(0,1,2))
-    f1_dens_loc = f1_dens.mean(axis=(0,1,2))
-    f2_dens_loc = f2_dens.mean(axis=(0,1,2))
-
 
     fig = plt.figure()
     plt.imshow(f_magn_loc.real,cmap='RdBu')

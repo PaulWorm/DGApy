@@ -3,6 +3,7 @@
 #SBATCH -J LambdaDga_Nk16
 #SBATCH --ntasks-per-node=48
 #SBATCH --partition=mem_0096
+##SBATCH --qos=mem_0096
 #SBATCH --qos=p71282_0096
 #SBATCH --time=06:00:00
 #SBATCH --mail-type=ALL                              # first have to state the type of event to occur

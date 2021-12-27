@@ -135,11 +135,28 @@ def lambda_dga(config=None):
 
     # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 
-    dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
+    dga_susc, f_ladder = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
                                      box_sizes=box_sizes,
                                      qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
                                      file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex)
     realt.print_time('Non-local Susceptibility: ')
+
+    if(do_pairing_vertex):
+        f1_magn = np.zeros(np.shape(f_ladder['f1_magn']), dtype=complex)
+        f2_magn = np.zeros(np.shape(f_ladder['f2_magn']), dtype=complex)
+        f1_dens = np.zeros(np.shape(f_ladder['f1_dens']), dtype=complex)
+        f2_dens = np.zeros(np.shape(f_ladder['f2_dens']), dtype=complex)
+        comm.Allreduce(f_ladder['f1_magn'], f1_magn)
+        comm.Allreduce(f_ladder['f2_magn'], f2_magn)
+        comm.Allreduce(f_ladder['f1_dens'], f1_dens)
+        comm.Allreduce(f_ladder['f2_dens'], f2_dens)
+
+        f_ladder = {
+            'f1_magn': f1_magn,
+            'f2_magn': f2_magn,
+            'f1_dens': f1_dens,
+            'f2_dens': f2_dens
+        }
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
 
@@ -215,4 +232,4 @@ def lambda_dga(config=None):
         'chi0q_urange': chi0q_urange
     }
 
-    return dga_sde, dmft_sde, dmft_gamma, chi_lambda,  chi_ladder
+    return dga_sde, dmft_sde, dmft_gamma, chi_lambda,  chi_ladder, f_ladder
