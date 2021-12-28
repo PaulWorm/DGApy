@@ -123,8 +123,7 @@ def lambda_dga(config=None):
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm, output_path=output_path,
-                                            name='Qiw')
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm)
     index_grid_keys = ('qx', 'qy', 'qz', 'iw')
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_core,), keys=index_grid_keys,
                               my_slice=qiw_distributor.my_slice)

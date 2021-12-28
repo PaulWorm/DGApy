@@ -81,37 +81,39 @@ def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot
     except:
         plt.close()
 
-def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot=200, name='siw_check', ncol=1):
+def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot_min=-10, niv_plot=200, name='siw_check', ncol=1,ms=2):
     markers = __markers__
-    np = len(vn_list)
-    assert np < len(markers), 'More plots-lines requires, than markers avaiable.'
-
-    size = 2
+    nplot = len(vn_list)
+    assert nplot < len(markers), 'More plots-lines requires, than markers avaiable.'
 
     plt.subplot(211)
+
     for i in range(len(vn_list)):
-        plt.plot(vn_list[i], siw_list[i].real, markers[i], ms=size, label=labels_list[i])
+        ind = np.logical_and(vn_list[i]>=niv_plot_min,vn_list[i]<=niv_plot)
+        plt.plot(vn_list[i][ind], siw_list[i][ind].real, markers[i], ms=ms, label=labels_list[i])
     plt.legend()
-    plt.xlim([-10, niv_plot])
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Re \Sigma$')
     plt.subplot(212)
     for i in range(len(vn_list)):
-        plt.plot(vn_list[i], siw_list[i].imag, markers[i], ms=size, label=labels_list[i])
-    plt.xlim([-10, niv_plot])
+        ind = np.logical_and(vn_list[i] >= niv_plot_min, vn_list[i] <= niv_plot)
+        plt.plot(vn_list[i][ind], siw_list[i][ind].imag, markers[i], ms=ms, label=labels_list[i])
     plt.legend(ncol=ncol, loc='upper right')
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Im \Sigma$')
+    plt.tight_layout()
     if (plot_dir is not None):
         plt.savefig(plot_dir + '{}.png'.format(name))
 
     plt.close()
 
 
+
+
 def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_plot=None, name=''):
     fig, ax = plot_fs(siwk=siwk, kgrid=kgrid, do_shift=do_shift, kz=kz,niv_plot=niv_plot)
-    ax[0].set_title('$\Re \Sigma$')
-    ax[1].set_title('$\Im \Sigma$')
+    ax[0][0].set_title('$\Re \Sigma$')
+    ax[0][1].set_title('$\Im \Sigma$')
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'siwk_fermi_surface_{}.png'.format(name))
@@ -122,8 +124,8 @@ def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_
 
 def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
     fig, ax = plot_fs(siwk=giwk, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot)
-    ax[0].set_title('$\Re G$')
-    ax[1].set_title('$\Im G$')
+    ax[0][0].set_title('$\Re G$')
+    ax[0][1].set_title('$\Im G$')
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'giwk_fermi_surface_{}.png'.format(name))
@@ -131,6 +133,19 @@ def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv
         plt.show()
     except:
         plt.close()
+
+def plot_giwk_qpd(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
+    fig, ax = plot_fs(siwk=1./(giwk), kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot)
+    ax[0][0].set_title('$\Re (1./G)$')
+    ax[0][1].set_title('$\Im (1./G)$')
+
+    if (plot_dir is not None):
+        plt.savefig(plot_dir + 'QuasiParticleDispersion_{}.png'.format(name))
+    try:
+        plt.show()
+    except:
+        plt.close()
+
 
 def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     if(niv_plot==None):
@@ -145,22 +160,33 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
         kx = kx - np.pi
         ky = ky - np.pi
 
+    lw = 1.0
+
+    def add_lines(ax):
+        ax.plot(kx, 0 * kx, 'k', lw=lw)
+        ax.plot(0 * ky, ky, 'k', lw=lw)
+        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+
+    def create_image(ax=None,contour=None,cmap='RdBu'):
+        add_lines(ax)
+        im = ax.imshow(contour, cmap=cmap, extent=[kx[0], kx[-1], ky[0], ky[-1]],
+                          origin='lower')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax, orientation='vertical')
+        ax.set_xlabel(r'$k_x$')
+        ax.set_ylabel(r'$k_y$')
 
 
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10,5))
-    im = ax[0].imshow(siwk_plot[:,:,kz,niv_plot].real,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
-    divider = make_axes_locatable(ax[0])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-    ax[0].set_xlabel(r'$k_x$')
-    ax[0].set_ylabel(r'$k_y$')
+    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
+    create_image(ax=ax[0][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='RdBu')
+    create_image(ax=ax[0][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='RdBu')
 
-    im = ax[1].imshow(siwk_plot[:,:,kz,niv_plot].imag,cmap='RdBu', extent=[kx[0],kx[-1],ky[0],ky[-1]], origin='lower')
-    divider = make_axes_locatable(ax[1])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-    ax[1].set_xlabel(r'$k_x$')
-    ax[1].set_ylabel(r'$k_y$')
+    create_image(ax=ax[1][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='terrain')
+    create_image(ax=ax[1][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='terrain')
 
     plt.tight_layout()
 

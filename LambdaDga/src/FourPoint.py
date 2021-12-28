@@ -802,15 +802,10 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_core.cut_self_iv(niv_cut=niv_core)
 
     if (do_pairing_vertex):
-        if (file is not None):
-            # file.require_group('f1_magn')
-            # file.require_group('f2_magn')
-            # file.require_group('f1_dens')
-            # file.require_group('f2_dens')
-            f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-            f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-            f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-            f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+        f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+        f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+        f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+        f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
 
 
     for iqw in range(qiw_grid.shape[0]):
@@ -855,34 +850,22 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         # print(file)
         # print(do_pairing_vertex)
         if(do_pairing_vertex):
-            if(file is not None):
-                # group = '/qx{:03d}qy{:03d}qz{:03d}'.format(*qiw_indizes[iqw])
-                #
-                # file.require_dataset('f1_magn' + group, shape=(niv_core,niv_core), dtype=complex)
-                # file.require_dataset('f2_magn' + group, shape=(niv_core,niv_core), dtype=complex)
-                # file.require_dataset('f1_dens' + group, shape=(niv_core,niv_core), dtype=complex)
-                # file.require_dataset('f2_dens' + group, shape=(niv_core,niv_core), dtype=complex)
+            ivn = np.arange(-niv_core//2, niv_core//2)*2+1
+            V, VP = np.meshgrid(ivn, ivn)
+            omega = V - VP
+            condition = omega == (wn*2)
 
-                ivn = np.arange(-niv_core//2, niv_core//2)*2+1
-                V, VP = np.meshgrid(ivn, ivn)
-                omega = V - VP
-                condition = omega == (wn*2)
-
-                f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat, vrg=vrgq_magn_core.mat,
-                                                                            gchi0=chi0q_core.gchi0, beta=beta, u_r=get_ur(u=u, channel='magn'))
-                f1_dens_slice, f2_dens_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
-                                                                            vrg=vrgq_dens_core.mat,
-                                                                            gchi0=chi0q_core.gchi0, beta=beta,
-                                                                            u_r=get_ur(u=u, channel='dens'))
-                # file['f1_magn' + group][condition] = pv.get_pp_slice_4pt(mat=f1_magn,wn=wn)
-                # file['f2_magn' + group][condition] = pv.get_pp_slice_4pt(mat=f2_magn,wn=wn)
-                # file['f1_dens' + group][condition] = pv.get_pp_slice_4pt(mat=f1_dens,wn=wn)
-                # file['f2_dens' + group][condition] = pv.get_pp_slice_4pt(mat=f2_dens,wn=wn)
-                ind = qiw_indizes[iqw][:-1]
-                f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
-                f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
-                f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
-                f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
+            f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat, vrg=vrgq_magn_core.mat,
+                                                                        gchi0=chi0q_core.gchi0, beta=beta, u_r=get_ur(u=u, channel='magn'))
+            f1_dens_slice, f2_dens_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
+                                                                        vrg=vrgq_dens_core.mat,
+                                                                        gchi0=chi0q_core.gchi0, beta=beta,
+                                                                        u_r=get_ur(u=u, channel='dens'))
+            ind = qiw_indizes[iqw][:-1]
+            f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
+            f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
+            f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
+            f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
 
     if(do_pairing_vertex):
         f_ladder = {
