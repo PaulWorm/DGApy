@@ -22,7 +22,7 @@ import sys, os
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
 
-def lambda_dga(config=None):
+def lambda_dga(config=None,verbose=False,outpfunc=None):
     ''' Wrapper function for the \lambda-corrected one-band DGA routine. All relevant settings are contained in config'''
     # -------------------------------------------- UNRAVEL CONFIG ------------------------------------------------------
     # This is done to allow for more flexibility in the future
@@ -51,8 +51,6 @@ def lambda_dga(config=None):
     # ----------------------------------------------- MPI DISTRIBUTION -------------------------------------------------
     iw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size, comm=comm, output_path=None)
     my_iw = wn_core[iw_distributor.my_slice]
-    print(f'My rank is {iw_distributor.my_rank} and I am doing: {my_iw=}')
-
     realt = rt.real_time()
 
     # -------------------------------------------LOAD G2 FROM W2DYN ----------------------------------------------------
@@ -69,6 +67,9 @@ def lambda_dga(config=None):
 
     dmft1p['g2_dens'] = g2_dens_loc
     dmft1p['g2_magn'] = g2_magn_loc
+
+    if(verbose):
+        outpfunc("Finished reading g2 from file.")
 
     # --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
 
@@ -118,8 +119,11 @@ def lambda_dga(config=None):
     dmft_sde['chi0_core'] = chi0_core
     dmft_sde['chi0_urange'] = chi0_urange
 
-    realt.print_time('Local Part ')
 
+
+    if(verbose):
+        outpfunc("Finished local part.")
+        outpfunc(realt.string_time('Local Part '))
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
@@ -138,7 +142,10 @@ def lambda_dga(config=None):
                                      box_sizes=box_sizes,
                                      qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
                                      file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex)
-    realt.print_time('Non-local Susceptibility: ')
+
+
+    if(verbose):
+        outpfunc(realt.string_time('Non-local Susceptibility: '))
 
     if(do_pairing_vertex):
         f1_magn = np.zeros(np.shape(f_ladder['f1_magn']), dtype=complex)
@@ -182,7 +189,8 @@ def lambda_dga(config=None):
     chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_lambda.mat = 1. / (1. / chi_magn_ladder_mat + lambda_magn)
 
-    realt.print_time('Lambda correction: ')
+    if(verbose):
+        outpfunc(realt.string_time('Lambda correction: '))
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
     chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='dens', u=dmft1p['u'],
@@ -208,7 +216,8 @@ def lambda_dga(config=None):
     sigma_dga_nc = sigma_dens_dga_reduce + sigma_magn_dga_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
     sigma_dga = sigma_dens_dga_reduce + 3*sigma_magn_dga_reduce - 2*siw_sde_magn_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
 
-    realt.print_time('DGA Schwinger-Dyson equation: ')
+    if(verbose):
+        outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))
 
     dga_sde = {
         'sigma_dens': sigma_dens_dga,

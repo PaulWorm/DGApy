@@ -185,8 +185,8 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     create_image(ax=ax[0][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='RdBu')
     create_image(ax=ax[0][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='RdBu')
 
-    create_image(ax=ax[1][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='terrain')
-    create_image(ax=ax[1][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='terrain')
+    create_image(ax=ax[1][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='terrain_r')
+    create_image(ax=ax[1][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='terrain_r')
 
     plt.tight_layout()
 

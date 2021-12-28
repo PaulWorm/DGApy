@@ -13,7 +13,7 @@ import h5py
 # Parameters:
 
 input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/RawDataMotoharu/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/LambdaDga_Nk6400_Nq6400_core99_urange400/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/LambdaDga_Nk10000_Nq1024_core99_urange200/'
 output_path = input_path
 
 # Load Python Data:

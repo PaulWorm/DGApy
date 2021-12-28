@@ -17,6 +17,7 @@ import w2dyn_aux
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import LambdaDga as ldga
+import time
 import Output as output
 import ChemicalPotential as chempot
 import TwoPoint as twop
@@ -33,14 +34,15 @@ comm = mpi.COMM_WORLD
 input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
-# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
-# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -48,9 +50,10 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lattice = 'square'
+verbose=True
 
 # Set up real-space Wannier Hamiltonian:
 # t = 1.00
@@ -61,14 +64,15 @@ tp = -0.25 * t
 tpp = 0.12 * t
 
 # Define frequency box-sizes:
-niw_core = 30
-niv_core = 30
-niv_urange = 30
+niw_core = 20
+niv_core = 20
+niv_urange = 20
 
 # Define k-ranges:
-nkf = 16
+nkf = 8
+nqf = 8
 nk = (nkf, nkf, 1)
-nq = (nkf, nkf, 1)
+nq = (nqf, nqf, 1)
 
 output_folder = 'LambdaDga_Nk{}_Nq{}_core{}_urange{}'.format(np.prod(nk), np.prod(nq), niw_core, niv_urange)
 output_path = output.uniquify(output_path + output_folder) + '/'
@@ -150,6 +154,16 @@ config_dump = {
 }
 
 # ------------------------------------------------ MAIN ----------------------------------------------------------------
+if (comm.rank == 0):
+    log = lambda s, *a: sys.stdout.write(str(s) % a + "\n")
+    rerr = sys.stderr
+else:
+    log = lambda s, *a: None
+    rerr = open(os.devnull, "w")
+
+log("Running on %d core%s", comm.size, " s"[comm.size > 1])
+log("Calculation started %s", time.strftime("%c"))
+
 comm.Barrier()
 
 if (comm.rank == 0):
@@ -158,9 +172,9 @@ if (comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder, f_ladder = ldga.lambda_dga(config=config)
+dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder, f_ladder = ldga.lambda_dga(config=config,verbose=verbose,outpfunc=log)
 comm.Barrier()
-
+log("Lambda-Dga finished %s", time.strftime("%c"))
 if (comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy', gamma_dmft, allow_pickle=True)

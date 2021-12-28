@@ -12,7 +12,7 @@ import MatsubaraFrequencies as mf
 # Parameters:
 
 input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk6400_Nq6400_core59_urange240/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk10000_Nq10000_core59_urange160/'
 output_path = input_path
 
 # Load Python Data:
@@ -25,6 +25,7 @@ niv = config['box_sizes']['niv_urange']
 iv = config['grids']['vn_urange']
 nk = config['grids']['k_grid'].nk[0]
 sigma = dga_sde['sigma']
+hartree = config['dmft1p']['n'] * config['dmft1p']['u']/2
 sigma = np.roll(sigma, nk // 2, 0)
 sigma = np.roll(sigma, nk // 2, 1)
 sigma_node = dga_sde['sigma'][nk//4,nk//4,0,:]
@@ -55,10 +56,21 @@ plt.plot(iv, sigma_node.imag, 'ro', label=labels[0], ms=4)
 plt.plot(iv, sigma_anti_node.imag, 'bo', label=labels[1], ms=4)
 plt.plot(iv_moto, sigma_moto_node.imag, 'gs', label=labels[2], ms=2)
 plt.plot(iv_moto, sigma_moto_anti_node.imag, 'gs', label=labels[3],ms=2)
-plt.xlim([0,30])
+plt.xlim([0,10])
 plt.legend()
-plt.savefig(output_path + 'BM_Motoharu.png')
+plt.savefig(output_path + 'BM_Motoharu_imag.png')
 plt.show()
+
+fig = plt.figure()
+plt.plot(iv, sigma_node.real, 'ro', label=labels[0], ms=4)
+plt.plot(iv, sigma_anti_node.real, 'bo', label=labels[1], ms=4)
+plt.plot(iv_moto, sigma_moto_node.real+hartree, 'gs', label=labels[2], ms=2)
+plt.plot(iv_moto, sigma_moto_anti_node.real+hartree, 'gs', label=labels[3],ms=2)
+plt.xlim([0,10])
+plt.legend()
+plt.savefig(output_path + 'BM_Motoharu_real.png')
+plt.show()
+
 
 #%%
 plt.imshow(sigma[:,:,0,niv].imag, cmap='RdBu', origin='lower')
@@ -67,4 +79,5 @@ plt.show()
 
 plt.imshow(sigma_moto[niv_moto,:,:].imag, cmap='RdBu', origin='lower')
 plt.colorbar()
+plt.savefig(output_path + 'siwk_Motoharu.png')
 plt.show()

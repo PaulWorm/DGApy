@@ -15,3 +15,7 @@ class real_time():
     def print_time(self, string=''):
         self.measure_time()
         print(string + 'took {} seconds'.format(self._tm[-1]))
+
+    def string_time(self, string=''):
+        self.measure_time()
+        return string + 'took {} seconds'.format(self._tm[-1])
