@@ -125,7 +125,7 @@ def get_g_model(mu=None, iv=None, hloc=None, smom0=None):
 # ==================================================================================================================
 
 # ==================================================================================================================
-def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=None):
+def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=None,verbose=False):
     """
     Calculate the filling from the density matrix.
     The density matrix is obtained by frequency summation
@@ -137,36 +137,36 @@ def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=Non
         beta * (smom0 + hloc.real - mu)))
     rho_new = rho_loc + np.sum(gloc.real - g_model.real, axis=0) / beta
     n_el = 2. *  rho_new
-    print(n_el, 'electrons at ', mu)
+    if(verbose): print(n_el, 'electrons at ', mu)
     return n_el, rho_new
 
 
 # ==================================================================================================================
 
 # ==================================================================================================================
-def root_fun(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None):
+def root_fun(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None,verbose=False):
     """Auxiliary function for the root finding"""
-    return get_fill(iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc, mu=mu)[0] - target_filling
+    return get_fill(iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc, mu=mu,verbose=False)[0] - target_filling
 
 
 # ==================================================================================================================
 
 # ==================================================================================================================
-def update_mu(mu0=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, tol=1e-6):
+def update_mu(mu0=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, tol=1e-6,verbose=False):
     """
     Update internal chemical potential (mu) to fix the filling to the target filling with given precision.
     :return:
     """
-    print('Update mu...')
+    if(verbose): print('Update mu...')
     hloc = hk.mean()
     mu = mu0
-    print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    if(verbose): print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
     try:
         mu = scipy.optimize.newton(root_fun, mu, tol=tol,
-                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc))
+                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc,verbose))
     except RuntimeError:
-        print('Root finding for chemical potential failed.')
-        print('Using old chemical potential again.')
+        if(verbose): print('Root finding for chemical potential failed.')
+        if(verbose): print('Using old chemical potential again.')
     if np.abs(mu.imag) < 1e-8:
         mu = mu.real
     else:

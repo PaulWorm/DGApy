@@ -8,6 +8,7 @@ import matplotlib
 import os
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import FourPoint as fp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
@@ -15,6 +16,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # __markers__ = itertools.cycle(('o','s','v','8','v','^','<','>','p','*','h','H','+','x','D','d','1','2','3','4'))
 __markers__ = ('o', 's', 'v', '8', 'v', '^', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '1', '2', '3', '4')
 
+
+# ------------------------------------------------ CLASSES -------------------------------------------------------------
+
+class MidpointNormalize(colors.Normalize):
+    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+        self.midpoint = midpoint
+        colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+        return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
@@ -123,9 +135,15 @@ def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_
         plt.close()
 
 def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
-    fig, ax = plot_fs(siwk=giwk, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot)
+    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 10))
+    plot_contour(ax=ax[0][0], siwk=giwk.real, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu', midpoint_norm=True)
+    plot_contour(ax=ax[0][1], siwk=giwk.imag, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu', midpoint_norm=False)
+    plot_contour(ax=ax[1][0], siwk=giwk.real, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='terrain_r', midpoint_norm=False)
+    plot_contour(ax=ax[1][1], siwk=giwk.imag, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='terrain_r', midpoint_norm=False)
     ax[0][0].set_title('$\Re G$')
     ax[0][1].set_title('$\Im G$')
+
+    plt.tight_layout()
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'giwk_fermi_surface_{}.png'.format(name))
@@ -135,7 +153,8 @@ def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv
         plt.close()
 
 def plot_giwk_qpd(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
-    fig, ax = plot_fs(siwk=1./(giwk), kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot)
+    fig, ax = plot_qpd(siwk=(1./giwk).real, kgrid=kgrid, do_shift=do_shift, kz=kz,niv_plot=niv_plot)
+
     ax[0][0].set_title('$\Re (1./G)$')
     ax[0][1].set_title('$\Im (1./G)$')
 
@@ -187,6 +206,96 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
 
     create_image(ax=ax[1][0], contour=siwk_plot[:,:,kz,niv_plot].real, cmap='terrain_r')
     create_image(ax=ax[1][1], contour=siwk_plot[:,:,kz,niv_plot].imag, cmap='terrain_r')
+
+    plt.tight_layout()
+
+    return fig, ax
+
+def plot_contour(ax = None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, cmap='RdBu', midpoint_norm=False):
+    if (niv_plot == None):
+        niv_plot = np.shape(siwk)[-1] // 2
+
+    siwk_plot = np.copy(siwk[:, :, kz, niv_plot])
+    kx = kgrid._grid['kx']
+    ky = kgrid._grid['ky']
+    if (do_shift):
+        siwk_plot = np.roll(siwk_plot, kgrid.nk[0] // 2, 0)
+        siwk_plot = np.roll(siwk_plot, kgrid.nk[1] // 2, 1)
+        kx = kx - np.pi
+        ky = ky - np.pi
+
+    lw = 1.0
+
+    def add_lines(ax):
+        ax.plot(kx, 0 * kx, 'k', lw=lw)
+        ax.plot(0 * ky, ky, 'k', lw=lw)
+        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+
+    def create_image(ax=None, contour=None, cmap='RdBu', norm=None):
+        add_lines(ax)
+        im = ax.imshow(contour, cmap=cmap, extent=[kx[0], kx[-1], ky[0], ky[-1]],
+                       origin='lower', norm=norm)
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        plt.colorbar(im, cax=cax, orientation='vertical')
+        ax.set_xlabel(r'$k_x$')
+        ax.set_ylabel(r'$k_y$')
+
+    if(midpoint_norm):
+        norm = MidpointNormalize(midpoint=0, vmin=siwk_plot.min(), vmax=siwk_plot.max())
+        create_image(ax=ax, contour=siwk_plot, cmap=cmap, norm=norm)
+    else:
+        create_image(ax=ax, contour=siwk_plot, cmap=cmap)
+    return
+
+
+def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
+    if(niv_plot==None):
+        niv_plot = np.shape(siwk)[-1] // 2
+
+    siwk_plot = np.copy(siwk[:,:,kz,niv_plot])
+    kx = kgrid._grid['kx']
+    ky = kgrid._grid['ky']
+    if(do_shift):
+        siwk_plot = np.roll(siwk_plot,kgrid.nk[0]//2,0)
+        siwk_plot = np.roll(siwk_plot,kgrid.nk[1]//2,1)
+        kx = kx - np.pi
+        ky = ky - np.pi
+
+    lw = 1.0
+
+    def add_lines(ax):
+        ax.plot(kx, 0 * kx, 'k', lw=lw)
+        ax.plot(0 * ky, ky, 'k', lw=lw)
+        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(kx, ky - np.pi, '--k', lw=lw)
+        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+
+    def create_image(ax=None,contour=None,cmap='RdBu', norm=None):
+        add_lines(ax)
+        im = ax.imshow(contour, cmap=cmap, extent=[kx[0], kx[-1], ky[0], ky[-1]],
+                          origin='lower', norm=norm)
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax, orientation='vertical')
+        ax.set_xlabel(r'$k_x$')
+        ax.set_ylabel(r'$k_y$')
+
+
+    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
+    norm = MidpointNormalize(midpoint=0, vmin=siwk_plot.min(), vmax=siwk_plot.max())
+    create_image(ax=ax[0][0], contour=siwk_plot, cmap='RdBu', norm=norm)
+    create_image(ax=ax[0][1], contour=siwk_plot, cmap='RdBu', norm=norm)
+
+    bin_imag = np.copy(siwk_plot)
+    bin_imag[bin_imag>0] = 1
+    bin_imag[bin_imag<0] = 0
+    create_image(ax=ax[1][0], contour=bin_imag, cmap='binary')
+    create_image(ax=ax[1][1], contour=bin_imag, cmap='binary')
 
     plt.tight_layout()
 

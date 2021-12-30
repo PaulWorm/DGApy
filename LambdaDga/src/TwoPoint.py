@@ -193,11 +193,11 @@ class GreensFunctionGenerator():
         smom = chempot.fit_smom(iv=iv, siwk=self.sigma)
         self._smom = smom
 
-    def adjust_mu(self, n=None, mu0=0):
+    def adjust_mu(self, n=None, mu0=0, verbose=False):
         iv = self.get_iv(niv=-1, wn=0)
         ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
         mu = chempot.update_mu(mu0=mu0, target_filling=n, iv=iv, hk=ek, siwk=self.sigma,
-                                   beta=self.beta, smom0=self.smom[0])
+                                   beta=self.beta, smom0=self.smom[0],verbose=verbose)
         return mu
 
 # ======================================================================================================================
@@ -213,7 +213,8 @@ class GreensFunctionGenerator():
 
 
 
-
+if __name__=='__main__':
+    pass
 
 
 

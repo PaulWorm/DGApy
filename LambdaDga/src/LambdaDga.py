@@ -111,8 +111,6 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     siw_sde_magn_reduce = np.zeros(np.shape(dmft_sde['siw_magn']), dtype=complex)
     comm.Allreduce(dmft_sde['siw_magn'], siw_sde_magn_reduce)
 
-    siw_sde_reduce = siw_sde_reduce
-
     dmft_sde['siw_dens'] = siw_sde_dens_reduce
     dmft_sde['siw_magn'] = siw_sde_magn_reduce
     dmft_sde['siw'] = siw_sde_reduce + dmft_sde['hartree']
@@ -133,8 +131,6 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
                               my_slice=qiw_distributor.my_slice)
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
                                                sigma=dmft1p['sloc'])
-
-    gk = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_urange)
 
     # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 

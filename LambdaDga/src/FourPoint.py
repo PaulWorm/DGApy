@@ -37,8 +37,10 @@ def chir_from_g2(g2=None, ggv=None, beta=1.0, wn=0):
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
         sign = -1
-    else:
+    elif(channel == 'dens'):
         sign = 1
+    else:
+        raise ValueError
     return u * sign
 
 
@@ -438,7 +440,7 @@ class Bubble():
 class Susceptibility():
     ''' Class for the non-local susceptibility '''
 
-    def __init__(self, matrix=None, channel='dens', beta=1.0, u=1.0):
+    def __init__(self, matrix=None, channel='dens', beta=None, u=None):
         self._u = u
         self._channel = channel
         self._mat = matrix

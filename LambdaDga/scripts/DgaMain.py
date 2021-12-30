@@ -39,7 +39,7 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
@@ -60,8 +60,8 @@ verbose=True
 # tp = -0.20 * t
 # tpp = 0.10 * t
 t = 0.25
-tp = -0.25 * t
-tpp = 0.12 * t
+tp = -0.25 * t * 0
+tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
 niw_core = 20
@@ -69,7 +69,7 @@ niv_core = 20
 niv_urange = 20
 
 # Define k-ranges:
-nkf = 8
+nkf = 64
 nqf = 8
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
@@ -204,7 +204,7 @@ if (comm.rank == 0):
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
     labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=1, niv_plot=10, name='siw_at_bz_points', ms=5)
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0, niv_plot=10, name='siw_at_bz_points', ms=5)
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
@@ -272,7 +272,7 @@ if (do_pairing_vertex and comm.rank == 0):
 
     realt = rt.real_time()
 
-    realt.print_time('Start pairing vertex:')
+    log(realt.string_time('Start pairing vertex:'))
 
     import PairingVertex as pv
 
@@ -332,7 +332,7 @@ if (do_pairing_vertex and comm.rank == 0):
     plt.savefig(output_path + 'f_trip_loc.png')
     plt.close()
 
-    realt.print_time('End pairing vertex:')
+    log(realt.string_time('End pairing vertex:'))
 #
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
 # %%
@@ -341,7 +341,7 @@ if (do_pairing_vertex and comm.rank == 0):
     import TwoPoint as twop
     import EliashbergEquation as eq
 
-    realt.print_time('Start Eliashberg:')
+    log(realt.string_time('Start Eliashberg:'))
     gamma_sing = f_sing
     gamma_trip = f_trip
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
@@ -365,4 +365,4 @@ if (do_pairing_vertex and comm.rank == 0):
     plotting.plot_gap_function(delta=delta_sing[1].real, pdir=output_path, name='sing', kgrid=k_grid)
     plotting.plot_gap_function(delta=delta_trip[1].real, pdir=output_path, name='trip', kgrid=k_grid)
 
-    realt.print_time('End Eliashberg:')
+    log(realt.string_time('End Eliashberg:'))
