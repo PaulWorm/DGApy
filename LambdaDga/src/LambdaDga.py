@@ -42,6 +42,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     dmft1p = config['dmft1p']
     output_path = config['names']['output_path']
     do_pairing_vertex = config['options']['do_pairing_vertex']
+    lambda_correction_type = config['options']['lambda_correction_type']
 
     k_grid = config['grids']['k_grid']
     q_grid = config['grids']['q_grid']
@@ -156,9 +157,20 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_magn_ladder = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_ladder.mat = chi_magn_ladder_mat
 
-    lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder, chi_loc=chi_dens_loc, nq=np.prod(q_grid.nk))
-    lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
-                                       chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
+    if(lambda_correction_type=='both'):
+        lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder, chi_loc=chi_dens_loc, nq=np.prod(q_grid.nk))
+        lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
+                                           chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
+    elif(lambda_correction_type=='totdens'):
+        lambda_dens = 0.0
+        lambda_magn = lc.lambda_correction_totdens(lambda_start=lc.get_lambda_start(chi_magn_ladder), chi_magn=chi_magn_ladder,
+                                                   chi_magn_loc=chi_magn_loc,chi_dens_loc=chi_dens_loc,chi_dens=chi_dens_ladder,
+                                                   nq=np.prod(q_grid.nk))
+    elif (lambda_correction_type == 'none'):
+        lambda_dens = 0.0
+        lambda_else = 0.0
+    else:
+        raise ValueError('Unknown value for lambda_correction_type!')
 
     chi_dens_lambda = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='dens', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_dens_lambda.mat = 1. / (1. / chi_dens_ladder_mat + lambda_dens)

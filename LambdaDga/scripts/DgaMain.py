@@ -53,11 +53,12 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = False
 keep_ladder_vertex = False
+lambda_correction_type = 'both' # Available: ['both','totdens','none']
 lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00 *0.25
+t = 1.00 * 0.25
 tp = -0.20 * t * 0
 tpp = 0.10 * t * 0
 # t = 0.25
@@ -65,13 +66,13 @@ tpp = 0.10 * t * 0
 # tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 10
-niv_core = 10
-niv_urange = 20
+niw_core = 59
+niv_core = 60
+niv_urange = 100
 
 # Define k-ranges:
-nkf = 8
-nqf = 8
+nkf = 32
+nqf = 32
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 
@@ -102,6 +103,7 @@ if(dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 
 options = {
     'do_pairing_vertex': do_pairing_vertex,
+    'lambda_correction_type':lambda_correction_type,
     'lattice': lattice
 }
 
@@ -209,6 +211,15 @@ if (comm.rank == 0):
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
     labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0, niv_plot=10, name='siw_at_bz_points', ms=5)
+
+
+    siw_dga_an = dga_sde['sigma_nc'][nk[0]//2,0,0,:]
+    siw_dga_n = dga_sde['sigma_nc'][nk[0]//4,nk[1]//4,0,:]
+    vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
+    siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
+    labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0, niv_plot=10, name='siw_at_bz_points_nc', ms=5)
+
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')

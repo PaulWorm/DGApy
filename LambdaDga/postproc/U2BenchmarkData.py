@@ -71,7 +71,7 @@ path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk5
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 
-path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk256_Nq256_core8_urange100_1/'
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk2304_Nq2304_core8_urange100/'
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 
