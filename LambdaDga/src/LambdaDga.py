@@ -31,6 +31,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     wn_core = config['grids']['wn_core']
     niw_core = config['box_sizes']['niw_core']
     niv_core = config['box_sizes']['niv_core']
+    niv_invbse = config['box_sizes']['niv_invbse']
     niv_urange = config['box_sizes']['niv_urange']
     path = config['names']['input_path']
     fname_g2 = config['names']['fname_g2']
@@ -61,8 +62,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     g2_magn_loc = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=my_iw), giw=giw, channel='magn',
                                     beta=beta, iw=my_iw)
 
-    g2_dens_loc.cut_iv(niv_cut=niv_core)
-    g2_magn_loc.cut_iv(niv_cut=niv_core)
+    g2_dens_loc.cut_iv(niv_cut=niv_invbse)
+    g2_magn_loc.cut_iv(niv_cut=niv_invbse)
 
     dmft1p['g2_dens'] = g2_dens_loc
     dmft1p['g2_magn'] = g2_magn_loc

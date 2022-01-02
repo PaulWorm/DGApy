@@ -68,6 +68,9 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
     gamma_dens = fp.gammar_from_gchir(gchir=gchi_dens_loc, gchi0_urange=chi0_urange, u=u)
     gamma_magn = fp.gammar_from_gchir(gchir=gchi_magn_loc, gchi0_urange=chi0_urange, u=u)
 
+    gamma_dens.cut_iv(niv_cut=niv_core)
+    gamma_magn.cut_iv(niv_cut=niv_core)
+
     gchi_aux_dens_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_dens, gchi0_core=chi0_core, u=u)
     gchi_aux_magn_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_magn, gchi0_core=chi0_core, u=u)
 

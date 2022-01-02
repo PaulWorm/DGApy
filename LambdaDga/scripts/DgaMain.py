@@ -39,11 +39,11 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -58,7 +58,7 @@ lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00 * 0.25
+t = 1.00
 tp = -0.20 * t * 0
 tpp = 0.10 * t * 0
 # t = 0.25
@@ -66,8 +66,9 @@ tpp = 0.10 * t * 0
 # tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 59
-niv_core = 60
+niw_core = 30
+niv_core = 15
+niv_invbse = 30
 niv_urange = 100
 
 # Define k-ranges:
@@ -125,6 +126,7 @@ box_sizes = {
     "niv_dmft": niv_dmft,
     "niw_core": niw_core,
     "niv_core": niv_core,
+    "niv_invbse": niv_invbse,
     "niv_urange": niv_urange,
     "nk": nk,
     "nq": nq

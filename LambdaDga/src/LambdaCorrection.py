@@ -23,7 +23,7 @@ def lambda_correction(lambda_start = 0, chir: fp.LadderSusceptibility = None, ch
     for i in range(maxiter):
         chir_sum = 1. / (beta * nq) * np.sum(1. / (1. / chir.mat + lambda_))
         f_lam = chir_sum - chi_loc_sum
-        fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat + lambda_)) ** 2)
+        fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat + lambda_)) ** 2.)
         lambda_ = lambda_old - np.real(f_lam / fp_lam)
         if (np.abs(f_lam.real) < eps):
             break
@@ -35,6 +35,7 @@ def lambda_correction(lambda_start = 0, chir: fp.LadderSusceptibility = None, ch
         else:
             lambda_old = lambda_
     print(f'Lambda correction converged afer {i=} iterations.')
+    print(f'{lambda_=}; {chi_loc_sum=}; {chir_sum=}')
     return lambda_
 
 def lambda_correction_totdens(lambda_start = 0, chi_magn: fp.LadderSusceptibility = None, chi_dens: fp.LadderSusceptibility = None,

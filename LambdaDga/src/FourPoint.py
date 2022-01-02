@@ -158,7 +158,7 @@ class LocalBubble():
 class LocalFourPoint():
     ''' Parent class for local four-point correlation '''
 
-    def __init__(self, matrix=None, giw=None, channel='dens', beta=1.0, iw=None):
+    def __init__(self, matrix=None, giw=None, channel=None, beta=None, iw=None):
         assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
 
         self._channel = channel
@@ -204,7 +204,7 @@ class LocalFourPoint():
     def niv_giw(self) -> int:
         return self._giw.shape[0] // 2
 
-    def cut_iv(self, niv_cut=10):
+    def cut_iv(self, niv_cut=None):
         niv = self.niv
         self._mat = self._mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
@@ -316,7 +316,7 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 # ==================================================================================================================
 
 # ==================================================================================================================
-def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=1.0):
+def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
     u_r = get_ur(u=u, channel=gammar.channel)
     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
                                                        beta=gammar.beta, u=u_r) for wn in gammar.iw_ind])
