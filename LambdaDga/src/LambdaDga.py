@@ -22,7 +22,7 @@ import sys, os
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
 
-def lambda_dga(config=None,verbose=False,outpfunc=None):
+def lambda_dga(config=None, verbose=False, outpfunc=None):
     ''' Wrapper function for the \lambda-corrected one-band DGA routine. All relevant settings are contained in config'''
     # -------------------------------------------- UNRAVEL CONFIG ------------------------------------------------------
     # This is done to allow for more flexibility in the future
@@ -49,12 +49,10 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     nq_tot = q_grid.nk_tot()
 
     # ----------------------------------------------- MPI DISTRIBUTION -------------------------------------------------
-    iw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size, comm=comm, output_path=None)
-    my_iw = wn_core[iw_distributor.my_slice]
+    my_iw = wn_core
     realt = rt.real_time()
 
     # -------------------------------------------LOAD G2 FROM W2DYN ----------------------------------------------------
-
     g2_file = w2dyn_aux.g4iw_file(fname=path + fname_g2)
 
     g2_dens_loc = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=my_iw), giw=giw, channel='dens',
@@ -68,17 +66,17 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     dmft1p['g2_dens'] = g2_dens_loc
     dmft1p['g2_magn'] = g2_magn_loc
 
-    if(verbose):
+    if (verbose):
         outpfunc("Finished reading g2 from file.")
 
     # --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
-
     dmft_sde = sde.local_dmft_sde_from_g2(dmft_input=dmft1p, box_sizes=box_sizes)
 
-    chi_dens_loc_mat = iw_distributor.allgather(rank_result=dmft_sde['chi_dens'].mat)
-    chi_magn_loc_mat = iw_distributor.allgather(rank_result=dmft_sde['chi_magn'].mat)
-    chi0_core = iw_distributor.allgather(rank_result=dmft_sde['chi0_core'].chi0)
-    chi0_urange = iw_distributor.allgather(rank_result=dmft_sde['chi0_urange'].chi0)
+    chi_dens_loc_mat = dmft_sde['chi_dens'].mat
+    chi_magn_loc_mat = dmft_sde['chi_magn'].mat
+    chi0_core = dmft_sde['chi0_core'].chi0
+    chi0_urange = dmft_sde['chi0_urange'].chi0
+
 
     chi_dens_loc = fp.LocalSusceptibility(matrix=chi_dens_loc_mat, giw=dmft_sde['chi_dens'].giw,
                                           channel=dmft_sde['chi_dens'].channel,
@@ -88,11 +86,11 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
                                           channel=dmft_sde['chi_magn'].channel,
                                           beta=dmft_sde['chi_magn'].beta, iw=wn_core)
 
-    gamma_dens = fp.LocalFourPoint(matrix=iw_distributor.allgather(rank_result=dmft_sde['gamma_dens'].mat),
+    gamma_dens = fp.LocalFourPoint(matrix=dmft_sde['gamma_dens'].mat,
                                    giw=dmft_sde['gamma_dens'].giw,
                                    channel=dmft_sde['gamma_dens'].channel, beta=dmft_sde['gamma_dens'].beta, iw=wn_core)
 
-    gamma_magn = fp.LocalFourPoint(matrix=iw_distributor.allgather(rank_result=dmft_sde['gamma_magn'].mat),
+    gamma_magn = fp.LocalFourPoint(matrix=dmft_sde['gamma_magn'].mat,
                                    giw=dmft_sde['gamma_magn'].giw,
                                    channel=dmft_sde['gamma_magn'].channel, beta=dmft_sde['gamma_magn'].beta, iw=wn_core)
 
@@ -101,49 +99,33 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
         'gamma_magn': gamma_magn
     }
 
-    # Sum over different mpi prozesses and replace the entry in the dict:
-    siw_sde_reduce = np.zeros(np.shape(dmft_sde['siw']), dtype=complex)
-    comm.Allreduce(dmft_sde['siw'], siw_sde_reduce)
-
-    siw_sde_dens_reduce = np.zeros(np.shape(dmft_sde['siw_dens']), dtype=complex)
-    comm.Allreduce(dmft_sde['siw_dens'], siw_sde_dens_reduce)
-
-    siw_sde_magn_reduce = np.zeros(np.shape(dmft_sde['siw_magn']), dtype=complex)
-    comm.Allreduce(dmft_sde['siw_magn'], siw_sde_magn_reduce)
-
-    dmft_sde['siw_dens'] = siw_sde_dens_reduce
-    dmft_sde['siw_magn'] = siw_sde_magn_reduce
-    dmft_sde['siw'] = siw_sde_reduce + dmft_sde['hartree']
+    dmft_sde['siw'] = dmft_sde['siw'] + dmft_sde['hartree']
     dmft_sde['chi0_core'] = chi0_core
     dmft_sde['chi0_urange'] = chi0_urange
 
-
-
-    if(verbose):
+    if (verbose):
         outpfunc("Finished local part.")
         outpfunc(realt.string_time('Local Part '))
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm)
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_tot, comm=comm, output_path=output_path,
+                                            name='Qiw')
     index_grid_keys = ('qx', 'qy', 'qz', 'iw')
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_core,), keys=index_grid_keys,
                               my_slice=qiw_distributor.my_slice)
-    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
-                                               sigma=dmft1p['sloc'])
 
     # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 
-    dga_susc, f_ladder = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
+    dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
                                      box_sizes=box_sizes,
                                      qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
                                      file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex)
 
-
-    if(verbose):
+    if (verbose):
         outpfunc(realt.string_time('Non-local Susceptibility: '))
 
-    if(do_pairing_vertex):
+    if (do_pairing_vertex):
         f1_magn = np.zeros(np.shape(f_ladder['f1_magn']), dtype=complex)
         f2_magn = np.zeros(np.shape(f_ladder['f2_magn']), dtype=complex)
         f1_dens = np.zeros(np.shape(f_ladder['f1_dens']), dtype=complex)
@@ -174,8 +156,7 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     chi_magn_ladder = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_ladder.mat = chi_magn_ladder_mat
 
-    lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder,
-                                       chi_loc=chi_dens_loc, nq=np.prod(q_grid.nk))
+    lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder, chi_loc=chi_dens_loc, nq=np.prod(q_grid.nk))
     lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
                                        chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
 
@@ -185,7 +166,7 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_lambda.mat = 1. / (1. / chi_magn_ladder_mat + lambda_magn)
 
-    if(verbose):
+    if (verbose):
         outpfunc(realt.string_time('Lambda correction: '))
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
@@ -196,6 +177,9 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
     chi_magn_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='magn', u=dmft1p['u'],
                                                      beta=dmft1p['beta'])
     chi_magn_lambda_my_qiw.mat = chi_magn_lambda.mat[qiw_grid.my_slice]
+
+    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+                                               sigma=dmft1p['sloc'])
 
     sigma_dens_dga = sde.sde_dga(dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes)
@@ -209,10 +193,12 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
 
     sigma_dens_dga = sigma_dens_dga_reduce
     sigma_magn_dga = sigma_magn_dga_reduce
-    sigma_dga_nc = sigma_dens_dga_reduce + sigma_magn_dga_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
-    sigma_dga = sigma_dens_dga_reduce + 3*sigma_magn_dga_reduce - 2*siw_sde_magn_reduce + dmft_sde['hartree'] - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
+    sigma_dga_nc = -1*sigma_dens_dga_reduce + 3*sigma_magn_dga_reduce + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * dmft_sde['siw_dens'] \
+                   - dmft_sde['siw'] + dmft1p['sloc'][dmft1p[ 'niv'] - niv_urange:dmft1p['niv'] + niv_urange]
+    sigma_dga = sigma_dens_dga_reduce + 3 * sigma_magn_dga_reduce - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
+                dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
 
-    if(verbose):
+    if (verbose):
         outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))
 
     dga_sde = {
@@ -236,4 +222,4 @@ def lambda_dga(config=None,verbose=False,outpfunc=None):
         'chi0q_urange': chi0q_urange
     }
 
-    return dga_sde, dmft_sde, dmft_gamma, chi_lambda,  chi_ladder, f_ladder
+    return dga_sde, dmft_sde, dmft_gamma, chi_lambda, chi_ladder

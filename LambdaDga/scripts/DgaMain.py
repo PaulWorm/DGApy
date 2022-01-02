@@ -43,6 +43,7 @@ input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -55,21 +56,21 @@ keep_ladder_vertex = False
 lattice = 'square'
 verbose=True
 
-# Set up real-space Wannier Hamiltonian:
-# t = 1.00
-# tp = -0.20 * t
-# tpp = 0.10 * t
-t = 0.25
-tp = -0.25 * t * 0
-tpp = 0.12 * t * 0
+#Set up real-space Wannier Hamiltonian:
+t = 1.00 *0.25
+tp = -0.20 * t * 0
+tpp = 0.10 * t * 0
+# t = 0.25
+# tp = -0.25 * t * 0
+# tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 20
-niv_core = 20
+niw_core = 10
+niv_core = 10
 niv_urange = 20
 
 # Define k-ranges:
-nkf = 64
+nkf = 8
 nqf = 8
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
@@ -94,12 +95,14 @@ f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
 dmft1p = f1p.load_dmft1p_w2dyn()
 f1p.close()
 niv_dmft = dmft1p['niv']
+if(dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 
 # Define system paramters, like interaction or inverse temperature.
 # Note: I want this to be decoupled from dmft1p, because of later RPA/FLEX stuff.
 
 options = {
-    'do_pairing_vertex': do_pairing_vertex
+    'do_pairing_vertex': do_pairing_vertex,
+    'lattice': lattice
 }
 
 system = {
@@ -172,7 +175,7 @@ if (comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder, f_ladder = ldga.lambda_dga(config=config,verbose=verbose,outpfunc=log)
+dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config,verbose=verbose,outpfunc=log)
 comm.Barrier()
 log("Lambda-Dga finished %s", time.strftime("%c"))
 if (comm.rank == 0):
@@ -181,6 +184,7 @@ if (comm.rank == 0):
     np.save(output_path + 'dga_sde.npy', dga_sde, allow_pickle=True)
     np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
     np.save(output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
+    np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',', fmt='%.9f')
 
     siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
@@ -243,6 +247,7 @@ if (comm.rank == 0):
     plotting.plot_giwk_fs(giwk=gk_dga_nc.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
 
     chi_magn_lambda = chi_lambda['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
+    chi_dens_lambda = chi_lambda['chi_dens_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
 
     import matplotlib.pyplot as plt
 
@@ -250,6 +255,12 @@ if (comm.rank == 0):
     plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu')
     plt.colorbar()
     plt.savefig(output_path + 'chi_magn_w0.png')
+    plt.close()
+
+    plt.figure()
+    plt.imshow(chi_dens_lambda[:, :, 0, niw_core].real, cmap='RdBu')
+    plt.colorbar()
+    plt.savefig(output_path + 'chi_dens_w0.png')
     plt.close()
 
     plt.figure()
@@ -267,7 +278,36 @@ if (comm.rank == 0):
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
 # %%
 
-if (do_pairing_vertex and comm.rank == 0):
+# Collect Pairing vertex from subfiles:
+if(do_pairing_vertex and comm.rank == 0):
+    import MpiAux as mpiaux
+    import h5py
+
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
+                                            output_path=output_path,
+                                            name='Qiw')
+
+    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+    f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    if (do_pairing_vertex):
+        if (qiw_distributor.my_rank == 0):
+            file_out = h5py.File(fname_ladder_vertex, 'w')
+            for ir in range(qiw_distributor.mpi_size):
+                fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
+                file_in = h5py.File(fname_input, 'r')
+                for key1 in list(file_in.keys()):
+                    # extract the q indizes from the group name!
+                    condition = file_in[key1 + 'condition/'][()]
+                    f1_magn = file_in[key1 +'f1_magn/'][()]
+
+                file_in.close()
+                os.remove(fname_input)
+            file_out.close()
+
+if(do_pairing_vertex and comm.rank == 0):
     import RealTime as rt
 
     realt = rt.real_time()

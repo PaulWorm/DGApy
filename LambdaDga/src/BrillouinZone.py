@@ -14,9 +14,12 @@ def grid_2d(nk=16, name='k'):
 
 
 def grid(nk=None, name='k'):
-    kx = np.arange(0, nk[0]) * 2 * np.pi / nk[0]
-    ky = np.arange(0, nk[1]) * 2 * np.pi / nk[1]
-    kz = np.arange(0, nk[2]) * 2 * np.pi / nk[2]
+    kx = np.linspace(0,2*np.pi,nk[0],endpoint=False)
+    ky = np.linspace(0,2*np.pi,nk[1],endpoint=False)
+    kz = np.linspace(0,2*np.pi,nk[2],endpoint=False)
+    # kx = np.linspace(-np.pi,np.pi,nk[0],endpoint=False)
+    # ky = np.linspace(-np.pi,np.pi,nk[1],endpoint=False)
+    # kz = np.linspace(-np.pi,np.pi,nk[2],endpoint=False)
     grid = {
         '{}x'.format(name): kx,
         '{}y'.format(name): ky,

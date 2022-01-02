@@ -803,17 +803,18 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
 
-    if (do_pairing_vertex):
-        f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-        f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-        f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-        f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    # if (do_pairing_vertex):
+    #     f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    #     f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    #     f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    #     f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
 
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         wn_lin = np.array(mf.cen2lin(wn,-niw), dtype=int)
         #print(f'{wn_lin=}')
+        #print(qiw_grid[iqw])
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw_grid[iqw], niv=niv_urange)
 
         gkpq_core = copy.deepcopy(gkpq_urange)
@@ -864,20 +865,29 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                                                                         gchi0=chi0q_core.gchi0, beta=beta,
                                                                         u_r=get_ur(u=u, channel='dens'))
             ind = qiw_indizes[iqw][:-1]
-            f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
-            f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
-            f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
-            f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
+            # f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
+            # f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
+            # f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
+            # f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
 
-    if(do_pairing_vertex):
-        f_ladder = {
-            'f1_magn':f1_magn,
-            'f2_magn':f2_magn,
-            'f1_dens':f1_dens,
-            'f2_dens':f2_dens
-        }
-    else:
-        f_ladder = None
+            if (do_pairing_vertex):
+                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
+                file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
+                file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
+                file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
+                file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
+                file[group + 'condition/'] = condition
+
+
+    # if(do_pairing_vertex):
+    #     f_ladder = {
+    #         'f1_magn':f1_magn,
+    #         'f2_magn':f2_magn,
+    #         'f1_dens':f1_dens,
+    #         'f2_dens':f2_dens
+    #     }
+    # else:
+    #     f_ladder = None
 
 
     chi_dens_urange.mat_to_array()
@@ -902,7 +912,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         'chi0q_core': chi0q_core_full,
         'chi0q_urange': chi0q_urange_full
     }
-    return dga_susc, f_ladder
+    return dga_susc#, f_ladder
 
 
 if __name__ == "__main__":

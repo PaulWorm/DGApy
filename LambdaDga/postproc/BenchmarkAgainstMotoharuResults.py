@@ -2,6 +2,8 @@
 # Load results from DGA and Motoharu and constructs Benchmark plots:
 
 
+
+
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
@@ -9,17 +11,22 @@ import matplotlib
 import matplotlib.pyplot as plt
 import MatsubaraFrequencies as mf
 
+
 # Parameters:
 
-input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk10000_Nq10000_core59_urange160/'
+input_path_m = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/LambdaDga_Nk64_Nq64_core59_urange500/'
 output_path = input_path
 
 # Load Python Data:
 
 config = np.load(input_path+'config.npy', allow_pickle=True).item()
 dga_sde = np.load(input_path+'dga_sde.npy', allow_pickle=True).item()
+dmft_sde = np.load(input_path+'dmft_sde.npy', allow_pickle=True).item()
 gk_dga = np.load(input_path + 'gk_dga.npy', allow_pickle=True).item()
+
+chi_dmft_dens = dmft_sde['chi_dens']
+chi_dmft_magn = dmft_sde['chi_magn']
 
 niv = config['box_sizes']['niv_urange']
 iv = config['grids']['vn_urange']
@@ -28,8 +35,8 @@ sigma = dga_sde['sigma']
 hartree = config['dmft1p']['n'] * config['dmft1p']['u']/2
 sigma = np.roll(sigma, nk // 2, 0)
 sigma = np.roll(sigma, nk // 2, 1)
-sigma_node = dga_sde['sigma'][nk//4,nk//4,0,:]
-sigma_anti_node = dga_sde['sigma'][nk//2,0,0,:]
+sigma_node = sigma[nk//4,nk//4,0,:]
+sigma_anti_node = sigma[nk//2,0,0,:]
 
 # Load Motoharu Data:
 dict_moto = np.load(input_path_m + 'siwk.npy', allow_pickle=True).item()
@@ -38,6 +45,7 @@ sigma_moto = np.concatenate((np.flip(np.conj(sigma_moto)),sigma_moto),axis=0)
 nk_moto = dict_moto['Nk']
 sigma_moto_node = sigma_moto[:,nk_moto//4,nk_moto//4]
 sigma_moto_anti_node = sigma_moto[:,nk_moto//2,0]
+
 
 niv_moto = dict_moto['Niv']
 iv_moto = mf.vn(niv_moto)
@@ -81,3 +89,7 @@ plt.imshow(sigma_moto[niv_moto,:,:].imag, cmap='RdBu', origin='lower')
 plt.colorbar()
 plt.savefig(output_path + 'siwk_Motoharu.png')
 plt.show()
+
+print(f'{np.sum(chi_dmft_dens.mat)/16=}')
+print(f'{np.sum(chi_dmft_magn.mat)/16=}')
+print((np.sum(chi_dmft_dens.mat)+np.sum(chi_dmft_magn.mat))/(16*2))

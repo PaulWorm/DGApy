@@ -5,6 +5,8 @@
 import numpy as np
 import Hk as hk
 import ChemicalPotential as chempot
+
+
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
@@ -104,24 +106,24 @@ class GreensFunction(object):
     def cut_self_iv(self, niv_cut=0):
         self.iv = self.cut_iv(arr=self.iv, niv_cut=niv_cut)
         self.sigma = self.cut_iv(arr=self.sigma, niv_cut=niv_cut)
-        self.gk = self.cut_iv(arr=self.gk,niv_cut=niv_cut)
+        self.gk = self.cut_iv(arr=self.gk, niv_cut=niv_cut)
 
-    def cut_iv(self, arr = None, niv_cut=0):
+    def cut_iv(self, arr=None, niv_cut=0):
         niv = arr.shape[-1] // 2
-        return arr[...,niv-niv_cut:niv+niv_cut]
+        return arr[..., niv - niv_cut:niv + niv_cut]
 
 
 class GreensFunctionGenerator():
     '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
 
-    def __init__(self, beta = 1.0, kgrid=None, hr=None, sigma=None):
+    def __init__(self, beta=1.0, kgrid=None, hr=None, sigma=None):
         self._beta = beta
         self._kgrid = kgrid
         self._hr = hr
 
         # Add k-dimensions for local self-energy
-        if(len(sigma.shape)==1):
-            self._sigma = sigma[None,None,None,:]
+        if (len(sigma.shape) == 1):
+            self._sigma = sigma[None, None, None, :]
         else:
             self._sigma = sigma
 
@@ -167,19 +169,18 @@ class GreensFunctionGenerator():
         ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
         sigma = self.cut_sigma(niv_cut=niv, wn=wn)
         iv = self.get_iv(niv=niv, wn=wn)
-        return GreensFunction(iv=iv[None,None,None,:], beta=self.beta, mu=mu, ek=ek[:,:,:,None], sigma=sigma)
+        return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
 
     def get_iv(self, niv=0, wn=0):
-        if(niv==-1):
+        if (niv == -1):
             niv = self.niv_sigma - int(np.abs(wn))
-        return 1j * ((np.arange(-niv,niv)-wn) * 2 + 1) * np.pi / self.beta
-
+        return 1j * ((np.arange(-niv, niv) - wn) * 2 + 1) * np.pi / self.beta
 
     def cut_sigma(self, niv_cut=-1, wn=0):
         niv = self.niv_sigma
-        if(niv_cut == -1):
+        if (niv_cut == -1):
             niv_cut = niv - int(np.abs(wn))
-        return self.sigma[...,niv-niv_cut-wn:niv+niv_cut-wn]
+        return self.sigma[..., niv - niv_cut - wn:niv + niv_cut - wn]
 
     def add_q_to_kgrid(self, q=None):
         assert (np.size(self.kgrid) == np.size(q)), 'Kgrid and q have different dimensions.'
@@ -197,8 +198,9 @@ class GreensFunctionGenerator():
         iv = self.get_iv(niv=-1, wn=0)
         ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
         mu = chempot.update_mu(mu0=mu0, target_filling=n, iv=iv, hk=ek, siwk=self.sigma,
-                                   beta=self.beta, smom0=self.smom[0],verbose=verbose)
+                               beta=self.beta, smom0=self.smom[0], verbose=verbose)
         return mu
+
 
 # ======================================================================================================================
 # ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------
@@ -212,15 +214,57 @@ class GreensFunctionGenerator():
 #     return jnp.linalg.inverse()
 
 
+if __name__ == '__main__':
+    input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+    fname_dmft = '1p-data.hdf5'
 
-if __name__=='__main__':
-    pass
+    import w2dyn_aux
+
+    # load contents from w2dynamics DMFT file:
+    f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
+    dmft1p = f1p.load_dmft1p_w2dyn()
+    f1p.close()
+
+    # Set up real-space Wannier Hamiltonian:
+    import Hr as hr
+
+    t = 1.00
+    tp = -0.20 * t * 0
+    tpp = 0.10 * t * 0
+    hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+
+    # Define k-grid
+    nkf = 200
+    nqf = 200
+    nk = (nkf, nkf, 1)
+    nq = (nqf, nqf, 1)
+
+    # Generate k-meshes:
+    import BrillouinZone as bz
+
+    k_grid = bz.KGrid(nk=nk, name='k')
+    q_grid = bz.KGrid(nk=nq, name='q')
+
+    g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+                                          sigma=dmft1p['sloc'])
+    niv_urange = 100
+    gk = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_urange)
+
+    import Indizes as ind
+
+    index_grid_keys = ('qx', 'qy', 'qz', 'iw')
+    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (0,), keys=index_grid_keys)
+    qx = q_grid.grid['qx'][0]
+    qy = q_grid.grid['qy'][nqf//2]
+    qz = q_grid.grid['qz'][0]
+    q = [qx,qy,qz,0]
+    gkpq = g_generator.generate_gk(mu=dmft1p['mu'], qiw=q + [0,], niv=niv_urange)
 
 
+    # Plot the Fermi-surface:
+    import Plotting as plotting
 
-
-
-
-
+    plotting.plot_giwk_fs(giwk=gk.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange, name='gk')
+    plotting.plot_giwk_fs(giwk=gkpq.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange, name='gkpq')
 
 #
