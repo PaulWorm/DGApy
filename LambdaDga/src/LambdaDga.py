@@ -194,6 +194,10 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     elif (lambda_correction_type == 'none'):
         lambda_dens = 0.0
         lambda_magn = 0.0
+    elif(lambda_correction_type == 'monly'):
+        lambda_dens = 0.0
+        lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
+                                           chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
     else:
         raise ValueError('Unknown value for lambda_correction_type!')
 
@@ -252,7 +256,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     if(wn_rpa.size > 0):
         sigma_dga = sigma_dga + sigma_dens_rpa + 3 * sigma_magn_rpa
-        sigma_dga_nc = sigma_dga - sigma_dens_rpa + 3 * sigma_magn_rpa
+        sigma_dga_nc = sigma_dga_nc - sigma_dens_rpa + 3 * sigma_magn_rpa
 
     if (verbose):
         outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))

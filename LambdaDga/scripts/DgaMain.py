@@ -53,7 +53,7 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = False
 keep_ladder_vertex = False
-lambda_correction_type = 'both' # Available: ['both','totdens','none']
+lambda_correction_type = 'totdens' # Available: ['both','totdens','none','monly']
 lattice = 'square'
 verbose=True
 
@@ -71,7 +71,7 @@ niw_urange = 50
 niv_core = 8
 niv_invbse = 8
 niv_urange = 50
-niv_asympt = 20000
+niv_asympt = 0
 
 # Define k-ranges:
 nkf = 8

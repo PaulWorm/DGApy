@@ -291,11 +291,11 @@ def local_susceptibility_from_four_point(four_point: LocalFourPoint = None):
                                , beta=four_point.beta, iw=four_point.iw)
 
 
-def local_rpa_susceptibility(chi0: LocalBubble = None, channel=None, u=None):
+def local_rpa_susceptibility(chi0_asympt: LocalBubble = None,chi0_urange: LocalBubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chir = chi0.chi0 / (1 + u_r * chi0.chi0)
-    return LocalSusceptibility(matrix=chir, giw=chi0.giw, channel=channel
-                               , beta=chi0.beta, iw=chi0.iw)
+    chir = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0) #+ chi0_asympt.chi0 - chi0_urange.chi0
+    return LocalSusceptibility(matrix=chir, giw=chi0_asympt.giw, channel=channel
+                               , beta=chi0_asympt.beta, iw=chi0_asympt.iw)
 
 
 # ======================================================================================================================
@@ -355,7 +355,7 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
 
 def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_asympt: LocalSusceptibility = None,
                             chi_urange: LocalSusceptibility = None,
-                            u=1.0):
+                            u=None):
     vrg_asympt = vrg.mat * (1 - u * chi_urange.mat[:, None]) / (1 - u * chi_asympt.mat[:, None])
     return LocalThreePoint(matrix=vrg_asympt, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
@@ -772,10 +772,10 @@ def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = N
 # ------------------------------------- FREE FUNCTIONS FOR NONLOCAL SUSCEPTIBILITY CLASS -------------------------------
 # ======================================================================================================================
 
-def chi_rpa(chi0: Bubble = None, channel=None, u=None):
+def chi_rpa(chi0_asympt: Bubble = None,chi0_urange: Bubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chi = chi0.chi0 / (1 + u_r * chi0.chi0)
-    return Susceptibility(matrix=chi, channel=channel, beta=chi0.beta, u=u)
+    chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0) #+ chi0_asympt.chi0 - chi0_urange.chi0
+    return Susceptibility(matrix=chi, channel=channel, beta=chi0_asympt.beta, u=u)
 
 
 def chi_phys_from_chi_aux(chi_aux: Susceptibility = None, chi0_urange: Bubble = None, chi0_core: Bubble = None):
@@ -816,11 +816,8 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
         chi0q_asympt = copy.deepcopy(chi0q_urange)
         chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
-        chiq_dens = chi_rpa(chi0=chi0q_urange, channel='dens', u=u)
-        chiq_magn = chi_rpa(chi0=chi0q_urange, channel='magn', u=u)
-
-        # chiq_dens.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
-        # chiq_magn.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
+        chiq_dens = chi_rpa(chi0_asympt=chi0q_asympt,chi0_urange=chi0q_urange, channel='dens', u=u)
+        chiq_magn = chi_rpa(chi0_asympt=chi0q_asympt,chi0_urange=chi0q_urange, channel='magn', u=u)
 
         chi_rpa_dens.mat[iqw] = chiq_dens.mat
         chi_rpa_magn.mat[iqw] = chiq_magn.mat
