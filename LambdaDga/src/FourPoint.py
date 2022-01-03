@@ -816,11 +816,11 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
         chi0q_asympt = copy.deepcopy(chi0q_urange)
         chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
-        chiq_dens = chi_rpa(chi0=chi0q_asympt, channel='dens', u=u)
-        chiq_magn = chi_rpa(chi0=chi0q_asympt, channel='magn', u=u)
+        chiq_dens = chi_rpa(chi0=chi0q_urange, channel='dens', u=u)
+        chiq_magn = chi_rpa(chi0=chi0q_urange, channel='magn', u=u)
 
-        chiq_dens.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
-        chiq_magn.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
+        # chiq_dens.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
+        # chiq_magn.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
 
         chi_rpa_dens.mat[iqw] = chiq_dens.mat
         chi_rpa_magn.mat[iqw] = chiq_magn.mat

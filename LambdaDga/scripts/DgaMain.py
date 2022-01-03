@@ -67,15 +67,15 @@ tpp = 0.10 * t * 0
 
 # Define frequency box-sizes:
 niw_core = 8
-niw_urange = 8
+niw_urange = 50
 niv_core = 8
 niv_invbse = 8
 niv_urange = 50
-niv_asympt = 0
+niv_asympt = 20000
 
 # Define k-ranges:
-nkf = 16
-nqf = 16
+nkf = 8
+nqf = 8
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 

@@ -66,8 +66,11 @@ def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
     chi0_asympt = copy.deepcopy(chi0_urange)
     chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
 
-    chi_rpa_dens = fp.local_rpa_susceptibility(chi0=chi0_asympt,channel='dens',u=u)
-    chi_rpa_magn = fp.local_rpa_susceptibility(chi0=chi0_asympt,channel='magn',u=u)
+    chi_rpa_dens = fp.local_rpa_susceptibility(chi0=chi0_urange,channel='dens',u=u)
+    chi_rpa_magn = fp.local_rpa_susceptibility(chi0=chi0_urange,channel='magn',u=u)
+
+    # chi_rpa_dens.add_asymptotic(chi0_asympt = chi0_asympt, chi0_urange = chi0_urange)
+    # chi_rpa_magn.add_asymptotic(chi0_asympt = chi0_asympt, chi0_urange = chi0_urange)
 
     siw_rpa_dens = local_rpa_sde(chir = chi_rpa_dens, niv_giw=niv_urange, u=u)
     siw_rpa_magn = local_rpa_sde(chir = chi_rpa_magn, niv_giw=niv_urange, u=u)
