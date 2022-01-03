@@ -49,6 +49,8 @@ def iw(beta=1.0, n=10):
 def wnfind(niw=None,n=None):
     return n - niw
 
+def wn_outer(n_core=None,n_outer=None):
+    return np.concatenate((np.arange(-n_outer,-n_core),np.arange(n_core+1,n_outer+1)))
 
 if __name__=='__main__':
     niv = 10
@@ -67,3 +69,10 @@ if __name__=='__main__':
     niw = 20
     wn_a = wn(niw)
     n = wnfind(niw,n=20)
+
+    niw_core = 5
+    niw_urange = 10
+    iw_core = wn(n=niw_core)
+    iw_outer = wn_outer(n_core=niw_core,n_outer=niw_urange)
+    print(f'{iw_core}')
+    print(f'{iw_outer}')

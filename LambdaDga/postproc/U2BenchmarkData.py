@@ -27,8 +27,8 @@ def load_ldga_n_an(path=None):
     #sigma = dga_sde['sigma']
     dmft1p = config['dmft1p']
     dmft_sigma = config['dmft1p']['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
-    sigma = -1*dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] + 2*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
-    #sigma = dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] - 0*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
+    #sigma = -1*dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] + 2*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
+    sigma = dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] - 0*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
     sigma_node = sigma[nk[0]//4,nk[1]//4,0,niv_urange:]
     sigma_anti_node = sigma[nk[0]//2,0,0,niv_urange:]
     w = (config['grids']['vn_urange'][niv_urange:] * 2+1) * np.pi/config['dmft1p']['beta']
@@ -71,7 +71,7 @@ path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk5
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 
-path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk2304_Nq2304_core8_urange100/'
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk576_Nq576_core12_urange100/'
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 

@@ -18,13 +18,17 @@ def wn_slices(mat=None, n_cut=None, iw=None):
     return mat_grid
 
 
-def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility = None, u=1.0):
+def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility = None, u=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     u_r = fp.get_ur(u=u, channel=vrg.channel)
     giw_grid = wn_slices(mat=chir.giw, n_cut=vrg.niv, iw=chir.iw)
     return -u_r / 2. * np.sum((vrg.mat * (1. - u_r * chir.mat[:, None]) - 1./chir.beta) * giw_grid,
-                              axis=0)  # The -1./chir.beta is is cancled in the sum. This is only relevant for Fluctuation diagnostics.
+                              axis=0)  # The -1./chir.beta is is canceled in the sum. This is only relevant for Fluctuation diagnostics.
 
+def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, u=None):
+    u_r = fp.get_ur(u=u, channel=chir.channel)
+    giw_grid = wn_slices(mat=chir.giw, n_cut=niv_giw, iw=chir.iw)
+    return u_r**2 / (2.*chir.beta) * np.sum(chir.mat[:, None] * giw_grid,axis=0)
 
 def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
             g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None, box_sizes=None):
@@ -37,8 +41,45 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
     sigma = 1. / (nq) * sigma #
     return sigma
 
+def rpa_sde(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None, mu=0,nq=None, u=None, qiw=None):
+    u_r = fp.get_ur(u=u, channel=chir.channel)
+    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_giw), dtype=complex)
+    for iqw, qiw_ in enumerate(qiw):
+        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv_giw)
+        sigma += u_r**2 / (2.*chir.beta) * chir.mat[iqw, None] * gkpq.gk
+    sigma = 1. / (nq) * sigma
+    return sigma
+
 
 # -------------------------------------------- WRAPPER FUNCTIONS -------------------------------------------------------
+
+# ======================================================================================================================
+def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
+    giw = dmft_input['gloc']
+    beta = dmft_input['beta']
+    u = dmft_input['u']
+
+    niv_urange = box_sizes['niv_urange']
+    niv_asympt = box_sizes['niv_asympt']
+
+    chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
+    chi0_asympt = copy.deepcopy(chi0_urange)
+    chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
+
+    chi_rpa_dens = fp.local_rpa_susceptibility(chi0=chi0_asympt,channel='dens',u=u)
+    chi_rpa_magn = fp.local_rpa_susceptibility(chi0=chi0_asympt,channel='magn',u=u)
+
+    siw_rpa_dens = local_rpa_sde(chir = chi_rpa_dens, niv_giw=niv_urange, u=u)
+    siw_rpa_magn = local_rpa_sde(chir = chi_rpa_magn, niv_giw=niv_urange, u=u)
+
+    rpa_sde = {
+        'siw_rpa_dens':siw_rpa_dens,
+        'siw_rpa_magn':siw_rpa_magn
+    }
+
+    return rpa_sde
+
+# ======================================================================================================================
 
 
 # ======================================================================================================================
@@ -54,9 +95,12 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
 
     niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']
+    niv_asympt = box_sizes['niv_asympt']
 
     chi0_core = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_core, iw=iw)
     chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
+    chi0_asympt = copy.deepcopy(chi0_urange)
+    chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
 
     gchi_dens_loc = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_dens), giw=g2_dens.giw,
                                       channel=g2_dens.channel,
@@ -80,29 +124,47 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
     chi_dens_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_dens_loc, chi0_urange=chi0_urange,
                                                          chi0_core=chi0_core,
                                                          u=u)
+    chi_dens_asympt_loc = copy.deepcopy(chi_dens_urange_loc)
+    chi_dens_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
+
 
     chi_magn_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_magn_loc, chi0_urange=chi0_urange,
                                                          chi0_core=chi0_core,
                                                          u=u)
+    chi_magn_asympt_loc = copy.deepcopy(chi_magn_urange_loc)
+    chi_magn_asympt_loc.add_asymptotic(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange)
 
-    vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
+    # vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
+    # vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
 
-    vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,niv_urange=niv_urange,u=u)
+    vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,
+                                                           chi_asympt=chi_dens_asympt_loc,
+                                                           chi_urange=chi_dens_urange_loc,
+                                                           niv_urange=niv_urange,
+                                                           u=u)
 
-    siw_dens = local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_urange_loc, u=u)
-    siw_magn = local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_urange_loc, u=u)
+    vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
+                                                           chi_asympt=chi_magn_asympt_loc,
+                                                           chi_urange=chi_magn_urange_loc,
+                                                           niv_urange=niv_urange,
+                                                           u=u)
+
+
+    siw_dens = local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_asympt_loc, u=u)
+    siw_magn = local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_asympt_loc, u=u)
 
     siw = siw_dens + siw_magn
 
     dmft_sde = {
         'chi0_core': chi0_core,
         'chi0_urange': chi0_urange,
+        'chi0_asympt': chi0_asympt,
         'gamma_dens': gamma_dens,
         'gamma_magn': gamma_magn,
         'vrg_dens': vrg_dens_loc,
         'vrg_magn': vrg_magn_loc,
-        'chi_dens': chi_dens_urange_loc,
-        'chi_magn': chi_magn_urange_loc,
+        'chi_dens': chi_dens_asympt_loc,
+        'chi_magn': chi_magn_asympt_loc,
         'siw_dens': siw_dens,
         'siw_magn': siw_magn,
         'siw': siw,

@@ -66,18 +66,20 @@ tpp = 0.10 * t * 0
 # tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 30
-niv_core = 15
-niv_invbse = 30
-niv_urange = 100
+niw_core = 8
+niw_urange = 8
+niv_core = 8
+niv_invbse = 8
+niv_urange = 50
+niv_asympt = 0
 
 # Define k-ranges:
-nkf = 32
-nqf = 32
+nkf = 16
+nqf = 16
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 
-output_folder = 'LambdaDga_Nk{}_Nq{}_core{}_urange{}'.format(np.prod(nk), np.prod(nq), niw_core, niv_urange)
+output_folder = 'LambdaDga_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}_asympt{}'.format(np.prod(nk), np.prod(nq), niw_core,niv_invbse, niv_urange, niw_urange, niv_asympt)
 output_path = output.uniquify(output_path + output_folder) + '/'
 fname_ladder_vertex = output_path + fname_ladder_vertex
 
@@ -125,9 +127,11 @@ names = {
 box_sizes = {
     "niv_dmft": niv_dmft,
     "niw_core": niw_core,
+    "niw_urange": niw_urange,
     "niv_core": niv_core,
     "niv_invbse": niv_invbse,
     "niv_urange": niv_urange,
+    "niv_asympt": niv_asympt,
     "nk": nk,
     "nq": nq
 }
@@ -136,7 +140,9 @@ grids = {
     "vn_dmft": mf.vn(n=niv_dmft),
     "vn_core": mf.vn(n=niv_core),
     "vn_urange": mf.vn(n=niv_urange),
+    "vn_asympt": mf.vn(n=niv_asympt),
     "wn_core": mf.wn(n=niw_core),
+    "wn_rpa": mf.wn_outer(n_core=niw_core,n_outer=niw_urange),
     "k_grid": k_grid,
     "q_grid": q_grid
 }
