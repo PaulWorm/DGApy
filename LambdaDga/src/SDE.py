@@ -75,7 +75,9 @@ def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
 
     rpa_sde = {
         'siw_rpa_dens':siw_rpa_dens,
-        'siw_rpa_magn':siw_rpa_magn
+        'siw_rpa_magn':siw_rpa_magn,
+        'chi_rpa_dens':chi_rpa_dens,
+        'chi_rpa_magn':chi_rpa_magn
     }
 
     return rpa_sde

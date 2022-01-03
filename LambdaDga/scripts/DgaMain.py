@@ -39,11 +39,11 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -53,12 +53,13 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = False
 keep_ladder_vertex = False
-lambda_correction_type = 'totdens' # Available: ['both','totdens','none','monly']
+lambda_correction_type = 'spch' # Available: ['spch','sp','none','sp_only']
+use_urange_for_lc = False # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00
+t = 1.00 * 0.25
 tp = -0.20 * t * 0
 tpp = 0.10 * t * 0
 # t = 0.25
@@ -79,7 +80,7 @@ nqf = 8
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 
-output_folder = 'LambdaDga_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}_asympt{}'.format(np.prod(nk), np.prod(nq), niw_core,niv_invbse, niv_urange, niw_urange, niv_asympt)
+output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}_asympt{}'.format(lambda_correction_type,np.prod(nk), np.prod(nq), niw_core,niv_invbse, niv_urange, niw_urange, niv_asympt)
 output_path = output.uniquify(output_path + output_folder) + '/'
 fname_ladder_vertex = output_path + fname_ladder_vertex
 
@@ -107,6 +108,7 @@ if(dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 options = {
     'do_pairing_vertex': do_pairing_vertex,
     'lambda_correction_type':lambda_correction_type,
+    'use_urange_for_lc':use_urange_for_lc,
     'lattice': lattice
 }
 

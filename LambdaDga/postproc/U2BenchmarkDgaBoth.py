@@ -36,7 +36,7 @@ def load_ldga_n_an(path=None):
     sigma = dga_sde['sigma']
     dmft1p = config['dmft1p']
     dmft_sigma = config['dmft1p']['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
-    #sigma = -1*dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] + 2*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
+    sigma = -1*dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] + 2*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
     #sigma = dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] - 0*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
     sigma_node = sigma[nk[0]//4,nk[1]//4,0,niv_urange:]
     sigma_anti_node = sigma[nk[0]//2,0,0,niv_urange:]
@@ -45,20 +45,20 @@ def load_ldga_n_an(path=None):
 
 # ----------------------------------------------- LOAD DATA ------------------------------------------------------------
 input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/'
-bm_path = input_path + 'DiagMcBm/'
+bm_path = input_path + 'DgaTsBoth/'
 
 # DiagMc Benchmark data:
 dmc_n_1 = np.array(np.genfromtxt(bm_path + 'N_T_1.0.csv', delimiter=','))
 dmc_n_03 = np.array(np.genfromtxt(bm_path + 'N_T_0.33.csv', delimiter=','))
 dmc_n_01 = np.array(np.genfromtxt(bm_path + 'N_T_0.1.csv', delimiter=','))
-dmc_n_065 = np.array(np.genfromtxt(bm_path + 'N_T_0.065.csv', delimiter=','))
-dmc_n_063 = np.array(np.genfromtxt(bm_path + 'N_T_0.063.csv', delimiter=','))
+dmc_n_065 = np.array(np.genfromtxt(bm_path + 'N_T_0.067.csv', delimiter=','))
+dmc_n_063 = np.array(np.genfromtxt(bm_path + 'N_T_0.05.csv', delimiter=','))
 
 dmc_an_1 = np.array(np.genfromtxt(bm_path + 'AN_T_1.0.csv', delimiter=','))
 dmc_an_03 = np.array(np.genfromtxt(bm_path + 'AN_T_0.33.csv', delimiter=','))
 dmc_an_01 = np.array(np.genfromtxt(bm_path + 'AN_T_0.1.csv', delimiter=','))
-dmc_an_065 = np.array(np.genfromtxt(bm_path + 'AN_T_0.065.csv', delimiter=','))
-dmc_an_063 = np.array(np.genfromtxt(bm_path + 'AN_T_0.063.csv', delimiter=','))
+dmc_an_065 = np.array(np.genfromtxt(bm_path + 'AN_T_0.067.csv', delimiter=','))
+dmc_an_063 = np.array(np.genfromtxt(bm_path + 'AN_T_0.05.csv', delimiter=','))
 
 
 # Lambda-Dda Data:
@@ -78,21 +78,21 @@ chi_ladder = load_ldga_chi_ladder(path_01)
 w01, sldga_n_01, sldga_an_01= load_ldga_n_an(path_01)
 
 
-nk = config_01['box_sizes']['nk']
-niw_core = config_01['box_sizes']['niw_core']
-chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
-fig = plt.figure()
-plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
-plt.colorbar()
-plt.show()
+# nk = config_01['box_sizes']['nk']
+# niw_core = config_01['box_sizes']['niw_core']
+# chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
+# fig = plt.figure()
+# plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
+# plt.colorbar()
+# plt.show()
 
 
 
-path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk576_Nq576_core12_urange100/'
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk14400_Nq14400_core30_urange60/'
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 
-path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk4096_Nq4096_core12_invbse30_vurange200_wurange100_asympt0/'
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_Nk14400_Nq14400_core30_urange60/'
 ldga_066, config_066 = load_ldga_data(path_066)
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
@@ -125,7 +125,7 @@ ax0.plot(w1,sldga_an_1.imag,'-s', color=colors[0], ms=2, markeredgecolor='k')
 ax0.plot(w03,sldga_an_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax0.plot(w01,sldga_an_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
 ax0.plot(w066,sldga_an_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
-ax0.plot(w063,sldga_an_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+#ax0.plot(w063,sldga_an_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax0.set_xlim(0,5)
 
 # Node:
@@ -139,7 +139,7 @@ ax1.plot(w1,sldga_n_1.imag,'-s', color=colors[0], ms=2, markeredgecolor='k')
 ax1.plot(w03,sldga_n_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax1.plot(w01,sldga_n_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
 ax1.plot(w066,sldga_n_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
-ax1.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+#ax1.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax1.set_xlim(0,5)
 
 ax0.set_xlabel(r'$\omega_n$')
@@ -153,16 +153,16 @@ plt.tight_layout()
 plt.show()
 
 
-fig = plt.figure()
-plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-
-fig = plt.figure()
-plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
-plt.colorbar()
-plt.show()
+# fig = plt.figure()
+# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+#
+# fig = plt.figure()
+# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
 
 
 

@@ -31,10 +31,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     wn_core = config['grids']['wn_core']
     wn_rpa = config['grids']['wn_rpa']
     niw_core = config['box_sizes']['niw_core']
-    niv_core = config['box_sizes']['niv_core']
     niv_invbse = config['box_sizes']['niv_invbse']
     niv_urange = config['box_sizes']['niv_urange']
-    niv_asympt = config['box_sizes']['niv_asympt']
     path = config['names']['input_path']
     fname_g2 = config['names']['fname_g2']
     beta = config['system']['beta']
@@ -45,6 +43,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     dmft1p = config['dmft1p']
     output_path = config['names']['output_path']
     do_pairing_vertex = config['options']['do_pairing_vertex']
+    use_urange_for_lc = config['options']['use_urange_for_lc']
     lambda_correction_type = config['options']['lambda_correction_type']
 
     k_grid = config['grids']['k_grid']
@@ -86,7 +85,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi0_urange = dmft_sde['chi0_urange'].chi0
     chi0_asympt = dmft_sde['chi0_asympt'].chi0
 
-
     chi_dens_loc = fp.LocalSusceptibility(matrix=chi_dens_loc_mat, giw=dmft_sde['chi_dens'].giw,
                                           channel=dmft_sde['chi_dens'].channel,
                                           beta=dmft_sde['chi_dens'].beta, iw=wn_core)
@@ -108,7 +106,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'gamma_magn': gamma_magn
     }
 
-    if(np.size(wn_rpa) > 0):
+    if (np.size(wn_rpa) > 0):
         dmft_sde['siw_dens'] = dmft_sde['siw_dens'] + dmft_sde['siw_rpa_dens']
         dmft_sde['siw_magn'] = dmft_sde['siw_magn'] + dmft_sde['siw_rpa_magn']
         dmft_sde['siw'] = dmft_sde['siw_dens'] + dmft_sde['siw_magn'] + dmft_sde['hartree']
@@ -132,13 +130,14 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                               my_slice=qiw_distributor.my_slice)
 
     qiw_distributor_rpa = mpiaux.MpiDistributor(ntasks=wn_rpa.size * nq_tot, comm=comm, output_path=output_path,
-                                            name='Qiw')
+                                                name='Qiw')
     qiw_grid_rpa = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (wn_rpa,), keys=index_grid_keys,
-                              my_slice=qiw_distributor_rpa.my_slice)
+                                  my_slice=qiw_distributor_rpa.my_slice)
 
     # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -------------------------------------------
 
-    chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, box_sizes=box_sizes, hr=hr, kgrid=k_grid.get_grid_as_tuple(), qiw_grid=qiw_grid_rpa.my_mesh)
+    chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, box_sizes=box_sizes, hr=hr, kgrid=k_grid.get_grid_as_tuple(),
+                                    qiw_grid=qiw_grid_rpa.my_mesh)
 
     # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  ----------------------------------------
 
@@ -169,6 +168,19 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
 
+    if (use_urange_for_lc):
+        chi_dens_rpa_mat = qiw_distributor_rpa.allgather(rank_result=chi_rpa['chi_rpa_dens'].mat)
+        chi_magn_rpa_mat = qiw_distributor_rpa.allgather(rank_result=chi_rpa['chi_rpa_magn'].mat)
+
+        chi_dens_rpa = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='dens', u=dmft1p['u'], beta=dmft1p['beta'])
+        chi_dens_rpa.mat = chi_dens_rpa_mat
+
+        chi_magn_rpa = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
+        chi_magn_rpa.mat = chi_magn_rpa_mat
+    else:
+        chi_dens_rpa = []
+        chi_magn_rpa = []
+
     chi_dens_ladder_mat = qiw_distributor.allgather(rank_result=dga_susc['chi_dens_asympt'].mat)
     chi_magn_ladder_mat = qiw_distributor.allgather(rank_result=dga_susc['chi_magn_asympt'].mat)
 
@@ -182,22 +194,24 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_magn_ladder = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_ladder.mat = chi_magn_ladder_mat
 
-    if(lambda_correction_type=='both'):
-        lambda_dens = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_dens_ladder), chir=chi_dens_ladder, chi_loc=chi_dens_loc, nq=np.prod(q_grid.nk))
-        lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
-                                           chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
-    elif(lambda_correction_type=='totdens'):
+    lambda_ = lc.lambda_correction(chi_magn_ladder=chi_magn_ladder, chi_dens_ladder=chi_dens_ladder,
+                                   chi_dens_rpa=chi_dens_rpa, chi_magn_rpa=chi_magn_rpa, chi_magn_dmft=chi_magn_loc,
+                                   chi_dens_dmft=chi_dens_loc, chi_magn_rpa_loc=local_rpa_sde['chi_rpa_magn'],
+                                   chi_dens_rpa_loc=local_rpa_sde['chi_rpa_magn'], nq=np.prod(q_grid.nk),
+                                   use_rpa_for_lc=use_urange_for_lc)
+
+    if(lambda_correction_type=='spch'):
+        lambda_dens = lambda_['lambda_dens_single']
+        lambda_magn = lambda_['lambda_magn_single']
+    elif(lambda_correction_type=='sp'):
         lambda_dens = 0.0
-        lambda_magn = lc.lambda_correction_totdens(lambda_start=lc.get_lambda_start(chi_magn_ladder), chi_magn=chi_magn_ladder,
-                                                   chi_magn_loc=chi_magn_loc,chi_dens_loc=chi_dens_loc,chi_dens=chi_dens_ladder,
-                                                   nq=np.prod(q_grid.nk))
-    elif (lambda_correction_type == 'none'):
+        lambda_magn = lambda_['lambda_magn_totdens']
+    elif(lambda_correction_type=='sp_only'):
+        lambda_dens = 0.0
+        lambda_magn = lambda_['lambda_magn_single']
+    elif(lambda_correction_type=='none'):
         lambda_dens = 0.0
         lambda_magn = 0.0
-    elif(lambda_correction_type == 'monly'):
-        lambda_dens = 0.0
-        lambda_magn = lc.lambda_correction(lambda_start=lc.get_lambda_start(chi_magn_ladder), chir=chi_magn_ladder,
-                                           chi_loc=chi_magn_loc, nq=np.prod(q_grid.nk))
     else:
         raise ValueError('Unknown value for lambda_correction_type!')
 
@@ -232,12 +246,10 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
     comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
 
-    sigma_dens_dga = sigma_dens_dga_reduce
-    sigma_magn_dga = sigma_magn_dga_reduce
-
-    sigma_dens_rpa = sde.rpa_sde(chir = chi_rpa['chi_rpa_dens'], g_generator = g_generator, niv_giw=niv_urange, mu=dmft1p['mu'],nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh)
-    sigma_magn_rpa = sde.rpa_sde(chir = chi_rpa['chi_rpa_magn'], g_generator = g_generator, niv_giw=niv_urange, mu=dmft1p['mu'],nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh)
-
+    sigma_dens_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_dens'], g_generator=g_generator, niv_giw=niv_urange,
+                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh)
+    sigma_magn_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_magn'], g_generator=g_generator, niv_giw=niv_urange,
+                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh)
 
     sigma_dens_rpa_reduce = np.zeros(np.shape(sigma_dens_rpa), dtype=complex)
     comm.Allreduce(sigma_dens_rpa, sigma_dens_rpa_reduce)
@@ -247,16 +259,15 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dens_rpa = sigma_dens_rpa_reduce
     sigma_magn_rpa = sigma_magn_rpa_reduce
 
+    if (wn_rpa.size > 0):
+        sigma_dens_dga = sigma_dens_dga_reduce + sigma_dens_rpa
+        sigma_magn_dga = sigma_magn_dga_reduce + sigma_magn_rpa
 
-
-    sigma_dga_nc = -1*sigma_dens_dga + 3*sigma_magn_dga + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * dmft_sde['siw_dens'] \
-                   - dmft_sde['siw'] + dmft1p['sloc'][dmft1p[ 'niv'] - niv_urange:dmft1p['niv'] + niv_urange]
+    sigma_dga_nc = -1 * sigma_dens_dga + 3 * sigma_magn_dga + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * \
+                   dmft_sde['siw_dens'] \
+                   - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
     sigma_dga = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
                 dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
-
-    if(wn_rpa.size > 0):
-        sigma_dga = sigma_dga + sigma_dens_rpa + 3 * sigma_magn_rpa
-        sigma_dga_nc = sigma_dga_nc - sigma_dens_rpa + 3 * sigma_magn_rpa
 
     if (verbose):
         outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))
@@ -267,7 +278,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'sigma_dens_rpa': sigma_dens_rpa,
         'sigma_magn_rpa': sigma_magn_rpa,
         'sigma': sigma_dga,
-        'sigma_nc': sigma_dga_nc,
+        'sigma_nc': sigma_dga_nc
     }
 
     chi_lambda = {

@@ -54,7 +54,7 @@ def load_fortran_chi_lambda(fname=None):
 # Parameters:
 
 input_path_f = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/LambdaDgaFortran/LambdaDga_Nk32_Nq32_new_3/'
-input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/LambdaDga_Nk1024_Nq1024_core8_invbse8_urange100_asympt0/'
+input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/LambdaDga_Nk14400_Nq14400_core30_urange60/'
 output_path = input_path
 
 dmft_sde = np.load(input_path+'dmft_sde.npy',allow_pickle=True).item()
@@ -70,6 +70,7 @@ chi_magn = dmft_sde['chi_magn']
 chi_dens_ladder = chi_ladder['chi_dens_ladder'].mat.reshape(nk+(niw_core*2+1,))
 chi_dens_ladder_loc = chi_dens_ladder.mean(axis=(0,1,2))
 chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
+chi_magn_ladder_pi_pi = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
 chi_magn_ladder_loc = chi_magn_ladder.mean(axis=(0,1,2))
 
 chi_dens_lambda = chi_lambda['chi_dens_lambda'].mat.reshape(nk+(niw_core*2+1,))
@@ -110,11 +111,20 @@ plt.plot(chi_magn.mat.real,'-o')
 plt.plot(chi_magn_f.real,'-^')
 plt.show()
 
+# fig = plt.figure()
+# plt.plot(chi_magn.mat.real-chi_magn_f.real,'-o')
+# plt.show()
+#
+# fig = plt.figure()
+# plt.plot(chi_magn_lambda_loc-chi_magn_lambda_loc_f, '-o')
+# plt.show()
+
 fig = plt.figure()
-plt.plot(chi_magn.mat.real-chi_magn_f.real,'-o')
+plt.plot(chi_magn_ladder_loc, '-o')
+plt.plot(chi_magn_ladder_loc_f, '-^')
 plt.show()
 
 fig = plt.figure()
-plt.plot(chi_magn_lambda_loc-chi_magn_lambda_loc_f, '-o')
+plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
+plt.colorbar()
 plt.show()
-
