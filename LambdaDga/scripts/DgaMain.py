@@ -34,12 +34,12 @@ comm = mpi.COMM_WORLD
 input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
@@ -51,7 +51,7 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp' # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = False # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -59,24 +59,24 @@ lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00 * 0.25
+t = 1.00
 tp = -0.20 * t * 0
 tpp = 0.10 * t * 0
-# t = 0.25
-# tp = -0.25 * t * 0
-# tpp = 0.12 * t * 0
+t = 0.25
+tp = -0.25 * t
+tpp = 0.12 * t
 
 # Define frequency box-sizes:
-niw_core = 10
-niw_urange = 10
-niv_core = 10
-niv_invbse = 10
-niv_urange = 10
+niw_core = 30
+niw_urange = 50
+niv_core = 30
+niv_invbse = 30
+niv_urange = 50
 niv_asympt = 0 # Don't use this for now.
 
 # Define k-ranges:
-nkf = 8
-nqf = 8
+nkf = 16
+nqf = 16
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 
@@ -314,26 +314,39 @@ if(do_pairing_vertex and comm.rank == 0):
     f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
     f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
     f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    if (do_pairing_vertex):
-        if (qiw_distributor.my_rank == 0):
-            file_out = h5py.File(fname_ladder_vertex, 'w')
-            for ir in range(qiw_distributor.mpi_size):
-                fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
-                file_in = h5py.File(fname_input, 'r')
-                for key1 in list(file_in.keys()):
-                    # extract the q indizes from the group name!
-                    qx = np.array(re.findall("\d+",key1), dtype=int)[0]
-                    qy = np.array(re.findall("\d+",key1), dtype=int)[1]
-                    qz = np.array(re.findall("\d+",key1), dtype=int)[2]
-                    condition = file_in[key1 + '/condition/'][()]
-                    f1_magn[qx,qy,qz,condition] = file_in[key1 +'/f1_magn/'][()]
-                    f2_magn[qx,qy,qz,condition] = file_in[key1 +'/f2_magn/'][()]
-                    f1_dens[qx,qy,qz,condition] = file_in[key1 +'/f1_dens/'][()]
-                    f2_dens[qx,qy,qz,condition] = file_in[key1 +'/f2_dens/'][()]
+    if (qiw_distributor.my_rank == 0):
+        file_out = h5py.File(fname_ladder_vertex, 'w')
+        for ir in range(qiw_distributor.mpi_size):
+            fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
+            file_in = h5py.File(fname_input, 'r')
+            for key1 in list(file_in.keys()):
+                # extract the q indizes from the group name!
+                qx = np.array(re.findall("\d+",key1), dtype=int)[0]
+                qy = np.array(re.findall("\d+",key1), dtype=int)[1]
+                qz = np.array(re.findall("\d+",key1), dtype=int)[2]
+                condition = file_in[key1 + '/condition/'][()]
+                f1_magn[qx,qy,qz,condition] = file_in[key1 +'/f1_magn/'][()]
+                f2_magn[qx,qy,qz,condition] = file_in[key1 +'/f2_magn/'][()]
+                f1_dens[qx,qy,qz,condition] = file_in[key1 +'/f1_dens/'][()]
+                f2_dens[qx,qy,qz,condition] = file_in[key1 +'/f2_dens/'][()]
 
-                file_in.close()
-                #os.remove(fname_input)
-            file_out.close()
+            file_in.close()
+            os.remove(fname_input)
+        file_out.close()
+
+elif(not do_pairing_vertex and comm.rank == 0):
+    import MpiAux as mpiaux
+    import h5py
+    import re
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
+                                            output_path=output_path,
+                                            name='Qiw')
+    if (qiw_distributor.my_rank == 0):
+        for ir in range(qiw_distributor.mpi_size):
+            fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
+            os.remove(fname_input)
+else:
+    pass
 
 if(do_pairing_vertex and comm.rank == 0):
     import RealTime as rt
