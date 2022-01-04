@@ -227,6 +227,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='dens', u=dmft1p['u'],
                                                      beta=dmft1p['beta'])
+
     chi_dens_lambda_my_qiw.mat = chi_dens_lambda.mat[qiw_grid.my_slice]
 
     chi_magn_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='magn', u=dmft1p['u'],
@@ -263,10 +264,10 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         sigma_dens_dga = sigma_dens_dga_reduce + sigma_dens_rpa
         sigma_magn_dga = sigma_magn_dga_reduce + sigma_magn_rpa
 
-    sigma_dga_nc = -1 * sigma_dens_dga + 3 * sigma_magn_dga + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * \
+    sigma_dga = -1 * sigma_dens_dga + 3 * sigma_magn_dga + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * \
                    dmft_sde['siw_dens'] \
                    - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
-    sigma_dga = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
+    sigma_dga_nc = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
                 dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
 
     if (verbose):

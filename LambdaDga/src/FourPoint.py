@@ -19,6 +19,11 @@ def cut_iv(mat=None, niv_cut=10):
     assert (mat.shape[-1] == mat.shape[-2]), 'Last two dimensions of the array are not consistent'
     return mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
+def cut_iw(mat=None, niw_cut=0):
+    assert mat.shape > 1, 'Matrix has to be reshaped to [qx,qy,qz,Niw] format.'
+    niw = mat.shape[-1] // 2
+    mat =mat[..., niw - niw_cut:niw + niw_cut+1]
+    return mat
 
 def get_ggv(giw=None, niv_ggv=-1):
     niv = giw.shape[0] // 2
@@ -559,6 +564,7 @@ class LadderSusceptibility(Susceptibility):
 
     def mat_to_array(self):
         self.mat = np.array(self.mat)
+
 
 
 # ======================================================================================================================

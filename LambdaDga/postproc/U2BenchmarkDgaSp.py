@@ -93,7 +93,7 @@ w01, sldga_n_01, sldga_an_01= load_ldga_n_an(path_01)
 
 
 
-path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_lc_sp_Nk1024_Nq1024_core30_invbse30_vurange100_wurange100/'
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_lc_sp_Nk1024_Nq1024_core30_invbse30_vurange50_wurange50/'
 ldga_066, config_066 = load_ldga_data(path_066)
 w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 
