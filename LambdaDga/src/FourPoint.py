@@ -876,9 +876,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     vrg_dens = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
 
-    vrg_dens_core = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
-    vrg_magn_core = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
-
     g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr, sigma=siw)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
@@ -938,8 +935,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
 
-        vrg_dens_core.ladder[iqw] = vrgq_dens_core
-        vrg_magn_core.ladder[iqw] = vrgq_magn_core
 
         chi0q_core_full.mat[iqw] = chi0q_core.chi0
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
@@ -948,10 +943,10 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         # print(file)
         # print(do_pairing_vertex)
         if (do_pairing_vertex):
-            ivn = np.arange(-niv_core // 2, niv_core // 2) * 2 + 1
+            ivn = np.arange(-niv_core // 2, niv_core // 2) #* 2 + 1
             V, VP = np.meshgrid(ivn, ivn)
             omega = V - VP
-            condition = omega == (wn * 2)
+            condition = omega == wn #(wn * 2)
 
             f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat,
                                                                                     vrg=vrgq_magn_core.mat,
@@ -961,19 +956,18 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                                                                                     vrg=vrgq_dens_core.mat,
                                                                                     gchi0=chi0q_core.gchi0, beta=beta,
                                                                                     u_r=get_ur(u=u, channel='dens'))
-            ind = qiw_indizes[iqw][:-1]
+            # ind = qiw_indizes[iqw][:-1]
             # f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
             # f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
             # f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
             # f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
 
-            if (do_pairing_vertex):
-                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
-                file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, wn=wn)
-                file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, wn=wn)
-                file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, wn=wn)
-                file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, wn=wn)
-                file[group + 'condition/'] = condition
+            group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
+            file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, wn=wn)
+            file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, wn=wn)
+            file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, wn=wn)
+            file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, wn=wn)
+            file[group + 'condition/'] = condition
 
     # if(do_pairing_vertex):
     #     f_ladder = {
@@ -991,9 +985,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     vrg_dens.set_qiw_mat()
     vrg_magn.set_qiw_mat()
 
-    vrg_dens_core.set_qiw_mat()
-    vrg_magn_core.set_qiw_mat()
-
     chi0q_asympt_full.mat_to_array()
     chi0q_urange_full.mat_to_array()
     chi0q_core_full.mat_to_array()
@@ -1003,13 +994,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         'chi_magn_asympt': chi_magn_asympt,
         'vrg_dens': vrg_dens,
         'vrg_magn': vrg_magn,
-        'vrg_dens_core': vrg_dens_core,
-        'vrg_magn_core': vrg_magn_core,
         'chi0q_core': chi0q_core_full,
         'chi0q_urange': chi0q_urange_full,
         'chi0q_asympt': chi0q_asympt_full
     }
-    return dga_susc  # , f_ladder
+    return dga_susc  #, f_ladder
 
 
 if __name__ == "__main__":

@@ -149,22 +149,22 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     if (verbose):
         outpfunc(realt.string_time('Non-local Susceptibility: '))
 
-    if (do_pairing_vertex):
-        f1_magn = np.zeros(np.shape(f_ladder['f1_magn']), dtype=complex)
-        f2_magn = np.zeros(np.shape(f_ladder['f2_magn']), dtype=complex)
-        f1_dens = np.zeros(np.shape(f_ladder['f1_dens']), dtype=complex)
-        f2_dens = np.zeros(np.shape(f_ladder['f2_dens']), dtype=complex)
-        comm.Allreduce(f_ladder['f1_magn'], f1_magn)
-        comm.Allreduce(f_ladder['f2_magn'], f2_magn)
-        comm.Allreduce(f_ladder['f1_dens'], f1_dens)
-        comm.Allreduce(f_ladder['f2_dens'], f2_dens)
-
-        f_ladder = {
-            'f1_magn': f1_magn,
-            'f2_magn': f2_magn,
-            'f1_dens': f1_dens,
-            'f2_dens': f2_dens
-        }
+    # if (do_pairing_vertex):
+    #     f1_magn = np.zeros(np.shape(f_ladder['f1_magn']), dtype=complex)
+    #     f2_magn = np.zeros(np.shape(f_ladder['f2_magn']), dtype=complex)
+    #     f1_dens = np.zeros(np.shape(f_ladder['f1_dens']), dtype=complex)
+    #     f2_dens = np.zeros(np.shape(f_ladder['f2_dens']), dtype=complex)
+    #     comm.Allreduce(f_ladder['f1_magn'], f1_magn)
+    #     comm.Allreduce(f_ladder['f2_magn'], f2_magn)
+    #     comm.Allreduce(f_ladder['f1_dens'], f1_dens)
+    #     comm.Allreduce(f_ladder['f2_dens'], f2_dens)
+    #
+    #     f_ladder = {
+    #         'f1_magn': f1_magn,
+    #         'f2_magn': f2_magn,
+    #         'f1_dens': f1_dens,
+    #         'f2_dens': f2_dens
+    #     }
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
 

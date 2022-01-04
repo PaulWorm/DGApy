@@ -39,11 +39,11 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -51,7 +51,7 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = False
+do_pairing_vertex = True
 keep_ladder_vertex = False
 lambda_correction_type = 'sp' # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = False # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -59,7 +59,7 @@ lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00
+t = 1.00 * 0.25
 tp = -0.20 * t * 0
 tpp = 0.10 * t * 0
 # t = 0.25
@@ -67,11 +67,11 @@ tpp = 0.10 * t * 0
 # tpp = 0.12 * t * 0
 
 # Define frequency box-sizes:
-niw_core = 15
-niw_urange = 45
-niv_core = 15
-niv_invbse = 15
-niv_urange = 90
+niw_core = 10
+niw_urange = 10
+niv_core = 10
+niv_invbse = 10
+niv_urange = 10
 niv_asympt = 0 # Don't use this for now.
 
 # Define k-ranges:
@@ -303,6 +303,7 @@ if (comm.rank == 0):
 if(do_pairing_vertex and comm.rank == 0):
     import MpiAux as mpiaux
     import h5py
+    import re
 
     qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
                                             output_path=output_path,
@@ -321,11 +322,17 @@ if(do_pairing_vertex and comm.rank == 0):
                 file_in = h5py.File(fname_input, 'r')
                 for key1 in list(file_in.keys()):
                     # extract the q indizes from the group name!
-                    condition = file_in[key1 + 'condition/'][()]
-                    f1_magn = file_in[key1 +'f1_magn/'][()]
+                    qx = np.array(re.findall("\d+",key1), dtype=int)[0]
+                    qy = np.array(re.findall("\d+",key1), dtype=int)[1]
+                    qz = np.array(re.findall("\d+",key1), dtype=int)[2]
+                    condition = file_in[key1 + '/condition/'][()]
+                    f1_magn[qx,qy,qz,condition] = file_in[key1 +'/f1_magn/'][()]
+                    f2_magn[qx,qy,qz,condition] = file_in[key1 +'/f2_magn/'][()]
+                    f1_dens[qx,qy,qz,condition] = file_in[key1 +'/f1_dens/'][()]
+                    f2_dens[qx,qy,qz,condition] = file_in[key1 +'/f2_dens/'][()]
 
                 file_in.close()
-                os.remove(fname_input)
+                #os.remove(fname_input)
             file_out.close()
 
 if(do_pairing_vertex and comm.rank == 0):
@@ -345,15 +352,15 @@ if(do_pairing_vertex and comm.rank == 0):
     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_dens_lambda, niv_pp=niv_pp)
     chi_magn_lambda_pp = pv.reshape_chi(chi=chi_magn_lambda, niv_pp=niv_pp)
 
-    f_magn = f_ladder['f1_magn'] + (1 + dmft1p['u'] * chi_magn_lambda_pp) * f_ladder['f2_magn']
-    f_dens = f_ladder['f1_dens'] + (1 - dmft1p['u'] * chi_dens_lambda_pp) * f_ladder['f2_dens']
+    f_magn = f1_magn + (1 + dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
+    f_dens = f1_dens + (1 - dmft1p['u'] * chi_dens_lambda_pp) * f2_dens
 
     f_sing = -1.5 * f_magn + 0.5 * f_dens
     f_trip = -0.5 * f_magn - 0.5 * f_dens
 
     f_magn_loc = f_magn.mean(axis=(0, 1, 2))
-    f1_magn_loc = f_ladder['f1_magn'].mean(axis=(0, 1, 2))
-    f2_magn_loc = f_ladder['f2_magn'].mean(axis=(0, 1, 2))
+    f1_magn_loc = f1_magn.mean(axis=(0, 1, 2))
+    f2_magn_loc = f2_magn.mean(axis=(0, 1, 2))
 
     f_dens_loc = f_dens.mean(axis=(0, 1, 2))
 
