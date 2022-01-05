@@ -78,17 +78,19 @@ tppy = 0.085
 
 # Define frequency box-sizes:
 # Currently the niw range has to be 1 smaller than the niv range. I hope there is no frequency shift error.
-niw_core = 25
-niw_urange = 80
-niv_core = 25
-niv_invbse = 60
-niv_urange = 120
+niw_core = 8
+niw_urange = 10
+niv_core = 10
+niv_invbse = 10
+niv_urange = 20
 niv_asympt = 0  # Don't use this for now.
 
+niv_pp = np.min((niw_core//2,niv_core//2))
+
 # Define k-ranges:
-nkx = 64
+nkx = 8
 nky = nkx
-nqx = 64
+nqx = 8
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -153,6 +155,7 @@ box_sizes = {
     "niv_invbse": niv_invbse,
     "niv_urange": niv_urange,
     "niv_asympt": niv_asympt,
+    "niv_pp":niv_pp,
     "nk": nk,
     "nq": nq
 }
@@ -337,10 +340,10 @@ if (do_pairing_vertex and comm.rank == 0):
                                             name='Qiw')
 
     # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    f1_magn = np.zeros(nq + (niv_core, niv_core), dtype=complex)
-    f2_magn = np.zeros(nq + (niv_core, niv_core), dtype=complex)
-    f1_dens = np.zeros(nq + (niv_core, niv_core), dtype=complex)
-    f2_dens = np.zeros(nq + (niv_core, niv_core), dtype=complex)
+    f1_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f2_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f1_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f2_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
     if (qiw_distributor.my_rank == 0):
         file_out = h5py.File(fname_ladder_vertex, 'w')
         for ir in range(qiw_distributor.mpi_size):
@@ -384,8 +387,6 @@ if (do_pairing_vertex and comm.rank == 0):
     log(realt.string_time('Start pairing vertex:'))
 
     import PairingVertex as pv
-
-    niv_pp = niv_core // 2
 
     chi_dens_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_dens_lambda'].mat)
     chi_magn_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_magn_lambda'].mat)
@@ -457,11 +458,16 @@ if (do_pairing_vertex and comm.rank == 0):
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
                                                sigma=dga_sde['sigma'])
     mu_dga = g_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
-    gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_core // 2).gk
+    gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_pp).gk
+
+    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type='d-wave', v_type='even', k_grid=q_grid.get_grid_as_tuple())
+
     lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps=10 ** -7, max_count=10000,
-                                                   norm=np.prod(nq) * dmft1p['beta'])
+                                                   norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
+
+    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type='d-wave', v_type='odd', k_grid=q_grid.get_grid_as_tuple())
     lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps=10 ** -7, max_count=10000,
-                                                   norm=np.prod(nq) * dmft1p['beta'])
+                                                   norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
 
     eliashberg = {
         'lambda_sing': lambda_sing,

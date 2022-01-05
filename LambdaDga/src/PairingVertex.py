@@ -45,34 +45,24 @@ def ph_to_pp_notation(mat_ph=None,wn=0):
 
     return mat_pp
 
-# def get_pp_slice_4pt(mat=None, wn = None):
+def get_pp_slice_4pt(mat=None, condition=None, niv_pp=None):
+    mat = np.flip(mat,axis=-1)
+    mat_cut = mf.cut_iv_2d(arr=mat,niv_cut=niv_pp)
+    slice = mat_cut[condition].flatten()
+    return slice
+
+# def get_pp_slice_4pt(mat=None, wn = None, niv_pp=None):
 #     niv = np.shape(mat)[-1] // 2
-#     niv_cut = niv//2
-#     mat = np.flip(mat,axis=-1)
-#     mat_cut = mf.cut_iv_2d(arr=mat,niv_cut=niv_cut)
+#     ivn = np.arange(-niv_pp, niv_pp)
+#     slice = []
 #
-#
-#     ivn = np.arange(-niv_cut,niv_cut)*2+1
-#     V,VP = np.meshgrid(ivn,ivn)
-#     omega = V-VP
-#     condition = omega == (wn*2)
-#     slice = mat_cut[condition].flatten()
-#     #slice = mat_cut[condition].flatten()
-#     return slice
-
-def get_pp_slice_4pt(mat=None, wn = None):
-    niv = np.shape(mat)[-1] // 2
-    niv_pp = niv // 2
-    ivn = np.arange(-niv_pp, niv_pp)
-    slice = []
-
-    for vi in ivn:
-        for vip in ivn:
-            vn = niv + vi
-            vnp = niv - (vip+1)
-            if((vi-vip) == wn):
-                slice.append(mat[...,vn,vnp])
-    return np.array(slice)
+#     for vi in ivn:
+#         for vip in ivn:
+#             vn = niv + vi
+#             vnp = niv - (vip+1)
+#             if((vi-vip) == wn):
+#                 slice.append(mat[...,vn,vnp])
+#     return np.array(slice)
 
 def reshape_chi(chi=None, niv_pp=None):
     iv = np.arange(-niv_pp,niv_pp)

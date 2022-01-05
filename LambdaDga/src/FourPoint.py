@@ -859,6 +859,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     mu = dmft_input['mu']
     niv_core = box_sizes['niv_core']
     niw_core = box_sizes['niw_core']
+    niv_pp = box_sizes['niv_pp']
     niv_urange = box_sizes['niv_urange']
     niv_asympt = box_sizes['niv_asympt']
     nq = box_sizes['nq']
@@ -881,6 +882,13 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
+
+    if(do_pairing_vertex):
+        ivn = np.arange(-niv_pp, niv_pp)
+        omega = np.zeros((2 * niv_pp, 2 * niv_pp))
+        for i, vi in enumerate(ivn):
+            for j, vip in enumerate(ivn):
+                omega[i, j] = vi - vip
 
     # if (do_pairing_vertex):
     #     f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
@@ -940,44 +948,30 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
         chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
 
-        # print(file)
-        # print(do_pairing_vertex)
         if (do_pairing_vertex):
-            ivn = np.arange(-niv_core // 2, niv_core // 2) #* 2 + 1
-            V, VP = np.meshgrid(ivn, ivn)
-            omega = V - VP
-            condition = omega == wn #(wn * 2)
+            if(np.abs(wn) < 2*niv_pp):
+                condition = omega == wn
 
-            f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat,
-                                                                                    vrg=vrgq_magn_core.mat,
-                                                                                    gchi0=chi0q_core.gchi0, beta=beta,
-                                                                                    u_r=get_ur(u=u, channel='magn'))
-            f1_dens_slice, f2_dens_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
-                                                                                    vrg=vrgq_dens_core.mat,
-                                                                                    gchi0=chi0q_core.gchi0, beta=beta,
-                                                                                    u_r=get_ur(u=u, channel='dens'))
-            # ind = qiw_indizes[iqw][:-1]
-            # f1_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_magn_slice,wn=wn)
-            # f2_magn[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_magn_slice,wn=wn)
-            # f1_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f1_dens_slice,wn=wn)
-            # f2_dens[ind[0],ind[1],ind[2],condition] = pv.get_pp_slice_4pt(mat=f2_dens_slice,wn=wn)
+                f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat,
+                                                                                        vrg=vrgq_magn_core.mat,
+                                                                                        gchi0=chi0q_core.gchi0, beta=beta,
+                                                                                        u_r=get_ur(u=u, channel='magn'))
+                f1_dens_slice, f2_dens_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
+                                                                                        vrg=vrgq_dens_core.mat,
+                                                                                        gchi0=chi0q_core.gchi0, beta=beta,
+                                                                                        u_r=get_ur(u=u, channel='dens'))
 
-            group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
-            file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, wn=wn)
-            file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, wn=wn)
-            file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, wn=wn)
-            file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, wn=wn)
-            file[group + 'condition/'] = condition
 
-    # if(do_pairing_vertex):
-    #     f_ladder = {
-    #         'f1_magn':f1_magn,
-    #         'f2_magn':f2_magn,
-    #         'f1_dens':f1_dens,
-    #         'f2_dens':f2_dens
-    #     }
-    # else:
-    #     f_ladder = None
+                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
+                #file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, wn=wn, niv_pp=niv_pp)
+                # file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, wn=wn, niv_pp=niv_pp)
+                # file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, wn=wn, niv_pp=niv_pp)
+                # file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, wn=wn, niv_pp=niv_pp)
+                file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, condition=condition, niv_pp=niv_pp)
+                file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, condition=condition, niv_pp=niv_pp)
+                file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, condition=condition, niv_pp=niv_pp)
+                file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, condition=condition, niv_pp=niv_pp)
+                file[group + 'condition/'] = condition
 
     chi_dens_asympt.mat_to_array()
     chi_magn_asympt.mat_to_array()
