@@ -32,10 +32,12 @@ class MpiDistributor():
             self.file = h5py.File(self.fname,'a')
 
     def __del__(self):
-        #self.__del__()
+        # self.__del__()
         if(self.file is not None):
-            self.file.close()
-            #os.rm(self.fname)
+            try:
+                self.file.close()
+            except:
+                pass
 
     @property
     def comm(self):

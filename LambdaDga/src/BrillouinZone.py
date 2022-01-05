@@ -1,5 +1,5 @@
 import numpy as np
-
+import Hk as hk
 
 def grid_2d(nk=16, name='k'):
     kx = np.arange(0, nk) * 2 * np.pi / nk
@@ -94,6 +94,16 @@ class KGrid():
         grid = tuple([self.get_k(ax=ax) for ax in self.axes])
         return grid
 
+def get_irr_grid(kgrid=None,ek=None,dec=7):
+    ek = np.round(ek,decimals=dec)
+    unique, unique_indizes, unique_inverse, unique_counts = np.unique(ek, return_index=True,return_inverse=True,return_counts=True)
+    kx = kgrid[0]
+    ky = kgrid[1]
+    kz = kgrid[2]
+    KX,KY,KZ = np.meshgrid((kx,ky,kz))
+
+
+
 
 if __name__ == '__main__':
     nk = 8
@@ -106,5 +116,24 @@ if __name__ == '__main__':
 
     nk_tot = qgrid.nk_tot()
 
-    grid = qgrid.get_grid_as_tuple()
+
+    Grid = KGrid(nk=(nk, nk, 1), name='k')
+    kgrid = Grid.get_grid_as_tuple()
+
+    t = 1.0
+    tp = -0.2
+    tpp = 0.1
+    hr = np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
+    ek = hk.ek_3d(Grid.get_grid_as_tuple(),hr)
+
+
+    dec = 7
+    ek = np.round(ek,decimals=dec)
+    unique, unique_indizes, unique_inverse, unique_counts = np.unique(ek, return_index=True,return_inverse=True,return_counts=True)
+    kx = kgrid[0]
+    ky = kgrid[1]
+    kz = kgrid[2]
+    KX,KY,KZ = np.meshgrid(kx,ky,kz)
+
+    #ek2 = ek[]
 

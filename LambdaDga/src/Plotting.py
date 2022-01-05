@@ -184,10 +184,10 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     def add_lines(ax):
         ax.plot(kx, 0 * kx, 'k', lw=lw)
         ax.plot(0 * ky, ky, 'k', lw=lw)
-        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
-        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky + np.pi, '--k', lw=lw)
+        ax.plot(ky, ky + np.pi, '--k', lw=lw)
 
     def create_image(ax=None,contour=None,cmap='RdBu'):
         add_lines(ax)
@@ -196,8 +196,8 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax, orientation='vertical')
-        ax.set_xlabel(r'$k_x$')
-        ax.set_ylabel(r'$k_y$')
+        ax.set_xlabel(r'$k_y$')
+        ax.set_ylabel(r'$k_x$')
 
 
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
@@ -229,10 +229,10 @@ def plot_contour(ax = None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plo
     def add_lines(ax):
         ax.plot(kx, 0 * kx, 'k', lw=lw)
         ax.plot(0 * ky, ky, 'k', lw=lw)
-        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
-        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky + np.pi, '--k', lw=lw)
+        ax.plot(ky, ky + np.pi, '--k', lw=lw)
 
     def create_image(ax=None, contour=None, cmap='RdBu', norm=None):
         add_lines(ax)
@@ -241,8 +241,8 @@ def plot_contour(ax = None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plo
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         plt.colorbar(im, cax=cax, orientation='vertical')
-        ax.set_xlabel(r'$k_x$')
-        ax.set_ylabel(r'$k_y$')
+        ax.set_xlabel(r'$k_y$')
+        ax.set_ylabel(r'$k_x$')
 
     if(midpoint_norm):
         norm = MidpointNormalize(midpoint=0, vmin=siwk_plot.min(), vmax=siwk_plot.max())
@@ -270,10 +270,10 @@ def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
     def add_lines(ax):
         ax.plot(kx, 0 * kx, 'k', lw=lw)
         ax.plot(0 * ky, ky, 'k', lw=lw)
-        ax.plot(-kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(kx, ky - np.pi, '--k', lw=lw)
-        ax.plot(-kx, ky + np.pi, '--k', lw=lw)
-        ax.plot(kx, ky + np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(-ky, ky + np.pi, '--k', lw=lw)
+        ax.plot(ky, ky + np.pi, '--k', lw=lw)
 
     def create_image(ax=None,contour=None,cmap='RdBu', norm=None):
         add_lines(ax)
@@ -282,8 +282,8 @@ def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax, orientation='vertical')
-        ax.set_xlabel(r'$k_x$')
-        ax.set_ylabel(r'$k_y$')
+        ax.set_xlabel(r'$k_y$')
+        ax.set_ylabel(r'$k_x$')
 
 
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
@@ -304,13 +304,13 @@ def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
 
 def plot_gap_function(delta=None, pdir = None, name='', kgrid=None, do_shift=False):
     niv = np.shape(delta)[-1] // 2
-    kx = kgrid._grid['kx']
-    ky = kgrid._grid['ky']
+    kx = kgrid._grid['qx']
+    ky = kgrid._grid['qy']
 
     delta_plot = np.copy(delta)
     if(do_shift):
-        delta_plot = np.roll(delta,kgrid.nk[0]//2,0)
-        delta_plot = np.roll(delta,kgrid.nk[1]//2,1)
+        delta_plot = np.roll(delta_plot,kgrid.nk[0]//2,0)
+        delta_plot = np.roll(delta_plot,kgrid.nk[1]//2,1)
         kx = kx - np.pi
         ky = ky - np.pi
 
@@ -338,5 +338,6 @@ def plot_gap_function(delta=None, pdir = None, name='', kgrid=None, do_shift=Fal
     ax[1].set_ylabel(r'$k_y$')
     ax[1].set_title(r'$\nu_{n=-1}$')
 
+    plt.tight_layout()
     plt.savefig(pdir + 'GapFunction_{}.png'.format(name))
     plt.close()

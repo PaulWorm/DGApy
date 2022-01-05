@@ -102,6 +102,10 @@ path_063 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta17_mu1/' + 'LambdaDga_Nk1
 ldga_063, config_0v = load_ldga_data(path_063)
 w063, sldga_n_063, sldga_an_063= load_ldga_n_an(path_063)
 
+path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange27_wurange27/'
+ldga_bm_ts, config_bm_ts = load_ldga_data(path_bm_ts)
+wbm_ts, sldga_n_bm_ts, sldga_an_bm_ts= load_ldga_n_an(path_bm_ts)
+
 # ------------------------------------------------- PLOTS --------------------------------------------------------------
 
 shade_colors = ['blueviolet', 'firebrick', 'palegreen', 'dimgray', 'dimgray','cornflowerblue']
@@ -125,7 +129,8 @@ ax0.plot(dmc_an_063[:,0],rescal(dmc_an_063[:,1]), '-o', color = colors[4])
 ax0.plot(w1,sldga_an_1.imag,'-s', color=colors[0], ms=2, markeredgecolor='k')
 ax0.plot(w03,sldga_an_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax0.plot(w01,sldga_an_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
-ax0.plot(w066,sldga_an_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
+#ax0.plot(w066,sldga_an_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
+ax0.plot(wbm_ts*4,sldga_an_bm_ts.imag*4,'-s', color=colors[3], ms=2, markeredgecolor='k')
 #ax0.plot(w063,sldga_an_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax0.set_xlim(0,5)
 
@@ -139,7 +144,8 @@ ax1.plot(dmc_n_063[:,0],rescal(dmc_n_063[:,1]), '-o', color = colors[4])
 ax1.plot(w1,sldga_n_1.imag,'-s', color=colors[0], ms=2, markeredgecolor='k')
 ax1.plot(w03,sldga_n_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax1.plot(w01,sldga_n_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
-ax1.plot(w066,sldga_n_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
+#ax1.plot(w066,sldga_n_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
+ax1.plot(wbm_ts*4,sldga_n_bm_ts.imag*4,'-s', color=colors[3], ms=2, markeredgecolor='k')
 #ax1.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax1.set_xlim(0,5)
 ax0.grid(linestyle='--')
@@ -151,6 +157,8 @@ ax0.set_ylabel(r'$\Im \Sigma$')
 ax0.set_title(r'Anti-Node')
 ax1.set_title(r'Node')
 
+plt.savefig('DGA_sp_benchmark.png')
+plt.savefig('DGA_sp_benchmark.pdf')
 plt.tight_layout()
 plt.show()
 

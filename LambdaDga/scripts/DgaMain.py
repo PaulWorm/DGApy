@@ -10,7 +10,7 @@ import sys, os
 
 sys.path.append('../src/')
 sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
-import Hr as hr
+import Hr as hr_mod
 import Hk as hamk
 import Indizes as ind
 import w2dyn_aux
@@ -34,16 +34,19 @@ comm = mpi.COMM_WORLD
 input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U8.0_tp1.0_tpp0.0_beta10_n1.0/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U8_b010_tp0_tpp0_n0.85/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/TriangularLattice_U9.5_tp1.0_tpp0.0_beta10_n1.0/'
 # input_path = '/mnt/d/Research/BEPS_Project/TriangularLattice/TriangularLattice_U9.0_tp1.0_tpp0.0_beta10_n1.0/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
-#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/KonvergenceAnalysis/'
+# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
+# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+#input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -51,36 +54,50 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = False
+do_pairing_vertex = True
 keep_ladder_vertex = False
-lambda_correction_type = 'sp' # Available: ['spch','sp','none','sp_only']
-use_urange_for_lc = True # Use with care. This is not really tested and at least low k-grid samples don't look too good.
+lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
+use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 lattice = 'square'
-verbose=True
+verbose = True
 
-#Set up real-space Wannier Hamiltonian:
-# t = 1.00
+# Set up real-space Wannier Hamiltonian:
+# t = 1.00 * 0.25
 # tp = -0.20 * t * 0
 # tpp = 0.10 * t * 0
 t = 0.25
 tp = -0.25 * t
 tpp = 0.12 * t
 
+# Quasi-1D Plane 1 parameter:
+tx = 0.0185
+ty = 0.47
+tpxy = 0.0068
+tppx = 0.0013
+tppy = 0.085
+
 # Define frequency box-sizes:
-niw_core = 99
-niw_urange = 100
-niv_core = 100
-niv_invbse = 100
-niv_urange = 100
-niv_asympt = 0 # Don't use this for now.
+# Currently the niw range has to be 1 smaller than the niv range. I hope there is no frequency shift error.
+niw_core = 25
+niw_urange = 80
+niv_core = 25
+niv_invbse = 60
+niv_urange = 120
+niv_asympt = 0  # Don't use this for now.
 
 # Define k-ranges:
-nkf = 8
-nqf = 8
-nk = (nkf, nkf, 1)
-nq = (nqf, nqf, 1)
+nkx = 64
+nky = nkx
+nqx = 64
+nqy = nqx
 
-output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.format(lambda_correction_type,np.prod(nk), np.prod(nq), niw_core,niv_invbse, niv_urange, niw_urange)
+nk = (nkx, nky, 1)
+nq = (nqx, nqy, 1)
+
+output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.format(lambda_correction_type,
+                                                                                       np.prod(nk), np.prod(nq),
+                                                                                       niw_core, niv_invbse, niv_urange,
+                                                                                       niw_urange)
 output_path = output.uniquify(output_path + output_folder) + '/'
 fname_ladder_vertex = output_path + fname_ladder_vertex
 
@@ -89,9 +106,11 @@ k_grid = bz.KGrid(nk=nk, name='k')
 q_grid = bz.KGrid(nk=nq, name='q')
 
 if (lattice == 'square'):
-    hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+    hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+elif (lattice == 'quasi1D'):
+    hr = hr_mod.one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
 elif (lattice == 'triangular'):
-    hr = hr.one_band_2d_triangular_t_tp_tpp(t=t, tp=tp, tpp=tpp)
+    hr = hr_mod.one_band_2d_triangular_t_tp_tpp(t=t, tp=tp, tpp=tpp)
 else:
     raise NotImplementedError('Only square or triangular lattice implemented at the moment.')
 
@@ -100,15 +119,15 @@ f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
 dmft1p = f1p.load_dmft1p_w2dyn()
 f1p.close()
 niv_dmft = dmft1p['niv']
-if(dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
+if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 
 # Define system paramters, like interaction or inverse temperature.
 # Note: I want this to be decoupled from dmft1p, because of later RPA/FLEX stuff.
 
 options = {
     'do_pairing_vertex': do_pairing_vertex,
-    'lambda_correction_type':lambda_correction_type,
-    'use_urange_for_lc':use_urange_for_lc,
+    'lambda_correction_type': lambda_correction_type,
+    'use_urange_for_lc': use_urange_for_lc,
     'lattice': lattice
 }
 
@@ -144,7 +163,7 @@ grids = {
     "vn_urange": mf.vn(n=niv_urange),
     "vn_asympt": mf.vn(n=niv_asympt),
     "wn_core": mf.wn(n=niw_core),
-    "wn_rpa": mf.wn_outer(n_core=niw_core,n_outer=niw_urange),
+    "wn_rpa": mf.wn_outer(n_core=niw_core, n_outer=niw_urange),
     "k_grid": k_grid,
     "q_grid": q_grid
 }
@@ -168,6 +187,7 @@ config_dump = {
     "dmft1p": dmft1p
 }
 
+#%%
 # ------------------------------------------------ MAIN ----------------------------------------------------------------
 if (comm.rank == 0):
     log = lambda s, *a: sys.stderr.write(str(s) % a + "\n")
@@ -187,16 +207,18 @@ if (comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config,verbose=verbose,outpfunc=log)
+dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
 comm.Barrier()
 log("Lambda-Dga finished %s", time.strftime("%c"))
+# %%
 if (comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy', gamma_dmft, allow_pickle=True)
     np.save(output_path + 'dga_sde.npy', dga_sde, allow_pickle=True)
     np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
     np.save(output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
-    np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',', fmt='%.9f')
+    np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
+               fmt='%.9f')
 
     siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
@@ -215,21 +237,21 @@ if (comm.rank == 0):
 
     # Plot siw at important locations:
 
-    siw_dga_an = dga_sde['sigma'][nk[0]//2,0,0,:]
-    siw_dga_n = dga_sde['sigma'][nk[0]//4,nk[1]//4,0,:]
+    siw_dga_an = dga_sde['sigma'][nk[0] // 2, 0, 0, :]
+    siw_dga_n = dga_sde['sigma'][nk[0] // 4, nk[1] // 4, 0, :]
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
-    labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0, niv_plot=10, name='siw_at_bz_points', ms=5)
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
+                      niv_plot=10, name='siw_at_bz_points', ms=5)
 
-
-    siw_dga_an = dga_sde['sigma_nc'][nk[0]//2,0,0,:]
-    siw_dga_n = dga_sde['sigma_nc'][nk[0]//4,nk[1]//4,0,:]
+    siw_dga_an = dga_sde['sigma_nc'][nk[0] // 2, 0, 0, :]
+    siw_dga_n = dga_sde['sigma_nc'][nk[0] // 4, nk[1] // 4, 0, :]
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
-    labels = [r'$\Sigma_{DMFT}(\nu)$',r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0, niv_plot=10, name='siw_at_bz_points_nc', ms=5)
-
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
+                      niv_plot=10, name='siw_at_bz_points_nc', ms=5)
 
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
@@ -272,14 +294,19 @@ if (comm.rank == 0):
 
     import matplotlib.pyplot as plt
 
+    extent = [q_grid.grid['qx'][0], q_grid.grid['qx'][-1], q_grid.grid['qy'][0], q_grid.grid['qy'][-1]]
     plt.figure()
-    plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu')
+    plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
+    plt.xlabel(r'$k_y$')
+    plt.ylabel(r'$k_x$')
     plt.colorbar()
     plt.savefig(output_path + 'chi_magn_w0.png')
     plt.close()
 
     plt.figure()
-    plt.imshow(chi_dens_lambda[:, :, 0, niw_core].real, cmap='RdBu')
+    plt.imshow(chi_dens_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
+    plt.xlabel(r'$k_y$')
+    plt.ylabel(r'$k_x$')
     plt.colorbar()
     plt.savefig(output_path + 'chi_dens_w0.png')
     plt.close()
@@ -300,7 +327,7 @@ if (comm.rank == 0):
 # %%
 
 # Collect Pairing vertex from subfiles:
-if(do_pairing_vertex and comm.rank == 0):
+if (do_pairing_vertex and comm.rank == 0):
     import MpiAux as mpiaux
     import h5py
     import re
@@ -310,10 +337,10 @@ if(do_pairing_vertex and comm.rank == 0):
                                             name='Qiw')
 
     # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
+    f1_magn = np.zeros(nq + (niv_core, niv_core), dtype=complex)
+    f2_magn = np.zeros(nq + (niv_core, niv_core), dtype=complex)
+    f1_dens = np.zeros(nq + (niv_core, niv_core), dtype=complex)
+    f2_dens = np.zeros(nq + (niv_core, niv_core), dtype=complex)
     if (qiw_distributor.my_rank == 0):
         file_out = h5py.File(fname_ladder_vertex, 'w')
         for ir in range(qiw_distributor.mpi_size):
@@ -321,23 +348,24 @@ if(do_pairing_vertex and comm.rank == 0):
             file_in = h5py.File(fname_input, 'r')
             for key1 in list(file_in.keys()):
                 # extract the q indizes from the group name!
-                qx = np.array(re.findall("\d+",key1), dtype=int)[0]
-                qy = np.array(re.findall("\d+",key1), dtype=int)[1]
-                qz = np.array(re.findall("\d+",key1), dtype=int)[2]
+                qx = np.array(re.findall("\d+", key1), dtype=int)[0]
+                qy = np.array(re.findall("\d+", key1), dtype=int)[1]
+                qz = np.array(re.findall("\d+", key1), dtype=int)[2]
                 condition = file_in[key1 + '/condition/'][()]
-                f1_magn[qx,qy,qz,condition] = file_in[key1 +'/f1_magn/'][()]
-                f2_magn[qx,qy,qz,condition] = file_in[key1 +'/f2_magn/'][()]
-                f1_dens[qx,qy,qz,condition] = file_in[key1 +'/f1_dens/'][()]
-                f2_dens[qx,qy,qz,condition] = file_in[key1 +'/f2_dens/'][()]
+                f1_magn[qx, qy, qz, condition] = file_in[key1 + '/f1_magn/'][()]
+                f2_magn[qx, qy, qz, condition] = file_in[key1 + '/f2_magn/'][()]
+                f1_dens[qx, qy, qz, condition] = file_in[key1 + '/f1_dens/'][()]
+                f2_dens[qx, qy, qz, condition] = file_in[key1 + '/f2_dens/'][()]
 
             file_in.close()
             os.remove(fname_input)
         file_out.close()
 
-elif(not do_pairing_vertex and comm.rank == 0):
+elif (not do_pairing_vertex and comm.rank == 0):
     import MpiAux as mpiaux
     import h5py
     import re
+
     qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
                                             output_path=output_path,
                                             name='Qiw')
@@ -348,7 +376,7 @@ elif(not do_pairing_vertex and comm.rank == 0):
 else:
     pass
 
-if(do_pairing_vertex and comm.rank == 0):
+if (do_pairing_vertex and comm.rank == 0):
     import RealTime as rt
 
     realt = rt.real_time()
@@ -423,27 +451,28 @@ if (do_pairing_vertex and comm.rank == 0):
     import EliashbergEquation as eq
 
     log(realt.string_time('Start Eliashberg:'))
-    gamma_sing = f_sing
-    gamma_trip = f_trip
+    gamma_sing = -f_sing #- 2*f_sing.mean(axis=(0,1,2))
+    #gamma_sing = 0.5*(f_sing +  np.roll(np.flip(np.transpose(f_sing,axes=(0,1,2,4,3)),axis=(0,1)),shift=(1,1), axis=(0,1)))
+    gamma_trip = -f_trip #- 2*f_trip.mean(axis=(0,1,2))
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
                                                sigma=dga_sde['sigma'])
-    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
+    mu_dga = g_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_core // 2).gk
-    lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps=10 ** -6, max_count=10000,
-                                                   norm=np.prod(nk) * dmft1p['beta'])
-    lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps=10 ** -6, max_count=10000,
-                                                   norm=np.prod(nk) * dmft1p['beta'])
+    lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps=10 ** -7, max_count=10000,
+                                                   norm=np.prod(nq) * dmft1p['beta'])
+    lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps=10 ** -7, max_count=10000,
+                                                   norm=np.prod(nq) * dmft1p['beta'])
 
     eliashberg = {
-        'lambda_sing': lambda_sing[1].real,
-        'lambda_trip': lambda_trip[1].real,
-        'delta_sing': delta_sing[1].real,
-        'delta_trip': delta_trip[1].real,
+        'lambda_sing': lambda_sing,
+        'lambda_trip': lambda_trip,
+        'delta_sing': delta_sing,
+        'delta_trip': delta_trip,
     }
     np.save(output_path + 'eliashberg.npy', eliashberg)
     np.savetxt(output_path + 'eigenvalues.txt', [lambda_sing[1].real, lambda_trip[1].real], delimiter=',', fmt='%.9f')
 
-    plotting.plot_gap_function(delta=delta_sing[1].real, pdir=output_path, name='sing', kgrid=k_grid)
-    plotting.plot_gap_function(delta=delta_trip[1].real, pdir=output_path, name='trip', kgrid=k_grid)
+    plotting.plot_gap_function(delta=delta_sing[1].real, pdir=output_path, name='sing', kgrid=q_grid, do_shift=True)
+    plotting.plot_gap_function(delta=delta_trip[1].real, pdir=output_path, name='trip', kgrid=q_grid, do_shift=True)
 
     log(realt.string_time('End Eliashberg:'))
