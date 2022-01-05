@@ -54,29 +54,29 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp' # Available: ['spch','sp','none','sp_only']
-use_urange_for_lc = False # Use with care. This is not really tested and at least low k-grid samples don't look too good.
+use_urange_for_lc = True # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 lattice = 'square'
 verbose=True
 
 #Set up real-space Wannier Hamiltonian:
-t = 1.00
-tp = -0.20 * t * 0
-tpp = 0.10 * t * 0
+# t = 1.00
+# tp = -0.20 * t * 0
+# tpp = 0.10 * t * 0
 t = 0.25
 tp = -0.25 * t
 tpp = 0.12 * t
 
 # Define frequency box-sizes:
-niw_core = 30
-niw_urange = 50
-niv_core = 30
-niv_invbse = 30
-niv_urange = 50
+niw_core = 99
+niw_urange = 100
+niv_core = 100
+niv_invbse = 100
+niv_urange = 100
 niv_asympt = 0 # Don't use this for now.
 
 # Define k-ranges:
-nkf = 16
-nqf = 16
+nkf = 8
+nqf = 8
 nk = (nkf, nkf, 1)
 nq = (nqf, nqf, 1)
 
@@ -170,7 +170,7 @@ config_dump = {
 
 # ------------------------------------------------ MAIN ----------------------------------------------------------------
 if (comm.rank == 0):
-    log = lambda s, *a: sys.stdout.write(str(s) % a + "\n")
+    log = lambda s, *a: sys.stderr.write(str(s) % a + "\n")
     rerr = sys.stderr
 else:
     log = lambda s, *a: None
