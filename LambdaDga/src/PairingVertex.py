@@ -75,6 +75,36 @@ def reshape_chi(chi=None, niv_pp=None):
     return chi_pp
 
 
+def load_pairing_vertex_from_rank_files(rank_dist=None, nq=None, niv_pp=None, fname_ladder_vertex=None):
+
+    import h5py
+    import re
+
+    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+    f1_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f2_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f1_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    f2_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
+    file_out = h5py.File(fname_ladder_vertex, 'w')
+
+    for ir in range(rank_dist.mpi_size):
+        rank_dist.open_file()
+        for key1 in list(rank_dist.file.keys()):
+            # extract the q indizes from the group name!
+            qx = np.array(re.findall("\d+", key1), dtype=int)[0]
+            qy = np.array(re.findall("\d+", key1), dtype=int)[1]
+            qz = np.array(re.findall("\d+", key1), dtype=int)[2]
+            condition = rank_dist.file[key1 + '/condition/'][()]
+            f1_magn[qx, qy, qz, condition] = rank_dist.file[key1 + '/f1_magn/'][()]
+            f2_magn[qx, qy, qz, condition] = rank_dist.file[key1 + '/f2_magn/'][()]
+            f1_dens[qx, qy, qz, condition] = rank_dist.file[key1 + '/f1_dens/'][()]
+            f2_dens[qx, qy, qz, condition] = rank_dist.file[key1 + '/f2_dens/'][()]
+
+        rank_dist.close_file()
+        rank_dist.delete_file()
+    file_out.close()
+    return f1_magn, f2_magn, f1_dens, f2_dens
+
 # def get_chi_aux_asympt(chi_aux: fp.FourPoint = None, chi_r_urange: , chi_r_asympt=None, u=1):
 #     niv = np.shape(chi_aux)[-1] // 2
 #     u_mat = u * np.ones((2 * niv, 2 * niv), dtype=complex)

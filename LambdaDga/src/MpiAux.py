@@ -30,14 +30,12 @@ class MpiDistributor():
             # Read/write file. Create if it does not exist.
             self.fname = output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
             self.file = h5py.File(self.fname,'a')
+            self.file.close()
 
     def __del__(self):
         # self.__del__()
         if(self.file is not None):
-            try:
-                self.file.close()
-            except:
-                pass
+            self.close_file()
 
     @property
     def comm(self):
@@ -66,6 +64,24 @@ class MpiDistributor():
     @property
     def my_slice(self):
         return self._my_slice
+
+    def open_file(self):
+        try:
+            self.file = h5py.File(self.fname,'r+')
+        except:
+            pass
+
+    def close_file(self):
+        try:
+            self.file.close()
+        except:
+            pass
+
+    def delete_file(self):
+        try:
+            os.remove(self.fname)
+        except:
+            pass
 
     def distribute_tasks(self):
         n_per_rank = self.ntasks // self.mpi_size

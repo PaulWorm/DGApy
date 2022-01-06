@@ -890,17 +890,9 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
             for j, vip in enumerate(ivn):
                 omega[i, j] = vi - vip
 
-    # if (do_pairing_vertex):
-    #     f1_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    #     f2_magn = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    #     f1_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-    #     f2_dens = np.zeros(nq+(niv_core,niv_core), dtype=complex)
-
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
-        # print(f'{wn_lin=}')
-        # print(qiw_grid[iqw])
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw_grid[iqw], niv=niv_urange)
 
         gkpq_core = copy.deepcopy(gkpq_urange)
@@ -963,10 +955,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
 
                 group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
-                #file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, wn=wn, niv_pp=niv_pp)
-                # file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, wn=wn, niv_pp=niv_pp)
-                # file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, wn=wn, niv_pp=niv_pp)
-                # file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, wn=wn, niv_pp=niv_pp)
                 file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, condition=condition, niv_pp=niv_pp)

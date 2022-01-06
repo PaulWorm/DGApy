@@ -44,9 +44,9 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
-#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
-#input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+# input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -58,8 +58,18 @@ do_pairing_vertex = True
 keep_ladder_vertex = False
 lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
-lattice = 'square'
+lattice = 'quasi1D'
 verbose = True
+
+gap0_sing = {
+    'k':'p-wave-y', #d-wave',
+    'v':'odd'
+}
+
+gap0_trip = {
+    'k':'p-wave-y', #'d-wave',
+    'v':'even'
+}
 
 # Set up real-space Wannier Hamiltonian:
 # t = 1.00 * 0.25
@@ -69,28 +79,35 @@ t = 0.25
 tp = -0.25 * t
 tpp = 0.12 * t
 
-# Quasi-1D Plane 1 parameter:
-tx = 0.0185
-ty = 0.47
-tpxy = 0.0068
-tppx = 0.0013
-tppy = 0.085
+# Ba2CuO3 parameter
+# tx = 0.0185
+# ty = 0.47
+# tpxy = 0.0068
+# tppx = 0.0013
+# tppy = 0.085
+
+# Ba2CuO3.25 parameters
+tx = 0.0258
+ty = 0.5181
+tpxy = 0.0119
+tppx = -0.0014
+tppy = 0.0894
 
 # Define frequency box-sizes:
 # Currently the niw range has to be 1 smaller than the niv range. I hope there is no frequency shift error.
-niw_core = 8
-niw_urange = 10
-niv_core = 10
-niv_invbse = 10
-niv_urange = 20
+niw_core = 40
+niw_urange = 60
+niv_core = 40
+niv_invbse = 60
+niv_urange = 60
 niv_asympt = 0  # Don't use this for now.
 
-niv_pp = np.min((niw_core//2,niv_core//2))
+niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 8
+nkx = 16
 nky = nkx
-nqx = 8
+nqx = 16
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -155,7 +172,7 @@ box_sizes = {
     "niv_invbse": niv_invbse,
     "niv_urange": niv_urange,
     "niv_asympt": niv_asympt,
-    "niv_pp":niv_pp,
+    "niv_pp": niv_pp,
     "nk": nk,
     "nq": nq
 }
@@ -190,7 +207,7 @@ config_dump = {
     "dmft1p": dmft1p
 }
 
-#%%
+# %%
 # ------------------------------------------------ MAIN ----------------------------------------------------------------
 if (comm.rank == 0):
     log = lambda s, *a: sys.stderr.write(str(s) % a + "\n")
@@ -298,6 +315,9 @@ if (comm.rank == 0):
     import matplotlib.pyplot as plt
 
     extent = [q_grid.grid['qx'][0], q_grid.grid['qx'][-1], q_grid.grid['qy'][0], q_grid.grid['qy'][-1]]
+
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_magn')
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_dens')
     plt.figure()
     plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
     plt.xlabel(r'$k_y$')
@@ -314,79 +334,25 @@ if (comm.rank == 0):
     plt.savefig(output_path + 'chi_dens_w0.png')
     plt.close()
 
-    plt.figure()
-    plt.imshow(gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'gamma_magn.png')
-    plt.close()
-
-    plt.figure()
-    plt.imshow(gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'gamma_dens.png')
-    plt.close()
 
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
 # %%
-
-# Collect Pairing vertex from subfiles:
-if (do_pairing_vertex and comm.rank == 0):
-    import MpiAux as mpiaux
-    import h5py
-    import re
-
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
-                                            output_path=output_path,
-                                            name='Qiw')
-
-    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    f1_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
-    f2_magn = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
-    f1_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
-    f2_dens = np.zeros(nq + (2*niv_pp, 2*niv_pp), dtype=complex)
-    if (qiw_distributor.my_rank == 0):
-        file_out = h5py.File(fname_ladder_vertex, 'w')
-        for ir in range(qiw_distributor.mpi_size):
-            fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
-            file_in = h5py.File(fname_input, 'r')
-            for key1 in list(file_in.keys()):
-                # extract the q indizes from the group name!
-                qx = np.array(re.findall("\d+", key1), dtype=int)[0]
-                qy = np.array(re.findall("\d+", key1), dtype=int)[1]
-                qz = np.array(re.findall("\d+", key1), dtype=int)[2]
-                condition = file_in[key1 + '/condition/'][()]
-                f1_magn[qx, qy, qz, condition] = file_in[key1 + '/f1_magn/'][()]
-                f2_magn[qx, qy, qz, condition] = file_in[key1 + '/f2_magn/'][()]
-                f1_dens[qx, qy, qz, condition] = file_in[key1 + '/f1_dens/'][()]
-                f2_dens[qx, qy, qz, condition] = file_in[key1 + '/f2_dens/'][()]
-
-            file_in.close()
-            os.remove(fname_input)
-        file_out.close()
-
-elif (not do_pairing_vertex and comm.rank == 0):
-    import MpiAux as mpiaux
-    import h5py
-    import re
-
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
-                                            output_path=output_path,
-                                            name='Qiw')
-    if (qiw_distributor.my_rank == 0):
-        for ir in range(qiw_distributor.mpi_size):
-            fname_input = output_path + 'QiwRank{:05d}'.format(ir) + '.hdf5'
-            os.remove(fname_input)
-else:
-    pass
-
 if (do_pairing_vertex and comm.rank == 0):
     import RealTime as rt
+    import PairingVertex as pv
+    import MpiAux as mpiaux
 
     realt = rt.real_time()
 
     log(realt.string_time('Start pairing vertex:'))
 
-    import PairingVertex as pv
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
+                                            output_path=output_path,
+                                            name='Qiw')
+
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor, nq=nq,
+                                                                                niv_pp=niv_pp,
+                                                                                fname_ladder_vertex=fname_ladder_vertex)
 
     chi_dens_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_dens_lambda'].mat)
     chi_magn_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_magn_lambda'].mat)
@@ -425,22 +391,8 @@ if (do_pairing_vertex and comm.rank == 0):
 
     np.save(output_path + 'pairing_vertices.npy', pairing_vertices)
 
-    f_sing_loc = f_sing.mean(axis=(0, 1, 2))
-    f_trip_loc = f_trip.mean(axis=(0, 1, 2))
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    plt.imshow(f_sing_loc.real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'f_sing_loc.png')
-    plt.close()
-
-    fig = plt.figure()
-    plt.imshow(f_trip_loc.real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'f_trip_loc.png')
-    plt.close()
+    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_sing_loc')
+    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_sing_loc')
 
     log(realt.string_time('End pairing vertex:'))
 #
@@ -452,20 +404,21 @@ if (do_pairing_vertex and comm.rank == 0):
     import EliashbergEquation as eq
 
     log(realt.string_time('Start Eliashberg:'))
-    gamma_sing = -f_sing #- 2*f_sing.mean(axis=(0,1,2))
-    #gamma_sing = 0.5*(f_sing +  np.roll(np.flip(np.transpose(f_sing,axes=(0,1,2,4,3)),axis=(0,1)),shift=(1,1), axis=(0,1)))
-    gamma_trip = -f_trip #- 2*f_trip.mean(axis=(0,1,2))
+    gamma_sing = -f_sing
+    gamma_trip = -f_trip
+
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
                                                sigma=dga_sde['sigma'])
     mu_dga = g_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_pp).gk
 
-    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type='d-wave', v_type='even', k_grid=q_grid.get_grid_as_tuple())
+    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'], k_grid=q_grid.get_grid_as_tuple())
 
     lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps=10 ** -7, max_count=10000,
                                                    norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
 
-    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type='d-wave', v_type='odd', k_grid=q_grid.get_grid_as_tuple())
+    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_trip['k'], v_type=gap0_trip['v'],
+                             k_grid=q_grid.get_grid_as_tuple())
     lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps=10 ** -7, max_count=10000,
                                                    norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
 
