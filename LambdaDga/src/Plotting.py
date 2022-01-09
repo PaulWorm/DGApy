@@ -343,6 +343,7 @@ def plot_gap_function(delta=None, pdir = None, name='', kgrid=None, do_shift=Fal
     plt.close()
 
 def plot_vertex_vvp(vertex=None, cmap='RdBu', pdir = None, name='Vertex'):
+    plt.figure()
     plt.imshow(vertex, cmap=cmap)
     plt.xlabel(r'\nu \' ')
     plt.xlabel(r'\nu')

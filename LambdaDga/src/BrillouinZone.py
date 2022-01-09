@@ -94,21 +94,18 @@ class KGrid():
         grid = tuple([self.get_k(ax=ax) for ax in self.axes])
         return grid
 
-def get_irr_grid(kgrid=None,ek=None,dec=7):
+def get_irr_grid(ek=None,dec=15):
     ek = np.round(ek,decimals=dec)
     unique, unique_indizes, unique_inverse, unique_counts = np.unique(ek, return_index=True,return_inverse=True,return_counts=True)
-    kx = kgrid[0]
-    ky = kgrid[1]
-    kz = kgrid[2]
-    KX,KY,KZ = np.meshgrid((kx,ky,kz))
+    return unique, unique_indizes, unique_inverse, unique_counts
 
 
 
 
 if __name__ == '__main__':
-    nk = 8
-    grid_k = grid_2d(nk=8)
-    grid_q = grid_2d(nk=8, name='q')
+    nk = 200
+    grid_k = grid_2d(nk=nk)
+    grid_q = grid_2d(nk=nk, name='q')
 
     qgrid = KGrid(nk=(nk, nk, 1), name='q')
     qx = qgrid.get_k(ax=0.)
@@ -127,7 +124,7 @@ if __name__ == '__main__':
     ek = hk.ek_3d(Grid.get_grid_as_tuple(),hr)
 
 
-    dec = 7
+    dec = 10
     ek = np.round(ek,decimals=dec)
     unique, unique_indizes, unique_inverse, unique_counts = np.unique(ek, return_index=True,return_inverse=True,return_counts=True)
     kx = kgrid[0]
@@ -135,5 +132,9 @@ if __name__ == '__main__':
     kz = kgrid[2]
     KX,KY,KZ = np.meshgrid(kx,ky,kz)
 
+    nk_irr = np.size(unique)
+    nk_irr_min = nk**2/8
+    print(f'{nk_irr=}')
+    print(f'{nk_irr_min=}')
     #ek2 = ek[]
 

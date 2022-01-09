@@ -45,8 +45,9 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
-# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
-input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
+#input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -56,25 +57,25 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = True
 keep_ladder_vertex = False
-lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
+lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
-lattice = 'quasi1D'
+lattice = 'square'
 verbose = True
 
 gap0_sing = {
-    'k':'p-wave-y', #d-wave',
-    'v':'odd'
-}
-
-gap0_trip = {
-    'k':'p-wave-y', #'d-wave',
+    'k':'d-wave',
     'v':'even'
 }
 
+gap0_trip = {
+    'k':'d-wave',
+    'v':'odd'
+}
+
 # Set up real-space Wannier Hamiltonian:
-# t = 1.00 * 0.25
-# tp = -0.20 * t * 0
-# tpp = 0.10 * t * 0
+# t = 1.00
+# tp = -0.20 * t
+# tpp = 0.10 * t
 t = 0.25
 tp = -0.25 * t
 tpp = 0.12 * t
@@ -95,11 +96,11 @@ tppy = 0.0894
 
 # Define frequency box-sizes:
 # Currently the niw range has to be 1 smaller than the niv range. I hope there is no frequency shift error.
-niw_core = 40
-niw_urange = 60
-niv_core = 40
-niv_invbse = 60
-niv_urange = 60
+niw_core = 20
+niw_urange = 20
+niv_core = 20
+niv_invbse = 20
+niv_urange = 20
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))
@@ -318,6 +319,7 @@ if (comm.rank == 0):
 
     plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_magn')
     plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_dens')
+
     plt.figure()
     plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
     plt.xlabel(r'$k_y$')
@@ -366,23 +368,9 @@ if (do_pairing_vertex and comm.rank == 0):
     f_sing = -1.5 * f_magn + 0.5 * f_dens
     f_trip = -0.5 * f_magn - 0.5 * f_dens
 
-    f_magn_loc = f_magn.mean(axis=(0, 1, 2))
-    f1_magn_loc = f1_magn.mean(axis=(0, 1, 2))
-    f2_magn_loc = f2_magn.mean(axis=(0, 1, 2))
 
-    f_dens_loc = f_dens.mean(axis=(0, 1, 2))
-
-    fig = plt.figure()
-    plt.imshow(f_magn_loc.real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'f_magn_loc.png')
-    plt.close()
-
-    fig = plt.figure()
-    plt.imshow(f_dens_loc.real, cmap='RdBu')
-    plt.colorbar()
-    plt.savefig(output_path + 'f_dens_loc.png')
-    plt.close()
+    plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_dens_loc')
+    plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_magn_loc')
 
     pairing_vertices = {
         'f_sing': f_sing,
@@ -392,7 +380,7 @@ if (do_pairing_vertex and comm.rank == 0):
     np.save(output_path + 'pairing_vertices.npy', pairing_vertices)
 
     plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_sing_loc')
-    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_sing_loc')
+    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_trip_loc')
 
     log(realt.string_time('End pairing vertex:'))
 #
@@ -412,26 +400,35 @@ if (do_pairing_vertex and comm.rank == 0):
     mu_dga = g_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_pp).gk
 
-    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'], k_grid=q_grid.get_grid_as_tuple())
+    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'],
+                            k_grid=q_grid.get_grid_as_tuple())
+    norm = np.prod(nq) * dmft1p['beta']
+    n_eig = 2
+    powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
+                                              n_eig=n_eig)
 
-    lambda_sing, delta_sing = eq.linear_eliashberg(gamma=gamma_sing, gk=gk_dga, eps=10 ** -7, max_count=10000,
-                                                   norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
-
-    gap_0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_trip['k'], v_type=gap0_trip['v'],
-                             k_grid=q_grid.get_grid_as_tuple())
-    lambda_trip, delta_trip = eq.linear_eliashberg(gamma=gamma_trip, gk=gk_dga, eps=10 ** -7, max_count=10000,
-                                                   norm=np.prod(nq) * dmft1p['beta'], gap_0=gap_0)
+    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_trip['k'], v_type=gap0_trip['v'],
+                            k_grid=q_grid.get_grid_as_tuple())
+    powiter_trip = eq.EliashberPowerIteration(gamma=gamma_trip, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
+                                              n_eig=n_eig)
 
     eliashberg = {
-        'lambda_sing': lambda_sing,
-        'lambda_trip': lambda_trip,
-        'delta_sing': delta_sing,
-        'delta_trip': delta_trip,
+        'lambda_sing': powiter_sing.lam,
+        'lambda_trip': powiter_trip.lam,
+        'delta_sing': powiter_sing.gap,
+        'delta_trip': powiter_trip.gap,
     }
     np.save(output_path + 'eliashberg.npy', eliashberg)
-    np.savetxt(output_path + 'eigenvalues.txt', [lambda_sing[1].real, lambda_trip[1].real], delimiter=',', fmt='%.9f')
+    np.savetxt(output_path + 'eigenvalues.txt', [powiter_sing.lam.real, powiter_trip.lam.real], delimiter=',',
+               fmt='%.9f')
+    np.savetxt(output_path + 'eigenvalues_s.txt', [powiter_sing.lam_s.real, powiter_trip.lam_s.real], delimiter=',',
+               fmt='%.9f')
 
-    plotting.plot_gap_function(delta=delta_sing[1].real, pdir=output_path, name='sing', kgrid=q_grid, do_shift=True)
-    plotting.plot_gap_function(delta=delta_trip[1].real, pdir=output_path, name='trip', kgrid=q_grid, do_shift=True)
-
+    for i in range(len(powiter_sing.gap)):
+        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path, name='sing_{}'.format(i),
+                                   kgrid=q_grid,
+                                   do_shift=True)
+        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path, name='trip_{}'.format(i),
+                                   kgrid=q_grid,
+                                   do_shift=True)
     log(realt.string_time('End Eliashberg:'))
