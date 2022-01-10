@@ -45,7 +45,8 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
 # input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.95/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 # input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 output_path = input_path
@@ -55,15 +56,15 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 verbose = True
 
 # Create the real-space Hamiltonian:
-#hr = hr_mod.standard_cuprates(t=1.0)
-hr = hr_mod.motoharu_nickelates(t=0.25)
+hr = hr_mod.standard_cuprates(t=1.0)
+#hr = hr_mod.motoharu_nickelates(t=0.25)
 
 gap0_sing = {
     'k': 'd-wave',
@@ -159,7 +160,9 @@ grids = {
     "vn_urange": mf.vn(n=niv_urange),
     "vn_asympt": mf.vn(n=niv_asympt),
     "wn_core": mf.wn(n=niw_core),
+    "wn_core_plus": mf.wn_plus(n=niw_core),
     "wn_rpa": mf.wn_outer(n_core=niw_core, n_outer=niw_urange),
+    "wn_rpa_plus": mf.wn_outer_plus(n_core=niw_core, n_outer=niw_urange),
     "k_grid": k_grid,
     "q_grid": q_grid
 }
@@ -237,6 +240,12 @@ if (comm.rank == 0):
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
 
+    # Plot Giw:
+    vn_list = [grids['vn_urange'], grids['vn_urange']]
+    giw_list = [gf_dict['gk'].mean(axis=(0,1,2)), gf_dict_nc['gk'].mean(axis=(0,1,2))]
+    labels = [r'$G_{DGA}(\nu)$', r'$G_{DGA-NC}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=giw_list, labels_list=labels, plot_dir=output_path, niv_plot=100, name='giw_loc')
+
     # Plot siw at important locations:
 
     ak_fs = -1./np.pi * gf_dict['gk'][:,:,:,niv_urange].imag
@@ -258,6 +267,7 @@ if (comm.rank == 0):
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
                       niv_plot=10, name='siw_at_bz_points', ms=5)
+
 
     siw_dga_an = dga_sde['sigma_nc'][ind_anti_node_nc]
     siw_dga_n = dga_sde['sigma_nc'][ind_node]
@@ -284,6 +294,19 @@ if (comm.rank == 0):
     plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_w0')
     plotting.plot_chi_fs(chi=chi_ladder['chi_magn_ladder'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_ladder_w0')
     plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='dens_w0')
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_node])
+    plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_anti_node])
+    plt.savefig(output_path + 'chi_magn_lambda_node_anti_node.png')
+    plt.show()
+
+    plt.figure()
+    plt.plot(chi_lambda['chi_magn_lambda'].mat.imag[ind_node])
+    plt.plot(chi_lambda['chi_magn_lambda'].mat.imag[ind_anti_node])
+    plt.savefig(output_path + 'chi_magn_lambda_node_anti_node_imag.png')
+    plt.show()
 
 
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------

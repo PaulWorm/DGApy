@@ -5,10 +5,6 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
-import h5py
-import matplotlib.pyplot as plt
-import Hk as hamk
-import ChemicalPotential as chempot
 import w2dyn_aux
 import MpiAux as mpiaux
 import TwoPoint as twop
@@ -17,7 +13,7 @@ import SDE as sde
 import RealTime as rt
 import Indizes as ind
 import LambdaCorrection as lc
-import sys, os
+import MatsubaraFrequencies as mf
 
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
@@ -29,7 +25,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     comm = config['comm']
     wn_core = config['grids']['wn_core']
+    wn_core_plus = config['grids']['wn_core_plus']
     wn_rpa = config['grids']['wn_rpa']
+    wn_rpa_plus = config['grids']['wn_rpa_plus']
     niw_core = config['box_sizes']['niw_core']
     niv_invbse = config['box_sizes']['niv_invbse']
     niv_urange = config['box_sizes']['niv_urange']
@@ -124,18 +122,18 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core.size * nq_irr, comm=comm, output_path=output_path,
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=wn_core_plus.size * nq_irr, comm=comm, output_path=output_path,
                                             name='Qiw')
     index_grid_keys = ('irrq', 'iw')
-    qiw_grid = ind.IndexGrids(grid_arrays=(q_grid.irrk_ind_lin,) + (wn_core,), keys=index_grid_keys,
+    qiw_grid = ind.IndexGrids(grid_arrays=(q_grid.irrk_ind_lin,) + (wn_core_plus,), keys=index_grid_keys,
                               my_slice=qiw_distributor.my_slice)
 
     index_grid_keys_fbz = ('qx', 'qy', 'qz', 'iw')
     qiw_grid_fbz = ind.IndexGrids(grid_arrays=q_grid.grid + (wn_core,), keys=index_grid_keys_fbz)
 
-    qiw_distributor_rpa = mpiaux.MpiDistributor(ntasks=wn_rpa.size * nq_irr, comm=comm, output_path=output_path,
+    qiw_distributor_rpa = mpiaux.MpiDistributor(ntasks=wn_rpa_plus.size * nq_irr, comm=comm, output_path=output_path,
                                                 name='Qiw')
-    qiw_grid_rpa = ind.IndexGrids(grid_arrays=(q_grid.irrk_ind_lin,) + (wn_rpa,), keys=index_grid_keys,
+    qiw_grid_rpa = ind.IndexGrids(grid_arrays=(q_grid.irrk_ind_lin,) + (wn_rpa_plus,), keys=index_grid_keys,
                                   my_slice=qiw_distributor_rpa.my_slice)
 
     # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -------------------------------------------
@@ -170,6 +168,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
         chi_dens_rpa.mat = q_grid.irrk2fbz(mat=qiw_grid_rpa.reshape_matrix(chi_dens_rpa.mat))
         chi_magn_rpa.mat = q_grid.irrk2fbz(mat=qiw_grid_rpa.reshape_matrix(chi_magn_rpa.mat))
+
+        chi_dens_rpa.mat = mf.wplus2wfull(mat=chi_dens_rpa.mat)
+        chi_magn_rpa.mat = mf.wplus2wfull(mat=chi_magn_rpa.mat)
     else:
         chi_dens_rpa = []
         chi_magn_rpa = []
@@ -190,6 +191,11 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     # Rebuild the fbz for the lambda correction routine:
     chi_dens_ladder.mat = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_ladder_mat))
     chi_magn_ladder.mat = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_ladder_mat))
+
+    # Recreate the full omega dependency:
+    chi_dens_ladder.mat = mf.wplus2wfull(mat=chi_dens_ladder.mat)
+    chi_magn_ladder.mat = mf.wplus2wfull(mat=chi_magn_ladder.mat)
+
 
     lambda_ = lc.lambda_correction(chi_magn_ladder=chi_magn_ladder, chi_dens_ladder=chi_dens_ladder,
                                    chi_dens_rpa=chi_dens_rpa, chi_magn_rpa=chi_magn_rpa, chi_magn_dmft=chi_magn_loc,
@@ -234,9 +240,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
                                                sigma=dmft1p['sloc'])
 
-    sigma_dens_dga = sde.sde_dga(dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
+    sigma_dens_dga = sde.sde_dga(vrg=dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
-    sigma_magn_dga = sde.sde_dga(dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
+    sigma_magn_dga = sde.sde_dga(vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
 
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
@@ -284,8 +290,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'sigma_nc': sigma_dga_nc
     }
 
-    chi_dens_lambda.mat = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat))
-    chi_magn_lambda.mat = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_lambda.mat))
+    chi_dens_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat)))
+    chi_magn_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_lambda.mat)))
 
     chi_dens_lambda.qiw = qiw_grid_fbz.meshgrid
     chi_magn_lambda.qiw = qiw_grid_fbz.meshgrid
@@ -297,9 +303,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'lambda_magn': lambda_magn
     }
 
-    chi0q_core = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_core))
-    chi0q_urange = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_urange))
-    chi0q_asympt = q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_asympt))
+    chi0q_core = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_core)))
+    chi0q_urange = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_urange)))
+    chi0q_asympt = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_asympt)))
 
     chi_ladder = {
         'chi_dens_ladder': chi_dens_ladder,

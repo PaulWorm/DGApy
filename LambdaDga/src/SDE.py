@@ -46,6 +46,11 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
         gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
         sigma += (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
                  q_grid.irrk_count[q_ind]
+        if(wn != 0):
+            qiw = np.append(q, -wn)
+            gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
+            sigma += (np.conj(np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, :]) * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq.gk * \
+                     q_grid.irrk_count[q_ind]
 
     sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma
     return sigma
