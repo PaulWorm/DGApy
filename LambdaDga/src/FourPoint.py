@@ -19,11 +19,13 @@ def cut_iv(mat=None, niv_cut=10):
     assert (mat.shape[-1] == mat.shape[-2]), 'Last two dimensions of the array are not consistent'
     return mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
+
 def cut_iw(mat=None, niw_cut=0):
     assert mat.shape > 1, 'Matrix has to be reshaped to [qx,qy,qz,Niw] format.'
     niw = mat.shape[-1] // 2
-    mat =mat[..., niw - niw_cut:niw + niw_cut+1]
+    mat = mat[..., niw - niw_cut:niw + niw_cut + 1]
     return mat
+
 
 def get_ggv(giw=None, niv_ggv=-1):
     niv = giw.shape[0] // 2
@@ -296,9 +298,9 @@ def local_susceptibility_from_four_point(four_point: LocalFourPoint = None):
                                , beta=four_point.beta, iw=four_point.iw)
 
 
-def local_rpa_susceptibility(chi0_asympt: LocalBubble = None,chi0_urange: LocalBubble = None, channel=None, u=None):
+def local_rpa_susceptibility(chi0_asympt: LocalBubble = None, chi0_urange: LocalBubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chir = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0) #+ chi0_asympt.chi0 - chi0_urange.chi0
+    chir = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)  # + chi0_asympt.chi0 - chi0_urange.chi0
     return LocalSusceptibility(matrix=chir, giw=chi0_asympt.giw, channel=channel
                                , beta=chi0_asympt.beta, iw=chi0_asympt.iw)
 
@@ -566,7 +568,6 @@ class LadderSusceptibility(Susceptibility):
         self.mat = np.array(self.mat)
 
 
-
 # ======================================================================================================================
 # ------------------------------------------- NONLOCAL FOUR POINT CLASS ------------------------------------------------
 # ======================================================================================================================
@@ -778,9 +779,9 @@ def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = N
 # ------------------------------------- FREE FUNCTIONS FOR NONLOCAL SUSCEPTIBILITY CLASS -------------------------------
 # ======================================================================================================================
 
-def chi_rpa(chi0_asympt: Bubble = None,chi0_urange: Bubble = None, channel=None, u=None):
+def chi_rpa(chi0_asympt: Bubble = None, chi0_urange: Bubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0) #+ chi0_asympt.chi0 - chi0_urange.chi0
+    chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)  # + chi0_asympt.chi0 - chi0_urange.chi0
     return Susceptibility(matrix=chi, channel=channel, beta=chi0_asympt.beta, u=u)
 
 
@@ -816,7 +817,7 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
     for iqw in range(qiw_indizes.shape[0]):
         wn = qiw_indizes[iqw][-1]
         q_ind = qiw_indizes[iqw][0]
-        q = q_grid.irr_kmesh[:,q_ind]
+        q = q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
@@ -824,8 +825,8 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
         chi0q_asympt = copy.deepcopy(chi0q_urange)
         chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
-        chiq_dens = chi_rpa(chi0_asympt=chi0q_asympt,chi0_urange=chi0q_urange, channel='dens', u=u)
-        chiq_magn = chi_rpa(chi0_asympt=chi0q_asympt,chi0_urange=chi0q_urange, channel='magn', u=u)
+        chiq_dens = chi_rpa(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange, channel='dens', u=u)
+        chiq_magn = chi_rpa(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange, channel='magn', u=u)
 
         chi_rpa_dens.mat[iqw] = chiq_dens.mat
         chi_rpa_magn.mat[iqw] = chiq_magn.mat
@@ -842,8 +843,8 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
 
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None,
-                       qiw_indizes=None, niw=None, file=None, do_pairing_vertex=False, q_grid=None):
+def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, niw=None,
+                       file=None, do_pairing_vertex=False, q_grid=None):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -885,7 +886,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
 
-    if(do_pairing_vertex):
+    if (do_pairing_vertex):
         ivn = np.arange(-niv_pp, niv_pp)
         omega = np.zeros((2 * niv_pp, 2 * niv_pp))
         for i, vi in enumerate(ivn):
@@ -894,7 +895,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
-        q_ind = qiw_indizes[iqw][0]
+        q_ind = qiw_grid[iqw][0]
         q = q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
@@ -940,26 +941,26 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
 
-
         chi0q_core_full.mat[iqw] = chi0q_core.chi0
         chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
         chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
 
         if (do_pairing_vertex):
-            if(np.abs(wn) < 2*niv_pp):
+            if (np.abs(wn) < 2 * niv_pp):
                 condition = omega == wn
 
                 f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn.mat,
                                                                                         vrg=vrgq_magn_core.mat,
-                                                                                        gchi0=chi0q_core.gchi0, beta=beta,
+                                                                                        gchi0=chi0q_core.gchi0,
+                                                                                        beta=beta,
                                                                                         u_r=get_ur(u=u, channel='magn'))
                 f1_dens_slice, f2_dens_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_dens.mat,
                                                                                         vrg=vrgq_dens_core.mat,
-                                                                                        gchi0=chi0q_core.gchi0, beta=beta,
+                                                                                        gchi0=chi0q_core.gchi0,
+                                                                                        beta=beta,
                                                                                         u_r=get_ur(u=u, channel='dens'))
 
-
-                #group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw)
+                # group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw)
                 group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
                 file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, condition=condition, niv_pp=niv_pp)
@@ -986,7 +987,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         'chi0q_urange': chi0q_urange_full,
         'chi0q_asympt': chi0q_asympt_full
     }
-    return dga_susc  #, f_ladder
+    return dga_susc  # , f_ladder
 
 
 if __name__ == "__main__":

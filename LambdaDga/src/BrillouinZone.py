@@ -40,6 +40,7 @@ class KGrid():
                                                                              return_counts=True)
         self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
         self.irrk_ind_lin = np.arange(0,self.nk_irr)
+        self.fbz2irrk = self.irrk_ind[self.irrk_inv]
 
     def set_k_axes(self):
         self.kx = np.linspace(0, 2 * np.pi, self.nk[0], endpoint=False)
@@ -51,6 +52,17 @@ class KGrid():
         old_shape = np.shape(mat)
         mat_fbz = mat[self.irrk_inv,...].reshape(self.nk + old_shape[1:])
         return mat_fbz
+
+    def symmetrize_irrk(self,mat):
+        '''Shape of mat has to be [kx,ky,kz,...]'''
+        mat_reshape = np.reshape(mat,(self.nk_tot,-1))
+        shp = np.shape(mat_reshape)
+        reduced = np.zeros((self.nk_irr,)+shp[1:], dtype=mat_reshape.dtype)
+        for i in range(self.nk_irr):
+            reduced[i,...] = np.mean(mat_reshape[self.fbz2irrk == self.irrk_ind[i],...], axis=0)
+        symmetrized = self.irrk2fbz(mat=reduced)
+        return symmetrized
+
 
 
 
@@ -161,7 +173,7 @@ def get_irr_grid(ek=None, dec=15):
 
 
 if __name__ == '__main__':
-    nk = 200
+    nk = 8
     grid_k = grid_2d(nk=nk)
     grid_q = grid_2d(nk=nk, name='q')
 
@@ -180,17 +192,18 @@ if __name__ == '__main__':
     hr = np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
     ek = hk.ek_3d(Grid.get_grid_as_tuple(), hr)
 
-    dec = 10
-    ek = np.round(ek, decimals=dec)
-    unique, unique_indizes, unique_inverse, unique_counts = np.unique(ek, return_index=True, return_inverse=True,
-                                                                      return_counts=True)
-    kx = kgrid[0]
-    ky = kgrid[1]
-    kz = kgrid[2]
-    KX, KY, KZ = np.meshgrid(kx, ky, kz)
+    k_grid = KGrid(nk=(nk, nk, 1),ek=ek)
+    mask = k_grid.irrk_ind[k_grid.irrk_inv]
 
-    nk_irr = np.size(unique)
-    nk_irr_min = nk ** 2 / 8
-    print(f'{nk_irr=}')
-    print(f'{nk_irr_min=}')
-    print(np.sum(unique[unique_inverse].reshape(nk,nk,1)-ek))
+
+
+    ind_equal = np.equal(k_grid.irrk_inv[:,None],k_grid.irrk_ind_lin[None,:])
+    n_equal_max = np.max(k_grid.irrk_count)
+
+    mat = ek
+    mat_reshape = np.reshape(mat, (k_grid.nk_tot, -1))
+    shp = np.shape(mat_reshape)
+    reduced = np.zeros((k_grid.nk_irr,) + shp[1:], dtype=mat_reshape.dtype)
+    for i in range(k_grid.nk_irr):
+        reduced[i, ...] = np.mean(mat_reshape[k_grid.fbz2irrk == k_grid.irrk_ind[i], ...], axis=0)
+    symmetrized = k_grid.irrk2fbz(mat=reduced)

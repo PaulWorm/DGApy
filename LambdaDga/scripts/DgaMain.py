@@ -55,7 +55,7 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -106,9 +106,9 @@ niv_asympt = 0  # Don't use this for now.
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 8
+nkx = 16
 nky = nkx
-nqx = 8
+nqx = 16
 nqy = nqx
 
 nk = (nkx, nky, 1)

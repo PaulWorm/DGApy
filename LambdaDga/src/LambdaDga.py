@@ -147,8 +147,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     qiw_distributor.open_file()
     dga_susc = fp.dga_susceptibility(dmft_input=dmft1p, local_sde=dmft_gamma, hr=hr, kgrid=k_grid.grid,
-                                     box_sizes=box_sizes,
-                                     qiw_grid=qiw_grid.my_mesh, qiw_indizes=qiw_grid.my_indizes, niw=niw_core,
+                                     box_sizes=box_sizes, qiw_grid=qiw_grid.my_mesh, niw=niw_core,
                                      file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex, q_grid=q_grid)
     qiw_distributor.close_file()
 
@@ -236,37 +235,42 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                                sigma=dmft1p['sloc'])
 
     sigma_dens_dga = sde.sde_dga(dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
-                                 mu=dmft1p['mu'], qiw=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
     sigma_magn_dga = sde.sde_dga(dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
-                                 mu=dmft1p['mu'], qiw=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
 
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
     comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
     sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
     comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
 
+    sigma_dens_dga = k_grid.symmetrize_irrk(mat=sigma_dens_dga_reduce)
+    sigma_magn_dga = k_grid.symmetrize_irrk(mat=sigma_magn_dga_reduce)
+
     sigma_dens_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_dens'], g_generator=g_generator, niv_giw=niv_urange,
-                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh, q_grid=q_grid)
+                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
     sigma_magn_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_magn'], g_generator=g_generator, niv_giw=niv_urange,
-                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw=qiw_grid_rpa.my_mesh, q_grid=q_grid)
+                                 mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
 
     sigma_dens_rpa_reduce = np.zeros(np.shape(sigma_dens_rpa), dtype=complex)
     comm.Allreduce(sigma_dens_rpa, sigma_dens_rpa_reduce)
     sigma_magn_rpa_reduce = np.zeros(np.shape(sigma_magn_rpa), dtype=complex)
     comm.Allreduce(sigma_magn_rpa, sigma_magn_rpa_reduce)
 
-    sigma_dens_rpa = sigma_dens_rpa_reduce
-    sigma_magn_rpa = sigma_magn_rpa_reduce
+    # Sigma needs to be symmetrized within the corresponding BZ:
+    sigma_dens_rpa = k_grid.symmetrize_irrk(mat=sigma_dens_rpa_reduce)
+    sigma_magn_rpa = k_grid.symmetrize_irrk(mat=sigma_magn_rpa_reduce)
 
     if (wn_rpa.size > 0):
-        sigma_dens_dga = sigma_dens_dga_reduce + sigma_dens_rpa
-        sigma_magn_dga = sigma_magn_dga_reduce + sigma_magn_rpa
+        sigma_dens_dga = sigma_dens_dga + sigma_dens_rpa
+        sigma_magn_dga = sigma_magn_dga + sigma_magn_rpa
 
     sigma_dga = -1 * sigma_dens_dga + 3 * sigma_magn_dga + dmft_sde['hartree'] - 2 * dmft_sde['siw_magn'] + 2 * \
                 dmft_sde['siw_dens'] \
                 - dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
     sigma_dga_nc = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
                    dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
+
 
     if (verbose):
         outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))

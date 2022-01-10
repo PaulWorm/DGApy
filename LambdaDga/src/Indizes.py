@@ -157,7 +157,7 @@ class IndexGrids():
     def set_meshgrid(self):
         # unpack tuple with star
         # reshape to be a long array, where each column represents one index
-        self._meshgrid = np.array(np.meshgrid(*self.grid_arrays, )).reshape(self.n_indizes, -1).T
+        self._meshgrid = np.array(np.meshgrid(*self.grid_arrays,indexing='ij')).reshape(self.n_indizes, -1).T
         indizes = [np.arange(0,grid_size) for grid_size in self.grid_sizes()]
         self._indizes = np.array(np.meshgrid(*indizes, )).reshape(self.n_indizes, -1).T
 
