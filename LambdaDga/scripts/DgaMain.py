@@ -305,10 +305,7 @@ if (do_pairing_vertex and comm.rank == 0):
                               keys=('qx', 'qy', 'qz', 'iw'),
                               my_slice=None)
 
-    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor,
-                                                                                nq=q_grid.nk_irr,
-                                                                                niv_pp=niv_pp,
-                                                                                fname_ladder_vertex=fname_ladder_vertex)
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=output_path,name='Qiw', mpi_size=comm.size, nq=q_grid.nk_irr, niv_pp=niv_pp)
     f1_magn = q_grid.irrk2fbz(mat=f1_magn)
     f2_magn = q_grid.irrk2fbz(mat=f2_magn)
     f1_dens = q_grid.irrk2fbz(mat=f1_dens)

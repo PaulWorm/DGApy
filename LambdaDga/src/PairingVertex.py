@@ -8,6 +8,7 @@ import numpy as np
 import TwoPoint as tp
 import FourPoint as fp
 import MatsubaraFrequencies as mf
+import sys,os
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -75,7 +76,7 @@ def reshape_chi(chi=None, niv_pp=None):
     return chi_pp
 
 
-def load_pairing_vertex_from_rank_files(rank_dist=None, nq=None, niv_pp=None, fname_ladder_vertex=None):
+def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=None, nq=None, niv_pp=None):
 
     import h5py
     import re
@@ -85,22 +86,21 @@ def load_pairing_vertex_from_rank_files(rank_dist=None, nq=None, niv_pp=None, fn
     f2_magn = np.zeros((nq, 2*niv_pp, 2*niv_pp), dtype=complex)
     f1_dens = np.zeros((nq, 2*niv_pp, 2*niv_pp), dtype=complex)
     f2_dens = np.zeros((nq, 2*niv_pp, 2*niv_pp), dtype=complex)
-    file_out = h5py.File(fname_ladder_vertex, 'w')
 
-    for ir in range(rank_dist.mpi_size):
-        rank_dist.open_file()
-        for key1 in list(rank_dist.file.keys()):
+    for ir in range(mpi_size):
+        fname = output_path + name + 'Rank{0:05d}'.format(ir) + '.hdf5'
+        file_in = h5py.File(fname, 'r')
+        for key1 in list(file_in.file.keys()):
             # extract the q indizes from the group name!
             irrq = np.array(re.findall("\d+", key1), dtype=int)[0]
-            condition = rank_dist.file[key1 + '/condition/'][()]
-            f1_magn[irrq, condition] = rank_dist.file[key1 + '/f1_magn/'][()]
-            f2_magn[irrq, condition] = rank_dist.file[key1 + '/f2_magn/'][()]
-            f1_dens[irrq, condition] = rank_dist.file[key1 + '/f1_dens/'][()]
-            f2_dens[irrq, condition] = rank_dist.file[key1 + '/f2_dens/'][()]
+            condition = file_in.file[key1 + '/condition/'][()]
+            f1_magn[irrq, condition] = file_in.file[key1 + '/f1_magn/'][()]
+            f2_magn[irrq, condition] = file_in.file[key1 + '/f2_magn/'][()]
+            f1_dens[irrq, condition] = file_in.file[key1 + '/f1_dens/'][()]
+            f2_dens[irrq, condition] = file_in.file[key1 + '/f2_dens/'][()]
 
-        rank_dist.close_file()
-        rank_dist.delete_file()
-    file_out.close()
+        file_in.close()
+        os.remove(fname)
     return f1_magn, f2_magn, f1_dens, f2_dens
 
 # def get_chi_aux_asympt(chi_aux: fp.FourPoint = None, chi_r_urange: , chi_r_asympt=None, u=1):
