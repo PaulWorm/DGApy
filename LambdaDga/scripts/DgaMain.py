@@ -47,7 +47,7 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
-#input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+# input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -55,47 +55,27 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_pairing_vertex = False
+do_pairing_vertex = True
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
-lattice = 'square'
 verbose = True
 
+# Create the real-space Hamiltonian:
+#hr = hr_mod.standard_cuprates(t=1.0)
+hr = hr_mod.motoharu_nickelates(t=0.25)
+
 gap0_sing = {
-    'k':'d-wave',
-    'v':'even'
+    'k': 'd-wave',
+    'v': 'even'
 }
 
 gap0_trip = {
-    'k':'d-wave',
-    'v':'odd'
+    'k': 'd-wave',
+    'v': 'odd'
 }
 
-# Set up real-space Wannier Hamiltonian:
-# t = 1.00
-# tp = -0.20 * t
-# tpp = 0.10 * t
-t = 0.25
-tp = -0.25 * t
-tpp = 0.12 * t
-
-# Ba2CuO3 parameter
-# tx = 0.0185
-# ty = 0.47
-# tpxy = 0.0068
-# tppx = 0.0013
-# tppy = 0.085
-
-# Ba2CuO3.25 parameters
-tx = 0.0258
-ty = 0.5181
-tpxy = 0.0119
-tppx = -0.0014
-tppy = 0.0894
-
 # Define frequency box-sizes:
-# Currently the niw range has to be 1 smaller than the niv range. I hope there is no frequency shift error.
 niw_core = 20
 niw_urange = 20
 niv_core = 20
@@ -121,21 +101,11 @@ output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.
 output_path = output.uniquify(output_path + output_folder) + '/'
 fname_ladder_vertex = output_path + fname_ladder_vertex
 
-# Construct the hr based on lattice type:
-if (lattice == 'square'):
-    hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
-elif (lattice == 'quasi1D'):
-    hr = hr_mod.one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
-elif (lattice == 'triangular'):
-    hr = hr_mod.one_band_2d_triangular_t_tp_tpp(t=t, tp=tp, tpp=tpp)
-else:
-    raise NotImplementedError('Only square or triangular lattice implemented at the moment.')
-
 # Generate k-meshes:
 k_grid = bz.KGrid(nk=nk)
 q_grid = bz.KGrid(nk=nq)
-ek = hamk.ek_3d(kgrid=k_grid.grid,hr=hr)
-eq = hamk.ek_3d(kgrid=q_grid.grid,hr=hr)
+ek = hamk.ek_3d(kgrid=k_grid.grid, hr=hr)
+eq = hamk.ek_3d(kgrid=q_grid.grid, hr=hr)
 
 k_grid.get_irrk_from_ek(ek=ek)
 q_grid.get_irrk_from_ek(ek=eq)
@@ -153,8 +123,7 @@ if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 options = {
     'do_pairing_vertex': do_pairing_vertex,
     'lambda_correction_type': lambda_correction_type,
-    'use_urange_for_lc': use_urange_for_lc,
-    'lattice': lattice
+    'use_urange_for_lc': use_urange_for_lc
 }
 
 system = {
@@ -247,12 +216,20 @@ if (comm.rank == 0):
     np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
                fmt='%.9f')
 
+    # Create the Green's functions:
+    gf_dict = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'])
+    np.save(output_path + 'gk_dga.npy', gf_dict, allow_pickle=True)
+
+    gf_dict_nc = twop.create_gk_dict(sigma=dga_sde['sigma_nc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'],
+                                  n=dmft1p['n'], mu0=dmft1p['mu'])
+    np.save(output_path + 'gk_dga_nc.npy', gf_dict_nc, allow_pickle=True)
+
+
     siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
     siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
-
-
 
     # Plot Siw-check:
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
@@ -262,16 +239,28 @@ if (comm.rank == 0):
 
     # Plot siw at important locations:
 
-    siw_dga_an = dga_sde['sigma'][nk[0] // 2, 0, 0, :]
-    siw_dga_n = dga_sde['sigma'][nk[0] // 4, nk[1] // 4, 0, :]
+    ak_fs = -1./np.pi * gf_dict['gk'][:,:,:,niv_urange].imag
+    ak_fs_nc = -1./np.pi * gf_dict_nc['gk'][:,:,:,niv_urange].imag
+
+    ind_node = bz.find_arc_node(ak_fs=ak_fs,kgrid=k_grid)
+    ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs,kgrid=k_grid)
+
+    np.savetxt(output_path + 'loc_nodes_antinode.txt', [k_grid.kmesh.transpose((1,2,3,0))[ind_node], k_grid.kmesh.transpose((1,2,3,0))[ind_anti_node]], delimiter=',',
+               fmt='%.9f')
+
+    ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc,kgrid=k_grid)
+    ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc,kgrid=k_grid)
+
+    siw_dga_an = dga_sde['sigma'][ind_anti_node]
+    siw_dga_n = dga_sde['sigma'][ind_node]
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
                       niv_plot=10, name='siw_at_bz_points', ms=5)
 
-    siw_dga_an = dga_sde['sigma_nc'][nk[0] // 2, 0, 0, :]
-    siw_dga_n = dga_sde['sigma_nc'][nk[0] // 4, nk[1] // 4, 0, :]
+    siw_dga_an = dga_sde['sigma_nc'][ind_anti_node_nc]
+    siw_dga_n = dga_sde['sigma_nc'][ind_node]
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
@@ -281,73 +270,20 @@ if (comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
 
-    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
-                                                    sigma=dga_sde['sigma'])
-    mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
-    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
+    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
+    plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
 
-    gf_dict = {
-        'gk': gk_dga._gk,
-        'mu': gk_dga._mu,
-        'iv': gk_dga._iv,
-        'beta': gk_dga._beta
-    }
+    plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
+    plotting.plot_giwk_qpd(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
 
-    np.save(output_path + 'gk_dga.npy', gk_dga, allow_pickle=True)
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path,
+                             name='gamma_magn')
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path,
+                             name='gamma_dens')
 
-    plotting.plot_giwk_fs(giwk=gk_dga.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
-    plotting.plot_giwk_qpd(giwk=gk_dga.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
-
-    gk_dga_generator_nc = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
-                                                       sigma=dga_sde['sigma_nc'])
-    mu_dga_nc = gk_dga_generator_nc.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
-    gk_dga_nc = gk_dga_generator_nc.generate_gk(mu=mu_dga_nc)
-
-    gf_dict_nc = {
-        'gk': gk_dga_nc._gk,
-        'mu': gk_dga_nc._mu,
-        'iv': gk_dga_nc._iv,
-        'beta': gk_dga_nc._beta
-    }
-
-    np.save(output_path + 'gk_dga_nc.npy', gk_dga_nc, allow_pickle=True)
-
-    plotting.plot_giwk_fs(giwk=gk_dga_nc.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
-
-    chi_magn_lambda = chi_lambda['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
-    chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
-    chi_dens_lambda = chi_lambda['chi_dens_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
-
-    import matplotlib.pyplot as plt
-
-    extent = [q_grid.kx[0], q_grid.kx[-1], q_grid.ky[0], q_grid.ky[-1]]
-
-    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_magn')
-    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_dens')
-
-    plt.figure()
-    plt.imshow(chi_magn_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
-    plt.xlabel(r'$k_y$')
-    plt.ylabel(r'$k_x$')
-    plt.colorbar()
-    plt.savefig(output_path + 'chi_magn_w0.png')
-    plt.close()
-
-    plt.figure()
-    plt.imshow(chi_magn_ladder[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
-    plt.xlabel(r'$k_y$')
-    plt.ylabel(r'$k_x$')
-    plt.colorbar()
-    plt.savefig(output_path + 'chi_magn_ladder_w0.png')
-    plt.close()
-
-    plt.figure()
-    plt.imshow(chi_dens_lambda[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
-    plt.xlabel(r'$k_y$')
-    plt.ylabel(r'$k_x$')
-    plt.colorbar()
-    plt.savefig(output_path + 'chi_dens_w0.png')
-    plt.close()
+    plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_w0')
+    plotting.plot_chi_fs(chi=chi_ladder['chi_magn_ladder'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_ladder_w0')
+    plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='dens_w0')
 
 
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
@@ -369,7 +305,8 @@ if (do_pairing_vertex and comm.rank == 0):
                               keys=('qx', 'qy', 'qz', 'iw'),
                               my_slice=None)
 
-    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor, nq=q_grid.nk_irr,
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor,
+                                                                                nq=q_grid.nk_irr,
                                                                                 niv_pp=niv_pp,
                                                                                 fname_ladder_vertex=fname_ladder_vertex)
     f1_magn = q_grid.irrk2fbz(mat=f1_magn)
@@ -377,15 +314,14 @@ if (do_pairing_vertex and comm.rank == 0):
     f1_dens = q_grid.irrk2fbz(mat=f1_dens)
     f2_dens = q_grid.irrk2fbz(mat=f2_dens)
 
-    chi_dens_lambda_pp = pv.reshape_chi(chi=chi_dens_lambda, niv_pp=niv_pp)
-    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_magn_lambda, niv_pp=niv_pp)
+    chi_dens_lambda_pp = pv.reshape_chi(chi=chi_lambda['chi_dens_lambda'].mat, niv_pp=niv_pp)
+    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['chi_magn_lambda'].mat, niv_pp=niv_pp)
 
     f_magn = f1_magn + (1 + dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
     f_dens = f1_dens + (1 - dmft1p['u'] * chi_dens_lambda_pp) * f2_dens
 
     f_sing = -1.5 * f_magn + 0.5 * f_dens
     f_trip = -0.5 * f_magn - 0.5 * f_dens
-
 
     plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_dens_loc')
     plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_magn_loc')
@@ -397,8 +333,8 @@ if (do_pairing_vertex and comm.rank == 0):
 
     np.save(output_path + 'pairing_vertices.npy', pairing_vertices)
 
-    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_sing_loc')
-    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir = output_path, name='f_trip_loc')
+    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_sing_loc')
+    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_trip_loc')
 
     log(realt.string_time('End pairing vertex:'))
 #

@@ -2,6 +2,17 @@ import numpy as np
 import Hk as hk
 
 
+def find_arc_node(ak_fs=None,kgrid=None):
+    mask = kgrid.kmesh[0] == kgrid.kmesh[1]
+    ind = tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])])
+    return ind
+
+def find_arc_anti_node(ak_fs=None,kgrid=None):
+    mask = kgrid.kmesh[0] == 0
+    ind = tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])])
+    return ind
+
+
 class KGrid():
     ''' Class to build the k-grid for the Brillouin zone.'''
 
@@ -31,7 +42,7 @@ class KGrid():
         return tuple([self.irr_kmesh[ax] for ax in range(len(self.nk))])
 
     def set_kmesh(self):
-        self.kmesh = np.meshgrid(self.kx, self.ky, self.kz)
+        self.kmesh = np.array(np.meshgrid(self.kx, self.ky, self.kz))
 
 
     def get_irrk_from_ek(self, ek=None):

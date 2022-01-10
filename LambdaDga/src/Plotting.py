@@ -6,7 +6,7 @@ import numpy as np
 import itertools
 import matplotlib
 import os
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import FourPoint as fp
@@ -36,6 +36,22 @@ def plot_susc(susc=None):
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'\chi')
     plt.show()
+
+
+def get_extent(kgrid=None):
+    return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
+
+def plot_chi_fs(chi=None,output_path=None,kgrid=None, niv_plot=None, kz = 0, name=''):
+    if(niv_plot is None):
+        niv_plot = chi.shape[-1] // 2
+    extent = get_extent(kgrid=kgrid)
+    plt.figure()
+    plt.imshow(chi[:, :, kz, niv_plot], cmap='RdBu', extent=extent, origin='lower')
+    plt.xlabel(r'$k_y$')
+    plt.ylabel(r'$k_x$')
+    plt.colorbar()
+    plt.savefig(output_path + 'chi_{}.png'.format(name))
+    plt.close()
 
 
 def plot_fp(fp: fp.LocalFourPoint = None, w_plot=0, name='', niv_plot=-1):
@@ -98,6 +114,7 @@ def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_p
     nplot = len(vn_list)
     assert nplot < len(markers), 'More plots-lines requires, than markers avaiable.'
 
+    plt.figure()
     plt.subplot(211)
 
     for i in range(len(vn_list)):

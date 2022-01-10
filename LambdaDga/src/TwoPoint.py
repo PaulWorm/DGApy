@@ -41,6 +41,20 @@ class two_point():
             self.set_vn()
         self._iv = (self._vn * 2 + 1) * 1j * np.pi / self._beta
 
+def create_gk_dict(sigma=None,kgrid=None,hr=None,beta=None,n=None,mu0=0.):
+    gk_dga_generator = GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr,
+                                                    sigma=sigma)
+    mu_dga = gk_dga_generator.adjust_mu(n=n, mu0=mu0)
+    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
+
+    gf_dict = {
+        'gk': gk_dga._gk,
+        'mu': gk_dga._mu,
+        'iv': gk_dga._iv,
+        'beta': gk_dga._beta
+    }
+    return gf_dict
+
 
 # ======================================================================================================================
 # ----------------------------------------------------- GKIW CLASS -----------------------------------------------------
