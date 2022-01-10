@@ -242,8 +242,8 @@ if __name__ == '__main__':
     # Generate k-meshes:
     import BrillouinZone as bz
 
-    k_grid = bz.KGrid(nk=nk, name='k')
-    q_grid = bz.KGrid(nk=nq, name='q')
+    k_grid = bz.NamedKGrid(nk=nk, name='k')
+    q_grid = bz.NamedKGrid(nk=nq, name='q')
 
     g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
                                           sigma=dmft1p['sloc'])

@@ -33,47 +33,33 @@ def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, u=None):
 
 
 def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
-            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None, box_sizes=None):
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw=None, nq=None, box_sizes=None, q_grid=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
-    niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_urange), dtype=complex)
-    ind_full = np.arange(0, 2 * niv_urange)
-    ind_core = np.arange(niv_urange - niv_core, niv_urange + niv_core)
-    ind_urange = ind_full[~np.isin(ind_full, ind_core)]
 
     for iqw, qiw_ in enumerate(qiw):
-        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv_urange)
-        #sigma += - vrg.u_r / (2.0) * (
-        #            vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk
-        sigma[...,ind_core] +=  (vrg.mat[iqw, ind_core][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk[...,ind_core]
-        #sigma[...,ind_urange] +=  (vrg.mat[iqw, ind_urange][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk[...,ind_urange]
-        sigma[...,ind_urange] += -1./vrg.beta * vrg.u_r * chir.mat[iqw] * gkpq.gk[...,ind_urange]
+        q_ind = qiw_[0]
+        q = q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(q, qiw_[-1])
+        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
+        sigma += (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
+                 q_grid.irrk_count[q_ind]
 
-    sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma  #
-    #sigma = 1. / (nq) * sigma  #
-    return sigma
-
-
-def sde_dga_urange(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None,
-                   mu=0, nq=None, u=None, qiw=None):
-    u_r = fp.get_ur(u=u, channel=chir.channel)
-    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_giw), dtype=complex)
-
-    for iqw, qiw_ in enumerate(qiw):
-        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv_giw)
-    sigma += u_r ** 2 / (2. * chir.beta) * chir.mat[iqw, None] * gkpq.gk
-    sigma = 1. / (nq) * sigma
+    sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma
     return sigma
 
 
 def rpa_sde(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None, mu=0,
-            nq=None, u=None, qiw=None):
+            nq=None, u=None, qiw=None, q_grid=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_giw), dtype=complex)
     for iqw, qiw_ in enumerate(qiw):
-        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw_, niv=niv_giw)
-        sigma +=  chir.mat[iqw, None] * gkpq.gk
+        q_ind = qiw_[0]
+        q = q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(q, qiw_[-1])
+        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_giw)
+        sigma += chir.mat[iqw, None] * gkpq.gk * q_grid.irrk_count[q_ind]
     sigma = u_r ** 2 / (2. * chir.beta) * 1. / (nq) * sigma
     return sigma
 

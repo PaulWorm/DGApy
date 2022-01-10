@@ -11,7 +11,7 @@ import FourPoint as fp
 
 def get_lambda_start(chi: fp.LadderSusceptibility = None):
     is_w0 = chi.qiw[:, -1] == 0
-    return -np.min(1. / (chi.mat[is_w0].real))
+    return -np.min(1. / (chi.mat.flatten()[is_w0].real))
 
 
 def lambda_correction_single(lambda_start=0, chir: fp.LadderSusceptibility = None,

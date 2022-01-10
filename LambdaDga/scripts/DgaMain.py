@@ -106,9 +106,9 @@ niv_asympt = 0  # Don't use this for now.
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 16
+nkx = 8
 nky = nkx
-nqx = 16
+nqx = 8
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -121,10 +121,7 @@ output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.
 output_path = output.uniquify(output_path + output_folder) + '/'
 fname_ladder_vertex = output_path + fname_ladder_vertex
 
-# Generate k-meshes:
-k_grid = bz.KGrid(nk=nk, name='k')
-q_grid = bz.KGrid(nk=nq, name='q')
-
+# Construct the hr based on lattice type:
 if (lattice == 'square'):
     hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
 elif (lattice == 'quasi1D'):
@@ -133,6 +130,15 @@ elif (lattice == 'triangular'):
     hr = hr_mod.one_band_2d_triangular_t_tp_tpp(t=t, tp=tp, tpp=tpp)
 else:
     raise NotImplementedError('Only square or triangular lattice implemented at the moment.')
+
+# Generate k-meshes:
+k_grid = bz.KGrid(nk=nk)
+q_grid = bz.KGrid(nk=nq)
+ek = hamk.ek_3d(kgrid=k_grid.grid,hr=hr)
+eq = hamk.ek_3d(kgrid=q_grid.grid,hr=hr)
+
+k_grid.get_irrk_from_ek(ek=ek)
+q_grid.get_irrk_from_ek(ek=eq)
 
 # load contents from w2dynamics DMFT file:
 f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
@@ -246,9 +252,7 @@ if (comm.rank == 0):
     siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
     siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
 
-    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (grids['wn_core'],),
-                              keys=('qx', 'qy', 'qz', 'iw'),
-                              my_slice=None)
+
 
     # Plot Siw-check:
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
@@ -277,7 +281,7 @@ if (comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
 
-    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+    gk_dga_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
                                                     sigma=dga_sde['sigma'])
     mu_dga = gk_dga_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
@@ -294,7 +298,7 @@ if (comm.rank == 0):
     plotting.plot_giwk_fs(giwk=gk_dga.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
     plotting.plot_giwk_qpd(giwk=gk_dga.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
 
-    gk_dga_generator_nc = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+    gk_dga_generator_nc = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
                                                        sigma=dga_sde['sigma_nc'])
     mu_dga_nc = gk_dga_generator_nc.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga_nc = gk_dga_generator_nc.generate_gk(mu=mu_dga_nc)
@@ -311,11 +315,12 @@ if (comm.rank == 0):
     plotting.plot_giwk_fs(giwk=gk_dga_nc.gk, plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
 
     chi_magn_lambda = chi_lambda['chi_magn_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
+    chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
     chi_dens_lambda = chi_lambda['chi_dens_lambda'].mat.reshape(q_grid.nk + (niw_core * 2 + 1,))
 
     import matplotlib.pyplot as plt
 
-    extent = [q_grid.grid['qx'][0], q_grid.grid['qx'][-1], q_grid.grid['qy'][0], q_grid.grid['qy'][-1]]
+    extent = [q_grid.kx[0], q_grid.kx[-1], q_grid.ky[0], q_grid.ky[-1]]
 
     plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_magn')
     plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path, name='gamma_dens')
@@ -326,6 +331,14 @@ if (comm.rank == 0):
     plt.ylabel(r'$k_x$')
     plt.colorbar()
     plt.savefig(output_path + 'chi_magn_w0.png')
+    plt.close()
+
+    plt.figure()
+    plt.imshow(chi_magn_ladder[:, :, 0, niw_core].real, cmap='RdBu', extent=extent, origin='lower')
+    plt.xlabel(r'$k_y$')
+    plt.ylabel(r'$k_x$')
+    plt.colorbar()
+    plt.savefig(output_path + 'chi_magn_ladder_w0.png')
     plt.close()
 
     plt.figure()
@@ -348,16 +361,21 @@ if (do_pairing_vertex and comm.rank == 0):
 
     log(realt.string_time('Start pairing vertex:'))
 
-    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * np.prod(nq), comm=comm,
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * q_grid.nk_irr, comm=comm,
                                             output_path=output_path,
                                             name='Qiw')
 
-    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor, nq=nq,
+    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.grid + (grids['wn_core'],),
+                              keys=('qx', 'qy', 'qz', 'iw'),
+                              my_slice=None)
+
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(rank_dist=qiw_distributor, nq=q_grid.nk_irr,
                                                                                 niv_pp=niv_pp,
                                                                                 fname_ladder_vertex=fname_ladder_vertex)
-
-    chi_dens_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_dens_lambda'].mat)
-    chi_magn_lambda = qiw_grid.reshape_matrix(mat=chi_lambda['chi_magn_lambda'].mat)
+    f1_magn = q_grid.irrk2fbz(mat=f1_magn)
+    f2_magn = q_grid.irrk2fbz(mat=f2_magn)
+    f1_dens = q_grid.irrk2fbz(mat=f1_dens)
+    f2_dens = q_grid.irrk2fbz(mat=f2_dens)
 
     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_dens_lambda, niv_pp=niv_pp)
     chi_magn_lambda_pp = pv.reshape_chi(chi=chi_magn_lambda, niv_pp=niv_pp)
@@ -395,20 +413,20 @@ if (do_pairing_vertex and comm.rank == 0):
     gamma_sing = -f_sing
     gamma_trip = -f_trip
 
-    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
+    g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.grid, hr=hr,
                                                sigma=dga_sde['sigma'])
     mu_dga = g_generator.adjust_mu(n=dmft1p['n'], mu0=dmft1p['mu'])
     gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_pp).gk
 
     gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'],
-                            k_grid=q_grid.get_grid_as_tuple())
+                            k_grid=q_grid.grid)
     norm = np.prod(nq) * dmft1p['beta']
     n_eig = 2
     powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
                                               n_eig=n_eig)
 
     gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_trip['k'], v_type=gap0_trip['v'],
-                            k_grid=q_grid.get_grid_as_tuple())
+                            k_grid=q_grid.grid)
     powiter_trip = eq.EliashberPowerIteration(gamma=gamma_trip, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
                                               n_eig=n_eig)
 

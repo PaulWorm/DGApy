@@ -171,8 +171,8 @@ def plot_fs(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
         niv_plot = np.shape(siwk)[-1] // 2
 
     siwk_plot = np.copy(siwk)
-    kx = kgrid._grid['kx']
-    ky = kgrid._grid['ky']
+    kx = kgrid.kx
+    ky = kgrid.ky
     if(do_shift):
         siwk_plot = np.roll(siwk_plot,kgrid.nk[0]//2,0)
         siwk_plot = np.roll(siwk_plot,kgrid.nk[1]//2,1)
@@ -216,8 +216,8 @@ def plot_contour(ax = None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plo
         niv_plot = np.shape(siwk)[-1] // 2
 
     siwk_plot = np.copy(siwk[:, :, kz, niv_plot])
-    kx = kgrid._grid['kx']
-    ky = kgrid._grid['ky']
+    kx = kgrid.kx
+    ky = kgrid.ky
     if (do_shift):
         siwk_plot = np.roll(siwk_plot, kgrid.nk[0] // 2, 0)
         siwk_plot = np.roll(siwk_plot, kgrid.nk[1] // 2, 1)
@@ -257,8 +257,8 @@ def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
         niv_plot = np.shape(siwk)[-1] // 2
 
     siwk_plot = np.copy(siwk[:,:,kz,niv_plot])
-    kx = kgrid._grid['kx']
-    ky = kgrid._grid['ky']
+    kx = kgrid.kx
+    ky = kgrid.ky
     if(do_shift):
         siwk_plot = np.roll(siwk_plot,kgrid.nk[0]//2,0)
         siwk_plot = np.roll(siwk_plot,kgrid.nk[1]//2,1)
@@ -304,8 +304,8 @@ def plot_qpd(siwk=None, kgrid=None, do_shift=False, kz=0,niv_plot=None):
 
 def plot_gap_function(delta=None, pdir = None, name='', kgrid=None, do_shift=False):
     niv = np.shape(delta)[-1] // 2
-    kx = kgrid._grid['qx']
-    ky = kgrid._grid['qy']
+    kx = kgrid.kx
+    ky = kgrid.ky
 
     delta_plot = np.copy(delta)
     if(do_shift):

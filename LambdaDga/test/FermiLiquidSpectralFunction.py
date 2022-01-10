@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     nkf = 120
     nk = (nkf,nkf,1)
-    q_grid = bz.KGrid(nk=nk, name='k')
+    q_grid = bz.NamedKGrid(nk=nk, name='k')
 
     t = 1.0
     tp = -0.2

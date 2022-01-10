@@ -798,7 +798,7 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw_grid=None):
+def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw_indizes=None, q_grid=None):
     beta = dmft_input['beta']
     u = dmft_input['u']
     mu = dmft_input['mu']
@@ -810,13 +810,15 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
 
-    chi_rpa_dens = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
-    chi_rpa_magn = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
+    chi_rpa_dens = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_indizes)
+    chi_rpa_magn = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_indizes)
 
-    for iqw in range(qiw_grid.shape[0]):
-        wn = qiw_grid[iqw][-1]
-
-        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw_grid[iqw], niv=niv_urange)
+    for iqw in range(qiw_indizes.shape[0]):
+        wn = qiw_indizes[iqw][-1]
+        q_ind = qiw_indizes[iqw][0]
+        q = q_grid.irr_kmesh[:,q_ind]
+        qiw = np.append(q, wn)
+        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
         chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
         chi0q_asympt = copy.deepcopy(chi0q_urange)
@@ -841,7 +843,7 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
 def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None,
-                       qiw_indizes=None, niw=None, file=None, do_pairing_vertex=False):
+                       qiw_indizes=None, niw=None, file=None, do_pairing_vertex=False, q_grid=None):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -892,8 +894,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
+        q_ind = qiw_indizes[iqw][0]
+        q = q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(q, wn)
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
-        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw_grid[iqw], niv=niv_urange)
+        gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
         gkpq_core = copy.deepcopy(gkpq_urange)
         gkpq_core.cut_self_iv(niv_cut=niv_core)
@@ -954,7 +959,8 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                                                                                         u_r=get_ur(u=u, channel='dens'))
 
 
-                group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw_indizes[iqw])
+                #group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw)
+                group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
                 file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f1_dens/'] = pv.get_pp_slice_4pt(mat=f1_dens_slice, condition=condition, niv_pp=niv_pp)

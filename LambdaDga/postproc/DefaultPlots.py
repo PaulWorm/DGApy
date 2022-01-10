@@ -17,7 +17,7 @@ input_path = '/mnt/c/users/pworm/Research/BEPS_Project/TriangularLattice/DGA/Tri
 output_path = input_path
 
 nk = (64,64,1)
-k_grid = bz.KGrid(nk=nk, name='k')
+k_grid = bz.NamedKGrid(nk=nk, name='k')
 beta = 10
 n = 1.0
 

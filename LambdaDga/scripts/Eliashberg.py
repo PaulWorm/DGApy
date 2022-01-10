@@ -48,7 +48,7 @@ config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dmft1p = config['dmft1p']
 nq = config['box_sizes']['nk']
 hr = config['system']['hr']
-q_grid = bz.KGrid(nk=nq, name='q')
+q_grid = bz.NamedKGrid(nk=nq, name='q')
 niv_core = config['box_sizes']['niv_core']
 niv_pp = config['box_sizes']['niv_pp']
 dga_sde = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()
