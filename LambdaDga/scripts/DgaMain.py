@@ -78,10 +78,10 @@ gap0_trip = {
 
 # Define frequency box-sizes:
 niw_core = 20
-niw_urange = 20
+niw_urange = 40
 niv_core = 20
 niv_invbse = 20
-niv_urange = 20
+niv_urange = 40
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))

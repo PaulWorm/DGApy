@@ -35,6 +35,9 @@ def wplus2wfull(mat=None, axis=-1):
         raise ValueError('axis mus be either first (0) or last (-1)')
     return mat_full
 
+def vplus2vfull(mat=None, axis=-1):
+    mat_full = np.concatenate((np.conj(np.flip(mat, axis=axis)), mat), axis = axis)
+    return mat_full
 
 # ----------------------------------------------- FERMIONIC ------------------------------------------------------------
 def vn(n=10):

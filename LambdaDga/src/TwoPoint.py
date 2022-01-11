@@ -194,6 +194,16 @@ class GreensFunctionGenerator():
         iv = self.get_iv(niv=niv, wn=wn)[niv:]
         return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
 
+    def generate_gk_minus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
+        q = qiw[:3]
+        wn = int(qiw[-1])
+        kgrid = self.add_q_to_kgrid(q=q)
+        ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
+        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[...,:niv]
+        iv = self.get_iv(niv=niv, wn=wn)[:niv]
+        return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
+
+
     def get_iv(self, niv=0, wn=0):
         if (niv == -1):
             niv = self.niv_sigma - int(np.abs(wn))

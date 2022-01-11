@@ -36,20 +36,20 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
             g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, nq=None, box_sizes=None, q_grid=None):
     assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv_urange = box_sizes['niv_urange']
-    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_urange), dtype=complex)
+    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
         q = q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
-        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
-        sigma += (vrg.mat[iqw, :][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
+        gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange)
+        sigma += (vrg.mat[iqw, niv_urange:][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
                  q_grid.irrk_count[q_ind]
         if(wn != 0):
             qiw = np.append(q, -wn)
-            gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
-            sigma += (np.conj(np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, :]) * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq.gk * \
+            gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
+            sigma += (np.conj(np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:]) * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq * \
                      q_grid.irrk_count[q_ind]
 
     sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma
@@ -59,14 +59,19 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
 def rpa_sde(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None, mu=0,
             nq=None, u=None, qiw_grid=None, q_grid=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
-    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), 2 * niv_giw), dtype=complex)
+    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_giw), dtype=complex)
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
         q = q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
-        gkpq = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_giw)
+        gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
         sigma += chir.mat[iqw, None] * gkpq.gk * q_grid.irrk_count[q_ind]
+        if(wn != 0):
+            qiw = np.append(q, -wn)
+            gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
+            sigma += np.conj(chir.mat[iqw, None]) * gkpq.gk * q_grid.irrk_count[q_ind]
+
     sigma = u_r ** 2 / (2. * chir.beta) * 1. / (nq) * sigma
     return sigma
 

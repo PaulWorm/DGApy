@@ -242,8 +242,12 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     sigma_dens_dga = sde.sde_dga(vrg=dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+
     sigma_magn_dga = sde.sde_dga(vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+
+    sigma_dens_dga = mf.vplus2vfull(mat=sigma_dens_dga)
+    sigma_magn_dga = mf.vplus2vfull(mat=sigma_magn_dga)
 
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
     comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
@@ -257,6 +261,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                  mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
     sigma_magn_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_magn'], g_generator=g_generator, niv_giw=niv_urange,
                                  mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
+
+    sigma_dens_rpa = mf.vplus2vfull(mat=sigma_dens_rpa)
+    sigma_magn_rpa = mf.vplus2vfull(mat=sigma_magn_rpa)
 
     sigma_dens_rpa_reduce = np.zeros(np.shape(sigma_dens_rpa), dtype=complex)
     comm.Allreduce(sigma_dens_rpa, sigma_dens_rpa_reduce)
