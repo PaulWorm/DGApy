@@ -105,3 +105,7 @@ if __name__ == '__main__':
     iw_outer = wn_outer(n_core=niw_core, n_outer=niw_urange)
     print(f'{iw_core}')
     print(f'{iw_outer}')
+
+    wnp = 1j*wn_plus(n=10)
+    wn_full = wplus2wfull(mat=wnp)
+    print(f'{wn_full.imag=}')
