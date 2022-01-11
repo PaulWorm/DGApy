@@ -68,12 +68,13 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     dmft1p['g2_dens'] = g2_dens_loc
     dmft1p['g2_magn'] = g2_magn_loc
 
-    if (verbose):
-        outpfunc("Finished reading g2 from file.")
+    if (verbose): outpfunc(realt.string_time('Reading G2 from file '))
 
     # --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
     dmft_sde = sde.local_dmft_sde_from_g2(dmft_input=dmft1p, box_sizes=box_sizes)
+    if (verbose): outpfunc(realt.string_time('Local DMFT SDE '))
     local_rpa_sde = sde.local_rpa_sde_correction(dmft_input=dmft1p, box_sizes=box_sizes, iw=wn_rpa)
+    if (verbose): outpfunc(realt.string_time('Local RPA SDE '))
 
     dmft_sde['siw_rpa_dens'] = local_rpa_sde['siw_rpa_dens']
     dmft_sde['siw_rpa_magn'] = local_rpa_sde['siw_rpa_magn']
@@ -116,9 +117,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     dmft_sde['chi0_urange'] = chi0_urange
     dmft_sde['chi0_asympt'] = chi0_asympt
 
-    if (verbose):
-        outpfunc("Finished local part.")
-        outpfunc(realt.string_time('Local Part '))
+    if (verbose): outpfunc(realt.string_time('Local Part '))
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
     # ======================================================================================================================
 
@@ -140,6 +139,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, box_sizes=box_sizes, hr=hr, kgrid=k_grid.grid,
                                     qiw_indizes=qiw_grid_rpa.my_mesh, q_grid=q_grid)
+    outpfunc(realt.string_time('Non-local RPA SDE '))
 
     # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  ----------------------------------------
 
@@ -149,8 +149,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                      file=qiw_distributor.file, do_pairing_vertex=do_pairing_vertex, q_grid=q_grid)
     qiw_distributor.close_file()
 
-    if (verbose):
-        outpfunc(realt.string_time('Non-local Susceptibility: '))
+    if (verbose): outpfunc(realt.string_time('Non-local Susceptibility: '))
 
     # ----------------------------------------------- LAMBDA-CORRECTION ------------------------------------------------
 
@@ -224,8 +223,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_lambda.mat = 1. / (1. / chi_magn_ladder_mat + lambda_magn)
 
-    if (verbose):
-        outpfunc(realt.string_time('Lambda correction: '))
+    if (verbose): outpfunc(realt.string_time('Lambda correction: '))
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
     chi_dens_lambda_my_qiw = fp.LadderSusceptibility(qiw=qiw_grid.my_mesh, channel='dens', u=dmft1p['u'],
@@ -249,6 +247,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dens_dga = mf.vplus2vfull(mat=sigma_dens_dga)
     sigma_magn_dga = mf.vplus2vfull(mat=sigma_magn_dga)
 
+
+
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
     comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
     sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
@@ -256,6 +256,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     sigma_dens_dga = k_grid.symmetrize_irrk(mat=sigma_dens_dga_reduce)
     sigma_magn_dga = k_grid.symmetrize_irrk(mat=sigma_magn_dga_reduce)
+
+    if (verbose): outpfunc(realt.string_time('Non-local DGA SDE '))
 
     sigma_dens_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_dens'], g_generator=g_generator, niv_giw=niv_urange,
                                  mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
@@ -274,6 +276,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dens_rpa = k_grid.symmetrize_irrk(mat=sigma_dens_rpa_reduce)
     sigma_magn_rpa = k_grid.symmetrize_irrk(mat=sigma_magn_rpa_reduce)
 
+    if (verbose): outpfunc(realt.string_time('Non-local RPA SDE '))
+
     if (wn_rpa.size > 0):
         sigma_dens_dga = sigma_dens_dga + sigma_dens_rpa
         sigma_magn_dga = sigma_magn_dga + sigma_magn_rpa
@@ -284,9 +288,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dga_nc = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
                    dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
 
-
-    if (verbose):
-        outpfunc(realt.string_time('DGA Schwinger-Dyson equation: '))
 
     dga_sde = {
         'sigma_dens': sigma_dens_dga,
@@ -321,5 +322,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'chi0q_urange': chi0q_urange,
         'chi0q_asympt': chi0q_asympt
     }
+
+    if (verbose): outpfunc(realt.string_time('Building fbz and overhead '))
 
     return dga_sde, dmft_sde, dmft_gamma, chi_lambda, chi_ladder

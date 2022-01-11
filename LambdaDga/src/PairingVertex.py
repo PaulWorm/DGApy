@@ -95,12 +95,19 @@ def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=Non
             irrq = np.array(re.findall("\d+", key1), dtype=int)[0]
             condition = file_in.file[key1 + '/condition/'][()]
             f1_magn[irrq, condition] = file_in.file[key1 + '/f1_magn/'][()]
+            f1_magn[irrq, condition.T] = file_in.file[key1 + '/f1_magn/'][()]
             f2_magn[irrq, condition] = file_in.file[key1 + '/f2_magn/'][()]
+            f2_magn[irrq, condition.T] = file_in.file[key1 + '/f2_magn/'][()]
             f1_dens[irrq, condition] = file_in.file[key1 + '/f1_dens/'][()]
+            f1_dens[irrq, condition.T] = file_in.file[key1 + '/f1_dens/'][()]
             f2_dens[irrq, condition] = file_in.file[key1 + '/f2_dens/'][()]
+            f2_dens[irrq, condition.T] = file_in.file[key1 + '/f2_dens/'][()]
 
         file_in.close()
         os.remove(fname)
+
+    #f1_magn = f1_magn + np.transpose(f1_magn,axes=(0,2,1)) - np.diagonal(f1_magn, axis1=1, axis2=2)
+
     return f1_magn, f2_magn, f1_dens, f2_dens
 
 # def get_chi_aux_asympt(chi_aux: fp.FourPoint = None, chi_r_urange: , chi_r_asympt=None, u=1):
