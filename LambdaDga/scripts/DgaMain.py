@@ -9,6 +9,7 @@ import numpy as np
 import sys, os
 
 sys.path.append('../src/')
+sys.path.append('../ana_cont/')
 sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
 import Hr as hr_mod
 import Hk as hamk
@@ -21,6 +22,8 @@ import time
 import Output as output
 import ChemicalPotential as chempot
 import TwoPoint as twop
+import OrnsteinZernickeFunction as ozfunc
+import AnalyticContinuation as a_cont
 
 import Plotting as plotting
 from mpi4py import MPI as mpi
@@ -41,9 +44,9 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
-# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
+#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta20_mu1/'
+#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
@@ -63,9 +66,12 @@ use_urange_for_lc = True  # Use with care. This is not really tested and at leas
 verbose = True
 
 # Create the real-space Hamiltonian:
-hr = hr_mod.standard_cuprates(t=1.0)
-#hr = hr_mod.Ba2CuO4_plane()
+t = 1.00
+hr = hr_mod.standard_cuprates(t=t)
+#hr = hr_mod.unfrustrated_square(t=t)
 #hr = hr_mod.motoharu_nickelates(t=0.25)
+#hr = hr_mod.Ba2CuO4_plane()
+
 
 gap0_sing = {
     'k': 'd-wave',
@@ -77,20 +83,25 @@ gap0_trip = {
     'v': 'odd'
 }
 
+# Pairing vertex symmetries:
+
+sym_sing = True
+sym_trip = True
+
 # Define frequency box-sizes:
-niw_core = 10
-niw_urange = 80
-niv_core = 10
-niv_invbse = 10
-niv_urange = 80
+niw_core = 20
+niw_urange = 20 # This seems not to save enough to be used.
+niv_core = 20
+niv_invbse = 20
+niv_urange = 20 # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 16
+nkx = 64
 nky = nkx
-nqx = 16
+nqx = 64
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -109,8 +120,9 @@ q_grid = bz.KGrid(nk=nq)
 ek = hamk.ek_3d(kgrid=k_grid.grid, hr=hr)
 eq = hamk.ek_3d(kgrid=q_grid.grid, hr=hr)
 
-k_grid.get_irrk_from_ek(ek=ek)
-q_grid.get_irrk_from_ek(ek=eq)
+k_grid.get_irrk_from_ek(ek=ek, dec=11)
+q_grid.get_irrk_from_ek(ek=eq, dec=11)
+print(f'{q_grid.nk_irr=}')
 
 # load contents from w2dynamics DMFT file:
 f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
@@ -125,7 +137,9 @@ if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 options = {
     'do_pairing_vertex': do_pairing_vertex,
     'lambda_correction_type': lambda_correction_type,
-    'use_urange_for_lc': use_urange_for_lc
+    'use_urange_for_lc': use_urange_for_lc,
+    'sym_sing': sym_sing,
+    'sym_trip':sym_trip
 }
 
 system = {
@@ -254,6 +268,8 @@ if (comm.rank == 0):
 
     ind_node = bz.find_arc_node(ak_fs=ak_fs,kgrid=k_grid)
     ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs,kgrid=k_grid)
+    ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs,kgrid=k_grid)
+    ind_arc = bz.find_arc_peaks(ak_fs=ak_fs,kgrid=k_grid)
 
     np.savetxt(output_path + 'loc_nodes_antinode.txt', [k_grid.kmesh.transpose((1,2,3,0))[ind_node], k_grid.kmesh.transpose((1,2,3,0))[ind_anti_node]], delimiter=',',
                fmt='%.9f')
@@ -281,7 +297,7 @@ if (comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
 
-    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
+    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga', ind_fs=ind_fs)
     plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
 
     plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
@@ -308,6 +324,14 @@ if (comm.rank == 0):
     plt.plot(chi_lambda['chi_magn_lambda'].mat.imag[ind_anti_node])
     plt.savefig(output_path + 'chi_magn_lambda_node_anti_node_imag.png')
     plt.show()
+
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_magn'].mat * dmft1p['beta'] , niv_plot=niv_urange, pdir=output_path, name='vrg_magn_loc')
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path, name='vrg_dens_loc')
+
+    oz_coeff,_ = ozfunc.fit_oz_spin(q_grid,chi_lambda['chi_magn_lambda'].mat[:,:,:,niw_core].flatten())
+
+    np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',',fmt='%.9f')
+    plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:,:,:,niw_core], oz_coeff=oz_coeff, qgrid=q_grid, pdir=output_path, name='oz_fit')
 
 
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
@@ -369,6 +393,14 @@ if (do_pairing_vertex and comm.rank == 0):
     log(realt.string_time('Start Eliashberg:'))
     gamma_sing = -f_sing
     gamma_trip = -f_trip
+    #
+    if(sym_sing):
+        gamma_sing = 0.5*(gamma_sing + np.flip(gamma_sing,axis=(-1)))
+
+    if(sym_trip):
+        gamma_trip = 0.5*(gamma_trip - np.flip(gamma_trip,axis=(-1)))
+
+    plotting.plot_vertex_vvp(vertex=gamma_trip.mean(axis=(0, 1, 2)).real, pdir=output_path, name='gamma_trip_loc')
 
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.grid, hr=hr,
                                                sigma=dga_sde['sigma'])

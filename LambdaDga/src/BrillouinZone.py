@@ -1,6 +1,11 @@
 import numpy as np
 import Hk as hk
 
+def get_extent(kgrid=None):
+    return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
+
+def get_extent_pi_shift(kgrid=None):
+    return [kgrid.kx[0]-np.pi, kgrid.kx[-1]-np.pi, kgrid.ky[0]-np.pi, kgrid.ky[-1]-np.pi]
 
 def find_arc_node(ak_fs=None,kgrid=None):
     mask = kgrid.kmesh[0] == kgrid.kmesh[1]
@@ -12,12 +17,69 @@ def find_arc_anti_node(ak_fs=None,kgrid=None):
     ind = tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])])
     return ind
 
+def shift_mat_by_pi(mat,nk):
+    mat_shift = np.roll(mat,nk[0]//2,0)
+    mat_shift = np.roll(mat_shift,nk[1]//2,1)
+    return mat_shift
+
+def find_fermi_surface_peak(ak_fs=None,kgrid=None):
+    eps = 0.000001
+
+    ind = []
+    ind2 = []
+    kmesh = kgrid.kmesh
+
+    mask = np.logical_and(np.pi/2-eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
+    kx = kgrid.kx[mask]
+    for ikx in kx:
+        mask = np.logical_and(kmesh[1] == ikx, kmesh[0] <= np.pi + eps)
+        ind.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
+    for ikx in kx:
+        mask = np.logical_and(kmesh[0] == ikx, kmesh[1] <= np.pi + eps)
+        ind2.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
+
+
+    ind = ind[::-1] + ind2
+    return ind
+
+def find_arc_peaks(ak_fs=None,kgrid=None):
+    eps = 0.000001
+
+    ind = []
+    kmesh = kgrid.kmesh
+
+    mask = np.logical_and(np.pi/2-eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
+    kx = kgrid.kx[mask]
+    for ikx in kx:
+        mask = np.logical_and(kmesh[1] == ikx, kmesh[0] <= np.pi + eps)
+        ind.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
+
+    ind = ind[::-1]
+    return ind
+
+def find_qpd_zeros(qpd=None,kgrid=None):
+    eps = 0.000001
+    ind = []
+    kmesh = kgrid.kmesh
+    mask = np.logical_and(0 <= kgrid.kx, kgrid.kx <= np.pi / 2 - eps)
+    kx = kgrid.kx[mask]
+    for ikx in kx:
+        mask = np.logical_and(kmesh[0] == ikx, kmesh[1] <= np.pi + eps)
+        asign = np.sign(qpd[mask])
+        signchange = ((np.roll(asign, 1) - asign) != 0).astype(int)
+        signchange[0] = 0
+        ind.append(tuple(np.squeeze(np.argwhere(mask)[np.argwhere(signchange)])))
+
+    ind = ind[::-1]
+    return ind
+
+
 
 class KGrid():
     ''' Class to build the k-grid for the Brillouin zone.'''
 
     def __init__(self, nk=None, ek=None):
-        self.dec = 10
+        #self.dec = 10
         self.nk = nk
         self.set_k_axes()
         self.set_kmesh()
@@ -45,8 +107,8 @@ class KGrid():
         self.kmesh = np.array(np.meshgrid(self.kx, self.ky, self.kz))
 
 
-    def get_irrk_from_ek(self, ek=None):
-        _, self.irrk_ind, self.irrk_inv, self.irrk_count = np.unique(np.round(ek, decimals=self.dec),
+    def get_irrk_from_ek(self, ek=None, dec=10):
+        _, self.irrk_ind, self.irrk_inv, self.irrk_count = np.unique(np.round(ek, decimals=dec),
                                                                              return_index=True, return_inverse=True,
                                                                              return_counts=True)
         self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
@@ -74,6 +136,10 @@ class KGrid():
         symmetrized = self.irrk2fbz(mat=reduced)
         return symmetrized
 
+    def shift_mat_by_pi(self,mat):
+        mat_shift = np.roll(mat,self.nk[0]//2,0)
+        mat_shift = np.roll(mat_shift,self.nk[1]//2,1)
+        return mat_shift
 
 
 

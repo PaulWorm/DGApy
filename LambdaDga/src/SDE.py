@@ -123,10 +123,12 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None):
 
     niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']
+    #niv_invbse = box_sizes['niv_invbse']
     niv_asympt = box_sizes['niv_asympt']
 
     chi0_core = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_core, iw=iw)
     chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
+    #chi0_invbse = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_invbse, iw=iw)
     chi0_asympt = copy.deepcopy(chi0_urange)
     chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
 

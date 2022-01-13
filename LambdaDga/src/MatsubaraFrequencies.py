@@ -43,13 +43,21 @@ def vplus2vfull(mat=None, axis=-1):
 def vn(n=10):
     return np.arange(-n, n)
 
+def vn_plus(n=10):
+    return np.arange(0, n)
 
 def v(beta=1.0, n=10):
     return (vn(n=n) * 2 + 1) * np.pi / beta
 
+def v_plus(beta=1.0, n=10):
+    return (vn_plus(n=n) * 2 + 1) * np.pi / beta
+
 
 def iv(beta=1.0, n=10):
     return v(beta=beta, n=n) * 1j
+
+def iv_plus(beta=1.0, n=10):
+    return v_plus(beta=beta, n=n) * 1j
 
 
 # ------------------------------------------------ BOSONIC -------------------------------------------------------------

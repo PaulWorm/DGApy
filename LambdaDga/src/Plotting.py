@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import FourPoint as fp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import MatsubaraFrequencies as mf
+import OrnsteinZernickeFunction as ozfunc
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
 # __markers__ = itertools.cycle(('o','s','v','8','v','^','<','>','p','*','h','H','+','x','D','d','1','2','3','4'))
@@ -29,6 +31,54 @@ class MidpointNormalize(colors.Normalize):
         return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
+
+def plot_fs_peaks(ax=None,k_grid=None,ind_fs=None):
+    kx = np.array([k_grid.kmesh[0][i] for i in ind_fs])
+    ky = np.array([k_grid.kmesh[1][i] for i in ind_fs])
+    shift_x = 0.0#np.pi/(k_grid.nk[0])
+    shift_y = 0.0#np.pi/(k_grid.nk[1])
+    ax.plot(kx-shift_x, ky-shift_y)
+
+def plot_oz_fit(chi_w0=None,oz_coeff=None,qgrid=None,pdir=None,name=''):
+    oz = ozfunc.oz_spin_w0(qgrid,oz_coeff[0],oz_coeff[1]).reshape(qgrid.nk)
+
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 10))
+    ax[0].plot(qgrid.kx, chi_w0[:,qgrid.nk[1]//2,0].real, 'o',label='$\chi$')
+    ax[0].plot(qgrid.kx, oz[:,qgrid.nk[1]//2,0].real, '-', label='oz-fit')
+    ax[0].legend()
+    ax[0].set_title('$q_y = np.pi$')
+    ax[0].set_xlabel('$q_x$')
+    ax[0].set_ylabel('$\chi$')
+
+    mask = qgrid.kmesh[0] == qgrid.kmesh[1]
+    ax[1].plot(qgrid.kx, chi_w0[mask].real, 'o',label='$\chi$')
+    ax[1].plot(qgrid.kx, oz[mask].real, '-', label='oz-fit')
+    ax[1].legend()
+    ax[1].set_title('$q_y = q_x$')
+    ax[1].set_xlabel('$q_x$')
+    ax[1].set_ylabel('$\chi$')
+    plt.savefig(pdir + name + '.png')
+
+
+
+def plot_vrg_loc(vrg=None,niw_plot=None, niv_plot=0, pdir=None, name='vrg_loc'):
+    if(niw_plot is None):
+        niw_plot = vrg.shape[0] // 2
+
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 10))
+    niv_vrg = vrg.shape[-1] // 2
+    vn = mf.vn(n=niv_plot)
+
+    ax[0].plot(vn, vrg[niw_plot,niv_vrg-niv_plot:niv_vrg+niv_plot].real, 'o')
+    ax[0].set_ylabel('$\Re \gamma$')
+
+    ax[1].plot(vn, vrg[niw_plot, niv_vrg - niv_plot:niv_vrg + niv_plot].imag, 'o')
+    ax[1].set_ylabel('$\Im \gamma$')
+    ax[0].grid()
+    ax[1].grid()
+    plt.savefig(pdir + name + '.png')
+    plt.show()
+
 
 def plot_susc(susc=None):
     plt.plot(susc.iw_core, susc.mat.real, 'o')
@@ -151,12 +201,18 @@ def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0,niv_
     except:
         plt.close()
 
-def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name=''):
+def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv_plot=None, name='', ind_fs=None):
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 10))
+    if(ind_fs is not None):
+        plot_fs_peaks(ax=ax[0][0], k_grid=kgrid, ind_fs=ind_fs)
+        plot_fs_peaks(ax=ax[0][1], k_grid=kgrid, ind_fs=ind_fs)
+        plot_fs_peaks(ax=ax[1][0], k_grid=kgrid, ind_fs=ind_fs)
+        plot_fs_peaks(ax=ax[1][1], k_grid=kgrid, ind_fs=ind_fs)
     plot_contour(ax=ax[0][0], siwk=giwk.real, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu', midpoint_norm=True)
     plot_contour(ax=ax[0][1], siwk=giwk.imag, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu', midpoint_norm=False)
     plot_contour(ax=ax[1][0], siwk=giwk.real, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='terrain_r', midpoint_norm=False)
     plot_contour(ax=ax[1][1], siwk=giwk.imag, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='terrain_r', midpoint_norm=False)
+
     ax[0][0].set_title('$\Re G$')
     ax[0][1].set_title('$\Im G$')
 

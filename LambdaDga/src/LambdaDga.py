@@ -223,6 +223,11 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_magn_lambda = fp.LadderSusceptibility(qiw=qiw_grid.meshgrid, channel='magn', u=dmft1p['u'], beta=dmft1p['beta'])
     chi_magn_lambda.mat = 1. / (1. / chi_magn_ladder_mat + lambda_magn)
 
+    if (use_urange_for_lc):
+        if(np.size(wn_rpa) > 0):
+            chi_dens_rpa.mat = 1. / (1. / chi_dens_rpa_mat + lambda_dens)
+            chi_magn_rpa.mat = 1. / (1. / chi_magn_rpa_mat + lambda_magn)
+
     if (verbose): outpfunc(realt.string_time('Lambda correction: '))
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
@@ -244,37 +249,36 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_magn_dga = sde.sde_dga(vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
                                  mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
 
-    sigma_dens_dga = mf.vplus2vfull(mat=sigma_dens_dga)
-    sigma_magn_dga = mf.vplus2vfull(mat=sigma_magn_dga)
-
-
-
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
     comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
     sigma_magn_dga_reduce = np.zeros(np.shape(sigma_magn_dga), dtype=complex)
     comm.Allreduce(sigma_magn_dga, sigma_magn_dga_reduce)
 
-    sigma_dens_dga = k_grid.symmetrize_irrk(mat=sigma_dens_dga_reduce)
-    sigma_magn_dga = k_grid.symmetrize_irrk(mat=sigma_magn_dga_reduce)
+    sigma_dens_dga = mf.vplus2vfull(mat=sigma_dens_dga_reduce)
+    sigma_magn_dga = mf.vplus2vfull(mat=sigma_magn_dga_reduce)
+
+    sigma_dens_dga = k_grid.symmetrize_irrk(mat=sigma_dens_dga)
+    sigma_magn_dga = k_grid.symmetrize_irrk(mat=sigma_magn_dga)
 
     if (verbose): outpfunc(realt.string_time('Non-local DGA SDE '))
 
-    sigma_dens_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_dens'], g_generator=g_generator, niv_giw=niv_urange,
+    sigma_dens_rpa = sde.rpa_sde(chir=chi_dens_rpa, g_generator=g_generator, niv_giw=niv_urange,
                                  mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
-    sigma_magn_rpa = sde.rpa_sde(chir=chi_rpa['chi_rpa_magn'], g_generator=g_generator, niv_giw=niv_urange,
+    sigma_magn_rpa = sde.rpa_sde(chir=chi_magn_rpa, g_generator=g_generator, niv_giw=niv_urange,
                                  mu=dmft1p['mu'], nq=nq_tot, u=u, qiw_grid=qiw_grid_rpa.my_mesh, q_grid=q_grid)
-
-    sigma_dens_rpa = mf.vplus2vfull(mat=sigma_dens_rpa)
-    sigma_magn_rpa = mf.vplus2vfull(mat=sigma_magn_rpa)
 
     sigma_dens_rpa_reduce = np.zeros(np.shape(sigma_dens_rpa), dtype=complex)
     comm.Allreduce(sigma_dens_rpa, sigma_dens_rpa_reduce)
     sigma_magn_rpa_reduce = np.zeros(np.shape(sigma_magn_rpa), dtype=complex)
     comm.Allreduce(sigma_magn_rpa, sigma_magn_rpa_reduce)
 
+    sigma_dens_rpa = mf.vplus2vfull(mat=sigma_dens_rpa_reduce)
+    sigma_magn_rpa = mf.vplus2vfull(mat=sigma_magn_rpa_reduce)
+
+
     # Sigma needs to be symmetrized within the corresponding BZ:
-    sigma_dens_rpa = k_grid.symmetrize_irrk(mat=sigma_dens_rpa_reduce)
-    sigma_magn_rpa = k_grid.symmetrize_irrk(mat=sigma_magn_rpa_reduce)
+    sigma_dens_rpa = k_grid.symmetrize_irrk(mat=sigma_dens_rpa)
+    sigma_magn_rpa = k_grid.symmetrize_irrk(mat=sigma_magn_rpa)
 
     if (verbose): outpfunc(realt.string_time('Non-local RPA SDE '))
 

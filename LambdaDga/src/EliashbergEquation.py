@@ -48,7 +48,7 @@ class EliashberPowerIteration():
         count = 0
         while (not converged):
             count += 1
-            gap_old = gram_schmidt(v=gap_old, basis=self.gap)
+            gap_old = gram_schmidt_eliash(v=gap_old, basis=self.gap, gk=self.gk)
             gap_gg = np.fft.ifftn(gap_old * np.abs(self.gk) ** 2, axes=(0, 1, 2))
             gap_new = 1. / self.norm * np.sum(self.gammax * gap_gg[..., None, :], axis=-1)
             gap_new = np.fft.fftn(gap_new, axes=(0, 1, 2))
