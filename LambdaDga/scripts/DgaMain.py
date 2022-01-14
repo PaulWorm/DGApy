@@ -9,7 +9,6 @@ import numpy as np
 import sys, os
 
 sys.path.append('../src/')
-sys.path.append('../ana_cont/')
 sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
 import Hr as hr_mod
 import Hk as hamk
@@ -23,7 +22,6 @@ import Output as output
 import ChemicalPotential as chempot
 import TwoPoint as twop
 import OrnsteinZernickeFunction as ozfunc
-import AnalyticContinuation as a_cont
 
 import Plotting as plotting
 from mpi4py import MPI as mpi

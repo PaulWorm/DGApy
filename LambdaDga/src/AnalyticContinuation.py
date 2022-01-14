@@ -3,10 +3,8 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
-import sys
-sys.path.append('../ana_cont/')
 import PadeAux as pa
-from ana_cont import continuation as cont
+import continuation as cont
 import MatsubaraFrequencies as mf
 
 # --------------------------------------- Obtain the real frequency grid -----------------------------------------------

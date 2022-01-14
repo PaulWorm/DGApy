@@ -13,15 +13,20 @@ sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
 import BrillouinZone as bz
 import EliashbergEquation as eq
 import TwoPoint as twop
+import Output as output
 
 import matplotlib.pyplot as plt
 
 # ----------------------------------------------- PARAMETERS -----------------------------------------------------------
-input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/LambdaDga_lc_sp_Nk1024_Nq1024_core60_invbse100_vurange100_wurange100/'
+#input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/LambdaDga_lc_sp_Nk1024_Nq1024_core60_invbse100_vurange100_wurange100/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/LambdaDga_lc_spch_Nk4096_Nq4096_core25_invbse60_vurange100_wurange50/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/LambdaDga_lc_spch_Nk64_Nq64_core8_invbse10_vurange20_wurange10_4/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.85/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
 output_path = input_path
 
+output_path = output.uniquify(output_path + 'Eliashberg1') + '/'
+os.mkdir(output_path)
+
 # Starting gap functions:
 gap0_sing = {
     'k': 'd-wave',
@@ -33,24 +38,29 @@ gap0_trip = {
     'v': 'odd'
 }
 
-# Starting gap functions:
-gap0_sing = {
-    'k': 'p-wave-y',
-    'v': 'odd'
-}
-
-gap0_trip = {
-    'k': 'p-wave-y',
-    'v': 'even'
-}
+# # Starting gap functions:
+# gap0_sing = {
+#     'k': 'p-wave-y',
+#     'v': 'odd'
+# }
+#
+# gap0_trip = {
+#     'k': 'p-wave-y',
+#     'v': 'even'
+# }
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dmft1p = config['dmft1p']
 nq = config['box_sizes']['nk']
 hr = config['system']['hr']
 q_grid = bz.NamedKGrid(nk=nq, name='q')
+
 niv_core = config['box_sizes']['niv_core']
-niv_pp = config['box_sizes']['niv_pp']
+try:
+    niv_pp = config['box_sizes']['niv_pp']
+except:
+    niv_pp = config['box_sizes']['niv_core'] // 2
+
 dga_sde = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()
 pairing_vertices = np.load(input_path + 'pairing_vertices.npy', allow_pickle=True).item()
 
@@ -88,6 +98,7 @@ np.savetxt(output_path + 'eigenvalues_s.txt', [powiter_sing.lam_s.real, powiter_
 
 import Plotting as plotting
 
+q_grid = bz.KGrid(nk=nq)
 for i in range(len(powiter_sing.gap)):
     plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path, name='sing_{}'.format(i), kgrid=q_grid,
                                do_shift=True)

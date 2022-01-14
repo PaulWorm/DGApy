@@ -11,8 +11,8 @@ from Plotting import MidpointNormalize
 import Hk as hamk
 
 # Define input path:
-#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
-input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse100_vurange100_wurange99/'
+input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
+#input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse100_vurange100_wurange99/'
 #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/LambdaDga_lc_sp_Nk4096_Nq4096_core27_invbse80_vurange80_wurange80/'
 output_path = input_path
 
@@ -24,7 +24,7 @@ hr = config['system']['hr']
 niv_urange = config['box_sizes']['niv_urange']
 niv_core = config['box_sizes']['niv_core']
 nk = config['box_sizes']['nk']
-t = 0.25
+t = 1.00
 k_grid = bz.KGrid(nk=nk)
 ek = hamk.ek_3d(kgrid=k_grid.grid, hr=hr)
 k_grid.get_irrk_from_ek(ek=ek, dec=9)
@@ -39,12 +39,12 @@ gr = gk.real[:,:,:,niv_urange]
 ak_fs = -1./np.pi * gk.imag[:,:,:,niv_urange]
 # Find location of Fermi-surface:
 
-shift = -5
+shift = 0
 ind_node = (nk[0]//4+shift,nk[0]//4+shift,0)
-ind_anti_node = (nk[0]//2,4,0)
+ind_anti_node = (nk[0]//2-10,0,0)
 
-ind3 = (nk[0]//4-4,nk[0]//4-4,0)
-ind4 = (nk[0]//2,5,0)
+ind3 = (nk[0]//4+1,nk[0]//4+1,0)
+ind4 = (nk[0]//2-13,0,0)
 
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
@@ -60,9 +60,6 @@ ax[1].plot(k_grid.kx[ind_node[0]], k_grid.ky[ind_node[1]], 'o')
 ax[1].plot(k_grid.kx[ind_anti_node[0]], k_grid.ky[ind_anti_node[1]], 'o')
 ax[1].plot(k_grid.kx[ind3[0]], k_grid.ky[ind3[1]], 'o')
 ax[1].plot(k_grid.kx[ind4[0]], k_grid.ky[ind4[1]], 'o')
-
-
-
 plt.tight_layout()
 plt.savefig(output_path + 'location_of_special_points.png')
 plt.show()
@@ -86,6 +83,13 @@ gk_arc_thiele = a_cont.do_pade_on_ind(mat=gk, ind_list=ind_cont, v_real=v_real, 
 gk_arc_thiele = a_cont.do_pade_on_ind(mat=gk.reshape((k_grid.nk_tot,-1)), ind_list=k_grid.irrk_ind, v_real=v_real, beta=dmft1p['beta'],
                                       method='thiele', n_fit=n_fit, n_pade=n_pade, delta=delta)
 
+v_real_max_ent = a_cont.v_real_tan(wmax=wmax, nw=501)
+gk_arc_max_ent = a_cont.do_max_ent_on_ind(mat=gk, ind_list=ind_cont, v_real=v_real_max_ent, beta=dmft1p['beta'],
+                                      n_fit=60,err=1e-2)
+
+# gk_arc_max_ent_fbz = a_cont.do_max_ent_on_ind(mat=gk.reshape((k_grid.nk_tot,-1)), ind_list=k_grid.irrk_ind, v_real=v_real_max_ent, beta=dmft1p['beta'],
+#                                       n_fit=60,err=1e-2)
+
 gk_arc_thiele_fbz = k_grid.irrk2fbz(mat=gk_arc_thiele.T)
 
 plt.figure()
@@ -95,6 +99,15 @@ plt.legend()
 plt.xlim(-t, t)
 plt.ylim([0, 1])
 plt.savefig(output_path + 'aw_arc_thiele.png')
+plt.close()
+
+plt.figure()
+for i, i_arc in enumerate(ind_cont):
+    plt.plot(v_real_max_ent, -1. / np.pi * gk_arc_max_ent[:, i].imag, label='{}'.format(i_arc))
+plt.legend()
+plt.xlim(-t, t)
+plt.ylim([0, 1])
+plt.savefig(output_path + 'aw_arc_max_ent.png')
 plt.close()
 
 plt.figure()
@@ -121,6 +134,15 @@ plt.imshow(awk_fs, cmap='terrain', extent=bz.get_extent_pi_shift(kgrid=k_grid), 
 plt.colorbar()
 plt.savefig(output_path + 'aw_cont_fs.png')
 plt.show()
+
+wm1 = np.argwhere(np.isclose(v_real-0.1,0., atol=1e-06))
+awk_fs = bz.shift_mat_by_pi(mat=-1./np.pi * gk_arc_thiele_fbz[:,:,0,nw//2].imag, nk=k_grid.nk)
+plt.figure()
+plt.imshow(awk_fs, cmap='terrain', extent=bz.get_extent_pi_shift(kgrid=k_grid), vmin=0.02)
+plt.colorbar()
+plt.savefig(output_path + 'aw_cont_fs_max_ent.png')
+plt.show()
+
 
 plt.figure()
 plt.plot(v_real, -1./np.pi * gk_arc_thiele_fbz.imag.mean(axis=(0,1,2)))
