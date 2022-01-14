@@ -1,9 +1,6 @@
 import sys
 import numpy as np
-if sys.version_info[0] > 2:
-    from . import solvers
-else:
-    import solvers
+import solvers
 
 
 class AnalyticContinuationProblem(object):
