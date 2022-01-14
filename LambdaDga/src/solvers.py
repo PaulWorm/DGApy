@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize as opt
 import collections
 from abc import ABC, abstractmethod
-from . import kernels
+import kernels
 
 if sys.version_info[0] > 2:
     try:
