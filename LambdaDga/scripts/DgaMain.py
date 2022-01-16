@@ -42,7 +42,7 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
 #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta20_mu1/'
 #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
@@ -50,6 +50,7 @@ input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 # input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.85/LambdaDgaPython/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -62,12 +63,13 @@ keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 verbose = True
+lc_use_only_positive = True # Use only frequency box where susceptibility is positive for lambda correction.
 
 # Create the real-space Hamiltonian:
-t = 1.00
-hr = hr_mod.standard_cuprates(t=t)
+t = 0.25
+#hr = hr_mod.standard_cuprates(t=t)
 #hr = hr_mod.unfrustrated_square(t=t)
-#hr = hr_mod.motoharu_nickelates(t=0.25)
+hr = hr_mod.motoharu_nickelates(t=t)
 #hr = hr_mod.Ba2CuO4_plane()
 
 
@@ -87,19 +89,19 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 20
-niw_urange = 20 # This seems not to save enough to be used.
-niv_core = 20
-niv_invbse = 20
-niv_urange = 20 # Must be larger than niv_invbse
+niw_core = 40
+niw_urange = 40 # This seems not to save enough to be used.
+niv_core = 40
+niv_invbse = 40
+niv_urange = 40 # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 64
+nkx = 24
 nky = nkx
-nqx = 64
+nqx = 24
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -135,6 +137,7 @@ if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
 options = {
     'do_pairing_vertex': do_pairing_vertex,
     'lambda_correction_type': lambda_correction_type,
+    'lc_use_only_positive': lc_use_only_positive,
     'use_urange_for_lc': use_urange_for_lc,
     'sym_sing': sym_sing,
     'sym_trip':sym_trip

@@ -43,6 +43,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     do_pairing_vertex = config['options']['do_pairing_vertex']
     use_urange_for_lc = config['options']['use_urange_for_lc']
     lambda_correction_type = config['options']['lambda_correction_type']
+    lc_use_only_positive = config['options']['lc_use_only_positive']
 
     k_grid = config['grids']['k_grid']
     q_grid = config['grids']['q_grid']
@@ -200,7 +201,11 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                    chi_dens_rpa=chi_dens_rpa, chi_magn_rpa=chi_magn_rpa, chi_magn_dmft=chi_magn_loc,
                                    chi_dens_dmft=chi_dens_loc, chi_magn_rpa_loc=local_rpa_sde['chi_rpa_magn'],
                                    chi_dens_rpa_loc=local_rpa_sde['chi_rpa_magn'], nq=np.prod(q_grid.nk),
-                                   use_rpa_for_lc=use_urange_for_lc)
+                                   use_rpa_for_lc=use_urange_for_lc, lc_use_only_positive=lc_use_only_positive)
+
+    if(qiw_distributor.my_rank == 0):
+        np.savetxt(output_path + 'n_lambda_correction.txt', [lambda_['n_sum_dens'], lambda_['n_sum_magn']],
+                   delimiter=',',fmt='%.9f')
 
     if (lambda_correction_type == 'spch'):
         lambda_dens = lambda_['lambda_dens_single']
