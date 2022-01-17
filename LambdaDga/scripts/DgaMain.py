@@ -50,7 +50,7 @@ input_path = './'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 # input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.85/LambdaDgaPython/'
+input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDgaPython/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -60,7 +60,7 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = True
 keep_ladder_vertex = False
-lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
+lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 verbose = True
 lc_use_only_positive = True # Use only frequency box where susceptibility is positive for lambda correction.
@@ -70,6 +70,7 @@ t = 0.25
 #hr = hr_mod.standard_cuprates(t=t)
 #hr = hr_mod.unfrustrated_square(t=t)
 hr = hr_mod.motoharu_nickelates(t=t)
+#hr = hr_mod.motoharu_nickelates_2(t=t)
 #hr = hr_mod.Ba2CuO4_plane()
 
 
@@ -89,19 +90,19 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 40
-niw_urange = 40 # This seems not to save enough to be used.
-niv_core = 40
-niv_invbse = 40
-niv_urange = 40 # Must be larger than niv_invbse
+niw_core = 59
+niw_urange = 59 # This seems not to save enough to be used.
+niv_core = 60
+niv_invbse = 60
+niv_urange = 300 # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 24
+nkx = 16
 nky = nkx
-nqx = 24
+nqx = 16
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -222,7 +223,7 @@ if (comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft, chi_lambda, chi_ladder = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
+dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
 comm.Barrier()
 log("Lambda-Dga finished %s", time.strftime("%c"))
 # %%
@@ -230,8 +231,8 @@ if (comm.rank == 0):
     np.save(output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
     np.save(output_path + 'gamma_dmft.npy', gamma_dmft, allow_pickle=True)
     np.save(output_path + 'dga_sde.npy', dga_sde, allow_pickle=True)
-    np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
-    np.save(output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
+
+    chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
     np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
                fmt='%.9f')
 
@@ -310,7 +311,6 @@ if (comm.rank == 0):
                              name='gamma_dens')
 
     plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_w0')
-    plotting.plot_chi_fs(chi=chi_ladder['chi_magn_ladder'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_ladder_w0')
     plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='dens_w0')
 
     import matplotlib.pyplot as plt

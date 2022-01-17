@@ -80,10 +80,10 @@ def lambda_correction(chi_magn_ladder=None, chi_dens_ladder=None, chi_dens_rpa=N
     n_magn = np.sum(mask_magn_loc)
 
     # Make sure that the masks have the same size (though I am not sure if this is really needed)
-    if(n_dens > n_magn):
-        mask_dens_loc = mask_magn_loc
-    else:
-        mask_magn_loc = mask_dens_loc
+    # if(n_dens > n_magn):
+    #     mask_dens_loc = mask_magn_loc
+    # else:
+    #     mask_magn_loc = mask_dens_loc
 
 
     lambda_dens_start = get_lambda_start(chi_dens_ladder)

@@ -14,6 +14,7 @@ import RealTime as rt
 import Indizes as ind
 import LambdaCorrection as lc
 import MatsubaraFrequencies as mf
+import Plotting as plotting
 
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
@@ -66,13 +67,11 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     g2_dens_loc.cut_iv(niv_cut=niv_invbse)
     g2_magn_loc.cut_iv(niv_cut=niv_invbse)
 
-    dmft1p['g2_dens'] = g2_dens_loc
-    dmft1p['g2_magn'] = g2_magn_loc
-
     if (verbose): outpfunc(realt.string_time('Reading G2 from file '))
 
     # --------------------------------------------- LOCAL DMFT SDE ---------------------------------------------------------
-    dmft_sde = sde.local_dmft_sde_from_g2(dmft_input=dmft1p, box_sizes=box_sizes)
+    dmft_sde = sde.local_dmft_sde_from_g2(dmft_input=dmft1p, box_sizes=box_sizes, g2_dens=g2_dens_loc,
+                                          g2_magn=g2_magn_loc)
     if (verbose): outpfunc(realt.string_time('Local DMFT SDE '))
     local_rpa_sde = sde.local_rpa_sde_correction(dmft_input=dmft1p, box_sizes=box_sizes, iw=wn_rpa)
     if (verbose): outpfunc(realt.string_time('Local RPA SDE '))
@@ -82,9 +81,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     chi_dens_loc_mat = dmft_sde['chi_dens'].mat
     chi_magn_loc_mat = dmft_sde['chi_magn'].mat
-    chi0_core = dmft_sde['chi0_core'].chi0
-    chi0_urange = dmft_sde['chi0_urange'].chi0
-    chi0_asympt = dmft_sde['chi0_asympt'].chi0
 
     chi_dens_loc = fp.LocalSusceptibility(matrix=chi_dens_loc_mat, giw=dmft_sde['chi_dens'].giw,
                                           channel=dmft_sde['chi_dens'].channel,
@@ -114,9 +110,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     else:
         dmft_sde['siw'] = dmft_sde['siw'] + dmft_sde['hartree']
-    dmft_sde['chi0_core'] = chi0_core
-    dmft_sde['chi0_urange'] = chi0_urange
-    dmft_sde['chi0_asympt'] = chi0_asympt
 
     if (verbose): outpfunc(realt.string_time('Local Part '))
     # ------------------------------------------------ NON-LOCAL PART  -----------------------------------------------------
@@ -178,10 +171,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_dens_ladder_mat = qiw_distributor.allgather(rank_result=dga_susc['chi_dens_asympt'].mat)
     chi_magn_ladder_mat = qiw_distributor.allgather(rank_result=dga_susc['chi_magn_asympt'].mat)
 
-    chi0q_core = qiw_distributor.allgather(rank_result=dga_susc['chi0q_core'].mat)
-    chi0q_urange = qiw_distributor.allgather(rank_result=dga_susc['chi0q_urange'].mat)
-    chi0q_asympt = qiw_distributor.allgather(rank_result=dga_susc['chi0q_asympt'].mat)
-
     chi_dens_ladder = fp.LadderSusceptibility(qiw=qiw_grid_fbz.meshgrid, channel='dens', u=dmft1p['u'],
                                               beta=dmft1p['beta'])
 
@@ -196,6 +185,14 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_dens_ladder.mat = mf.wplus2wfull(mat=chi_dens_ladder.mat)
     chi_magn_ladder.mat = mf.wplus2wfull(mat=chi_magn_ladder.mat)
 
+    if(qiw_distributor.my_rank == 0):
+        chi_ladder = {
+            'chi_dens_ladder': chi_dens_ladder,
+            'chi_magn_ladder': chi_magn_ladder,
+        }
+        np.save(output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
+        plotting.plot_chi_fs(chi=chi_ladder['chi_magn_ladder'].mat.real, output_path=output_path, kgrid=q_grid,
+                             name='magn_ladder_w0')
 
     lambda_ = lc.lambda_correction(chi_magn_ladder=chi_magn_ladder, chi_dens_ladder=chi_dens_ladder,
                                    chi_dens_rpa=chi_dens_rpa, chi_magn_rpa=chi_magn_rpa, chi_magn_dmft=chi_magn_loc,
@@ -203,9 +200,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                    chi_dens_rpa_loc=local_rpa_sde['chi_rpa_magn'], nq=np.prod(q_grid.nk),
                                    use_rpa_for_lc=use_urange_for_lc, lc_use_only_positive=lc_use_only_positive)
 
-    if(qiw_distributor.my_rank == 0):
+    if (qiw_distributor.my_rank == 0):
         np.savetxt(output_path + 'n_lambda_correction.txt', [lambda_['n_sum_dens'], lambda_['n_sum_magn']],
-                   delimiter=',',fmt='%.9f')
+                   delimiter=',', fmt='%.9f')
 
     if (lambda_correction_type == 'spch'):
         lambda_dens = lambda_['lambda_dens_single']
@@ -229,9 +226,10 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_magn_lambda.mat = 1. / (1. / chi_magn_ladder_mat + lambda_magn)
 
     if (use_urange_for_lc):
-        if(np.size(wn_rpa) > 0):
+        if (np.size(wn_rpa) > 0):
             chi_dens_rpa.mat = 1. / (1. / chi_dens_rpa_mat + lambda_dens)
             chi_magn_rpa.mat = 1. / (1. / chi_magn_rpa_mat + lambda_magn)
+
 
     if (verbose): outpfunc(realt.string_time('Lambda correction: '))
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
@@ -249,10 +247,12 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
                                                sigma=dmft1p['sloc'])
 
     sigma_dens_dga = sde.sde_dga(vrg=dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
-                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
+                                 q_grid=q_grid)
 
     sigma_magn_dga = sde.sde_dga(vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
-                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes, q_grid=q_grid)
+                                 mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
+                                 q_grid=q_grid)
 
     sigma_dens_dga_reduce = np.zeros(np.shape(sigma_dens_dga), dtype=complex)
     comm.Allreduce(sigma_dens_dga, sigma_dens_dga_reduce)
@@ -280,7 +280,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dens_rpa = mf.vplus2vfull(mat=sigma_dens_rpa_reduce)
     sigma_magn_rpa = mf.vplus2vfull(mat=sigma_magn_rpa_reduce)
 
-
     # Sigma needs to be symmetrized within the corresponding BZ:
     sigma_dens_rpa = k_grid.symmetrize_irrk(mat=sigma_dens_rpa)
     sigma_magn_rpa = k_grid.symmetrize_irrk(mat=sigma_magn_rpa)
@@ -297,7 +296,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     sigma_dga_nc = sigma_dens_dga + 3 * sigma_magn_dga - 2 * dmft_sde['siw_magn'] + dmft_sde['hartree'] - \
                    dmft_sde['siw'] + dmft1p['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
 
-
     dga_sde = {
         'sigma_dens': sigma_dens_dga,
         'sigma_magn': sigma_magn_dga,
@@ -307,31 +305,25 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'sigma_nc': sigma_dga_nc
     }
 
-    chi_dens_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat)))
-    chi_magn_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_lambda.mat)))
+    if(qiw_distributor.my_rank == 0):
+        chi_dens_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat)))
+        chi_magn_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_lambda.mat)))
 
-    chi_dens_lambda.qiw = qiw_grid_fbz.meshgrid
-    chi_magn_lambda.qiw = qiw_grid_fbz.meshgrid
+        chi_dens_lambda.qiw = qiw_grid_fbz.meshgrid
+        chi_magn_lambda.qiw = qiw_grid_fbz.meshgrid
 
-    chi_lambda = {
-        'chi_dens_lambda': chi_dens_lambda,
-        'chi_magn_lambda': chi_magn_lambda,
-        'lambda_dens': lambda_dens,
-        'lambda_magn': lambda_magn
-    }
+        chi_lambda = {
+            'chi_dens_lambda': chi_dens_lambda,
+            'chi_magn_lambda': chi_magn_lambda,
+            'lambda_dens': lambda_dens,
+            'lambda_magn': lambda_magn
+        }
+        np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
 
-    chi0q_core = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_core)))
-    chi0q_urange = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_urange)))
-    chi0q_asympt = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0q_asympt)))
 
-    chi_ladder = {
-        'chi_dens_ladder': chi_dens_ladder,
-        'chi_magn_ladder': chi_magn_ladder,
-        'chi0q_core': chi0q_core,
-        'chi0q_urange': chi0q_urange,
-        'chi0q_asympt': chi0q_asympt
-    }
+
+
 
     if (verbose): outpfunc(realt.string_time('Building fbz and overhead '))
 
-    return dga_sde, dmft_sde, dmft_gamma, chi_lambda, chi_ladder
+    return dga_sde, dmft_sde, dmft_gamma

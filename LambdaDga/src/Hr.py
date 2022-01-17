@@ -19,7 +19,7 @@ def standard_cuprates(t=1.0):
 
 def motoharu_nickelates(t=0.25):
     tp = -0.25 * t
-    tpp = 0.10 * t
+    tpp = 0.12 * t
     return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
 
 def unfrustrated_square(t=1.00):

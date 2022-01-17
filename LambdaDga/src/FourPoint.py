@@ -779,10 +779,10 @@ def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = N
 # ------------------------------------- FREE FUNCTIONS FOR NONLOCAL SUSCEPTIBILITY CLASS -------------------------------
 # ======================================================================================================================
 
-def chi_rpa(chi0_asympt: Bubble = None, chi0_urange: Bubble = None, channel=None, u=None):
+def chi_rpa(chi0_urange: Bubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)  # + chi0_asympt.chi0 - chi0_urange.chi0
-    return Susceptibility(matrix=chi, channel=channel, beta=chi0_asympt.beta, u=u)
+    chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)
+    return Susceptibility(matrix=chi, channel=channel, beta=chi0_urange.beta, u=u)
 
 
 def chi_phys_from_chi_aux(chi_aux: Susceptibility = None, chi0_urange: Bubble = None, chi0_core: Bubble = None):
@@ -822,11 +822,9 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
         chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
-        chi0q_asympt = copy.deepcopy(chi0q_urange)
-        chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
-        chiq_dens = chi_rpa(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange, channel='dens', u=u)
-        chiq_magn = chi_rpa(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange, channel='magn', u=u)
+        chiq_dens = chi_rpa(chi0_urange=chi0q_urange, channel='dens', u=u)
+        chiq_magn = chi_rpa(chi0_urange=chi0q_urange, channel='magn', u=u)
 
         chi_rpa_dens.mat[iqw] = chiq_dens.mat
         chi_rpa_magn.mat[iqw] = chiq_magn.mat
@@ -861,18 +859,11 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     u = dmft_input['u']
     mu = dmft_input['mu']
     niv_core = box_sizes['niv_core']
-    niw_core = box_sizes['niw_core']
     niv_pp = box_sizes['niv_pp']
     niv_urange = box_sizes['niv_urange']
-    niv_asympt = box_sizes['niv_asympt']
-    nq = box_sizes['nq']
     siw = dmft_input['sloc']
     gamma_dens_loc = local_sde['gamma_dens']
     gamma_magn_loc = local_sde['gamma_magn']
-
-    chi0q_core_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
-    chi0q_urange_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
-    chi0q_asympt_full = LadderSusceptibility(channel=None, beta=beta, u=None, qiw=qiw_grid)
 
     chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
     chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
@@ -906,8 +897,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
         chi0q_core = Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta)
         chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
-        chi0q_asympt = copy.deepcopy(chi0q_urange)
-        chi0q_asympt.add_asymptotic(niv_asympt=niv_asympt, wn=wn)
 
         gchi_aux_dens = construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
         gchi_aux_magn = construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
@@ -917,33 +906,18 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
 
         chiq_dens_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_dens, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
-        chiq_dens_asympt = copy.deepcopy(chiq_dens_urange)
-        chiq_dens_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
 
         chiq_magn_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
-        chiq_magn_asympt = copy.deepcopy(chiq_magn_urange)
-        chiq_magn_asympt.add_asymptotic(chi0_asympt=chi0q_asympt, chi0_urange=chi0q_urange)
 
-        # vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core, niv_urange=niv_urange)
-        # vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core, niv_urange=niv_urange)
+        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core, niv_urange=niv_urange)
+        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core, niv_urange=niv_urange)
 
-        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
-                                                                   chi_asympt=chiq_dens_asympt
-                                                                   , chi_urange=chiq_dens_urange, niv_urange=niv_urange)
-        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_asympt(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
-                                                                   chi_asympt=chiq_magn_asympt
-                                                                   , chi_urange=chiq_magn_urange, niv_urange=niv_urange)
-
-        chi_dens_asympt.mat[iqw] = chiq_dens_asympt.mat
-        chi_magn_asympt.mat[iqw] = chiq_magn_asympt.mat
+        chi_dens_asympt.mat[iqw] = chiq_dens_urange.mat
+        chi_magn_asympt.mat[iqw] = chiq_magn_urange.mat
 
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
-
-        chi0q_core_full.mat[iqw] = chi0q_core.chi0
-        chi0q_urange_full.mat[iqw] = chi0q_urange.chi0
-        chi0q_asympt_full.mat[iqw] = chi0q_asympt.chi0
 
         if (do_pairing_vertex):
             if (np.abs(wn) < 2 * niv_pp):
@@ -960,7 +934,6 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                                                                                         beta=beta,
                                                                                         u_r=get_ur(u=u, channel='dens'))
 
-                # group = '/qx{:03d}qy{:03d}qz{:03d}wn{:04d}/'.format(*qiw)
                 group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
                 file[group + 'f1_magn/'] = pv.get_pp_slice_4pt(mat=f1_magn_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'f2_magn/'] = pv.get_pp_slice_4pt(mat=f2_magn_slice, condition=condition, niv_pp=niv_pp)
@@ -974,20 +947,14 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     vrg_dens.set_qiw_mat()
     vrg_magn.set_qiw_mat()
 
-    chi0q_asympt_full.mat_to_array()
-    chi0q_urange_full.mat_to_array()
-    chi0q_core_full.mat_to_array()
 
     dga_susc = {
         'chi_dens_asympt': chi_dens_asympt,
         'chi_magn_asympt': chi_magn_asympt,
         'vrg_dens': vrg_dens,
-        'vrg_magn': vrg_magn,
-        'chi0q_core': chi0q_core_full,
-        'chi0q_urange': chi0q_urange_full,
-        'chi0q_asympt': chi0q_asympt_full
+        'vrg_magn': vrg_magn
     }
-    return dga_susc  # , f_ladder
+    return dga_susc
 
 
 if __name__ == "__main__":
