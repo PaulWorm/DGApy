@@ -41,15 +41,25 @@ class two_point():
             self.set_vn()
         self._iv = (self._vn * 2 + 1) * 1j * np.pi / self._beta
 
-def create_gk_dict(sigma=None,kgrid=None,hr=None,beta=None,n=None,mu0=0.):
+def create_gk_dict(sigma=None,kgrid=None,hr=None,beta=None,n=None,mu0=None, adjust_mu=True, niv_cut=None):
+
+    if(niv_cut is not None):
+        niv = sigma.shape[-1] // 2
+        sigma = sigma[...,niv-niv_cut:niv+niv_cut]
+
     gk_dga_generator = GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr,
                                                     sigma=sigma)
-    mu_dga = gk_dga_generator.adjust_mu(n=n, mu0=mu0)
+    if(adjust_mu):
+        mu_dga = gk_dga_generator.adjust_mu(n=n, mu0=mu0)
+    else:
+        mu_dga = mu0
+    n_dga = gk_dga_generator.get_fill(mu=mu_dga)
     gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
 
     gf_dict = {
         'gk': gk_dga._gk,
         'mu': gk_dga._mu,
+        'n': n_dga,
         'iv': gk_dga._iv,
         'beta': gk_dga._beta
     }
@@ -234,6 +244,12 @@ class GreensFunctionGenerator():
                                beta=self.beta, smom0=self.smom[0], verbose=verbose)
         return mu
 
+    def get_fill(self,mu=None, verbose=False):
+        iv = self.get_iv(niv=-1, wn=0)
+        ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
+        hloc = np.mean(ek)
+        n,_ = chempot.get_fill(iv=iv, hk=ek, siwk=self.sigma, beta=self.beta, smom0=self.smom[0], hloc=hloc, mu=mu, verbose=verbose)
+        return n
 
 # ======================================================================================================================
 # ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------

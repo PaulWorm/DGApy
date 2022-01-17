@@ -1,7 +1,4 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
-# WARNING: Currently there cannot be more processes than Niw*1+2. This is because my MpiDistibutor cannot handle slaves
-# that have nothing to do.
-
 # Warning: many of the files I prepared from Motoharu do not have smom stored.
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
@@ -43,14 +40,14 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/LambdaDga_Python/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/NdNiO2_U8_n0.85_b75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
-#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta20_mu1/'
-#input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta20_mu1/'
+# input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/'
-#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
-#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
+# input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 # input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDgaPython/'
+input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -60,18 +57,18 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 do_pairing_vertex = True
 keep_ladder_vertex = False
-lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
+lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 verbose = True
-lc_use_only_positive = True # Use only frequency box where susceptibility is positive for lambda correction.
+lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 
 # Create the real-space Hamiltonian:
 t = 0.25
-#hr = hr_mod.standard_cuprates(t=t)
-#hr = hr_mod.unfrustrated_square(t=t)
+# hr = hr_mod.standard_cuprates(t=t)
+# hr = hr_mod.unfrustrated_square(t=t)
 hr = hr_mod.motoharu_nickelates(t=t)
-#hr = hr_mod.motoharu_nickelates_2(t=t)
-#hr = hr_mod.Ba2CuO4_plane()
+# hr = hr_mod.motoharu_nickelates_2(t=t)
+# hr = hr_mod.Ba2CuO4_plane()
 
 
 gap0_sing = {
@@ -91,18 +88,18 @@ sym_trip = True
 
 # Define frequency box-sizes:
 niw_core = 59
-niw_urange = 59 # This seems not to save enough to be used.
+niw_urange = 59  # This seems not to save enough to be used.
 niv_core = 60
 niv_invbse = 60
-niv_urange = 300 # Must be larger than niv_invbse
+niv_urange = 250  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 16
+nkx = 32
 nky = nkx
-nqx = 16
+nqx = 32
 nqy = nqx
 
 nk = (nkx, nky, 1)
@@ -141,7 +138,7 @@ options = {
     'lc_use_only_positive': lc_use_only_positive,
     'use_urange_for_lc': use_urange_for_lc,
     'sym_sing': sym_sing,
-    'sym_trip':sym_trip
+    'sym_trip': sym_trip
 }
 
 system = {
@@ -236,15 +233,27 @@ if (comm.rank == 0):
     np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
                fmt='%.9f')
 
+    # Create DMFT Green's function:
+    gf_dict_dmft = twop.create_gk_dict(sigma=dmft1p['sloc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'], niv_cut=niv_urange)
+    np.save(output_path + 'gk_dmft.npy', gf_dict_dmft, allow_pickle=True)
+
     # Create the Green's functions:
     gf_dict = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'])
+    gf_dict_mu_dmft = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'],adjust_mu=False)
     np.save(output_path + 'gk_dga.npy', gf_dict, allow_pickle=True)
+    np.save(output_path + 'gk_dga_mu_dmft.npy', gf_dict_mu_dmft, allow_pickle=True)
+    np.savetxt(output_path + 'mu.txt', [[gf_dict['mu'],dmft1p['mu']], [gf_dict['n'], gf_dict_mu_dmft['n']]], delimiter=',',
+               fmt='%.9f')
+
+
+
 
     gf_dict_nc = twop.create_gk_dict(sigma=dga_sde['sigma_nc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'],
-                                  n=dmft1p['n'], mu0=dmft1p['mu'])
+                                     n=dmft1p['n'], mu0=dmft1p['mu'])
     np.save(output_path + 'gk_dga_nc.npy', gf_dict_nc, allow_pickle=True)
-
 
     siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
     siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
@@ -259,25 +268,32 @@ if (comm.rank == 0):
 
     # Plot Giw:
     vn_list = [grids['vn_urange'], grids['vn_urange']]
-    giw_list = [gf_dict['gk'].mean(axis=(0,1,2)), gf_dict_nc['gk'].mean(axis=(0,1,2))]
+    giw_list = [gf_dict['gk'].mean(axis=(0, 1, 2)), gf_dict_nc['gk'].mean(axis=(0, 1, 2))]
     labels = [r'$G_{DGA}(\nu)$', r'$G_{DGA-NC}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=giw_list, labels_list=labels, plot_dir=output_path, niv_plot=100, name='giw_loc')
+    plotting.plot_siw(vn_list=vn_list, siw_list=giw_list, labels_list=labels, plot_dir=output_path, niv_plot=100,
+                      name='giw_loc')
 
     # Plot siw at important locations:
 
-    ak_fs = -1./np.pi * gf_dict['gk'][:,:,:,niv_urange].imag
-    ak_fs_nc = -1./np.pi * gf_dict_nc['gk'][:,:,:,niv_urange].imag
+    ak_fs = -1. / np.pi * gf_dict['gk'][:, :, :, niv_urange].imag
+    ak_fs_mu_dmft = -1. / np.pi * gf_dict_mu_dmft['gk'][:, :, :, niv_urange].imag
+    ak_fs_dmft = -1. / np.pi * gf_dict_dmft['gk'][:, :, :, niv_urange].imag
+    ak_fs_nc = -1. / np.pi * gf_dict_nc['gk'][:, :, :, niv_urange].imag
 
-    ind_node = bz.find_arc_node(ak_fs=ak_fs,kgrid=k_grid)
-    ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs,kgrid=k_grid)
-    ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs,kgrid=k_grid)
-    ind_arc = bz.find_arc_peaks(ak_fs=ak_fs,kgrid=k_grid)
+    ind_node = bz.find_arc_node(ak_fs=ak_fs, kgrid=k_grid)
+    ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs, kgrid=k_grid)
+    ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs, kgrid=k_grid)
+    ind_fs_mu_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_mu_dmft, kgrid=k_grid)
+    ind_fs_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_dmft, kgrid=k_grid)
+    ind_arc = bz.find_arc_peaks(ak_fs=ak_fs, kgrid=k_grid)
 
-    np.savetxt(output_path + 'loc_nodes_antinode.txt', [k_grid.kmesh.transpose((1,2,3,0))[ind_node], k_grid.kmesh.transpose((1,2,3,0))[ind_anti_node]], delimiter=',',
+    np.savetxt(output_path + 'loc_nodes_antinode.txt',
+               [k_grid.kmesh.transpose((1, 2, 3, 0))[ind_node], k_grid.kmesh.transpose((1, 2, 3, 0))[ind_anti_node]],
+               delimiter=',',
                fmt='%.9f')
 
-    ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc,kgrid=k_grid)
-    ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc,kgrid=k_grid)
+    ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc, kgrid=k_grid)
+    ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc, kgrid=k_grid)
 
     siw_dga_an = dga_sde['sigma'][ind_anti_node]
     siw_dga_n = dga_sde['sigma'][ind_node]
@@ -286,7 +302,6 @@ if (comm.rank == 0):
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
                       niv_plot=10, name='siw_at_bz_points', ms=5)
-
 
     siw_dga_an = dga_sde['sigma_nc'][ind_anti_node_nc]
     siw_dga_n = dga_sde['sigma_nc'][ind_node]
@@ -299,9 +314,22 @@ if (comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
 
-    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga', ind_fs=ind_fs)
+    # DGA with adjusted mu:
+    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga',
+                          ind_fs=ind_fs)
     plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
 
+    # DGA with mu from DMFT:
+    plotting.plot_giwk_fs(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft',
+                          ind_fs=ind_fs_mu_dmft)
+    plotting.plot_giwk_qpd(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft')
+
+    # DMFT:
+    plotting.plot_giwk_fs(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft',
+                          ind_fs=ind_fs_dmft)
+    plotting.plot_giwk_qpd(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft')
+
+    # Slight variant of the DGA:
     plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
     plotting.plot_giwk_qpd(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
 
@@ -310,10 +338,13 @@ if (comm.rank == 0):
     plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path,
                              name='gamma_dens')
 
-    plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='magn_w0')
-    plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,name='dens_w0')
+    plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
+                         name='magn_w0')
+    plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
+                         name='dens_w0')
 
     import matplotlib.pyplot as plt
+
     plt.figure()
     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_node])
     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_anti_node])
@@ -326,14 +357,16 @@ if (comm.rank == 0):
     plt.savefig(output_path + 'chi_magn_lambda_node_anti_node_imag.png')
     plt.show()
 
-    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_magn'].mat * dmft1p['beta'] , niv_plot=niv_urange, pdir=output_path, name='vrg_magn_loc')
-    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path, name='vrg_dens_loc')
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_magn'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
+                          name='vrg_magn_loc')
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
+                          name='vrg_dens_loc')
 
-    oz_coeff,_ = ozfunc.fit_oz_spin(q_grid,chi_lambda['chi_magn_lambda'].mat[:,:,:,niw_core].flatten())
+    oz_coeff, _ = ozfunc.fit_oz_spin(q_grid, chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core].flatten())
 
-    np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',',fmt='%.9f')
-    plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:,:,:,niw_core], oz_coeff=oz_coeff, qgrid=q_grid, pdir=output_path, name='oz_fit')
-
+    np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f')
+    plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core], oz_coeff=oz_coeff, qgrid=q_grid,
+                         pdir=output_path, name='oz_fit')
 
 # ------------------------------------------------ PAIRING VERTEX ----------------------------------------------------------------
 # %%
@@ -354,7 +387,9 @@ if (do_pairing_vertex and comm.rank == 0):
                               keys=('qx', 'qy', 'qz', 'iw'),
                               my_slice=None)
 
-    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=output_path,name='Qiw', mpi_size=comm.size, nq=q_grid.nk_irr, niv_pp=niv_pp)
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=output_path, name='Qiw',
+                                                                                mpi_size=comm.size, nq=q_grid.nk_irr,
+                                                                                niv_pp=niv_pp)
     f1_magn = q_grid.irrk2fbz(mat=f1_magn)
     f2_magn = q_grid.irrk2fbz(mat=f2_magn)
     f1_dens = q_grid.irrk2fbz(mat=f1_dens)
@@ -395,11 +430,11 @@ if (do_pairing_vertex and comm.rank == 0):
     gamma_sing = -f_sing
     gamma_trip = -f_trip
     #
-    if(sym_sing):
-        gamma_sing = 0.5*(gamma_sing + np.flip(gamma_sing,axis=(-1)))
+    if (sym_sing):
+        gamma_sing = 0.5 * (gamma_sing + np.flip(gamma_sing, axis=(-1)))
 
-    if(sym_trip):
-        gamma_trip = 0.5*(gamma_trip - np.flip(gamma_trip,axis=(-1)))
+    if (sym_trip):
+        gamma_trip = 0.5 * (gamma_trip - np.flip(gamma_trip, axis=(-1)))
 
     plotting.plot_vertex_vvp(vertex=gamma_trip.mean(axis=(0, 1, 2)).real, pdir=output_path, name='gamma_trip_loc')
 

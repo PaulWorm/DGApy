@@ -6,11 +6,13 @@ class real_time():
 
     def __init__(self):
         self._ts = time.time()
+        self._tl = time.time()
         self._tm = []
         self._tm.append(0)
 
     def measure_time(self):
-        self._tm.append(time.time() - self._ts - self._tm[-1])
+        self._tm.append(time.time() - self._tl)
+        self._tl = time.time()
 
     def print_time(self, string=''):
         self.measure_time()
