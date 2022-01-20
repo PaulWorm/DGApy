@@ -61,14 +61,16 @@ def find_qpd_zeros(qpd=None,kgrid=None):
     eps = 0.000001
     ind = []
     kmesh = kgrid.kmesh
-    mask = np.logical_and(0 <= kgrid.kx, kgrid.kx <= np.pi / 2 - eps)
+    #mask = np.logical_and(0 <= kgrid.kx, kgrid.kx <= np.pi / 2 - eps)
+    mask = np.logical_and(np.pi / 2 - eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
     kx = kgrid.kx[mask]
     for ikx in kx:
         mask = np.logical_and(kmesh[0] == ikx, kmesh[1] <= np.pi + eps)
-        asign = np.sign(qpd[mask])
-        signchange = ((np.roll(asign, 1) - asign) != 0).astype(int)
-        signchange[0] = 0
-        ind.append(tuple(np.squeeze(np.argwhere(mask)[np.argwhere(signchange)])))
+        ind.append(tuple(np.argwhere(mask)[np.argmin(np.abs(qpd[mask]))]))
+        # asign = np.sign(qpd[mask])
+        # signchange = ((np.roll(asign, 1) - asign) != 0).astype(int)
+        # signchange[0] = 0
+        # ind.append(tuple(np.squeeze(np.argwhere(mask)[np.argwhere(signchange)])))
 
     ind = ind[::-1]
     return ind
@@ -83,6 +85,8 @@ class KGrid():
         self.nk = nk
         self.set_k_axes()
         self.set_kmesh()
+        self.set_ind_lin()
+        self.set_ind_tuple()
 
         if(ek is not None):
             self.get_irrk_from_ek(ek=ek)
@@ -105,6 +109,12 @@ class KGrid():
 
     def set_kmesh(self):
         self.kmesh = np.array(np.meshgrid(self.kx, self.ky, self.kz))
+
+    def set_ind_lin(self):
+        self.ind_lin = np.arange(0,self.nk_tot)
+
+    def set_ind_tuple(self):
+        self.ind = np.squeeze(np.array(np.unravel_index(self.ind_lin,self.nk))).T
 
 
     def get_irrk_from_ek(self, ek=None, dec=10):

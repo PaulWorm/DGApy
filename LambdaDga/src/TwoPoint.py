@@ -61,7 +61,8 @@ def create_gk_dict(sigma=None,kgrid=None,hr=None,beta=None,n=None,mu0=None, adju
         'mu': gk_dga._mu,
         'n': n_dga,
         'iv': gk_dga._iv,
-        'beta': gk_dga._beta
+        'beta': gk_dga._beta,
+        'niv': gk_dga.niv
     }
     return gf_dict
 

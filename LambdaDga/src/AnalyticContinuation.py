@@ -6,6 +6,9 @@ import numpy as np
 import PadeAux as pa
 import continuation as cont
 import MatsubaraFrequencies as mf
+import TwoPoint as twop
+import BrillouinZone as bz
+import Hk as hamk
 
 # --------------------------------------- Obtain the real frequency grid -----------------------------------------------
 
@@ -52,17 +55,72 @@ def pade(mat=None, v_real=None, beta=None, method='thiele', n_fit=60, n_pade=20,
 
 # ---------------------------------------------- MaxEnt ----------------------------------------------------------------
 
-def do_max_ent_on_ind(mat=None, ind_list=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=1e-4):
+def check_filling(v_real=None, gloc_cont=None):
+    ind_w = v_real < 0
+    n = np.trapz(-1. / np.pi * gloc_cont[ind_w].imag, v_real[ind_w]) * 2
+    return n
+
+def max_ent_loc(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, use_preblur=False, bw=0.0, err=1e-3, nfit=60, adjust_mu=True):
+    # Create Green's function:
+    dmft1p = config['dmft1p']
+    gk = twop.create_gk_dict(sigma=sigma, kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'], adjust_mu=adjust_mu, niv_cut=niv_cut)
+
+    gloc = gk['gk'].mean(axis=(0, 1, 2))
+
+    gloc_cont = max_ent(mat=gloc, v_real=v_real, beta=dmft1p['beta'], n_fit=nfit,
+                                    alpha_det_method='chi2kink', err=err, use_preblur=use_preblur, bw=bw)
+    return gloc_cont, gk
+
+def max_ent_on_fs(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, use_preblur=False, bw=0.0, err=1e-3, nfit=60, adjust_mu=True):
+    dmft1p = config['dmft1p']
+    gk = twop.create_gk_dict(sigma=sigma, kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'], adjust_mu=adjust_mu, niv_cut=niv_cut)
+    ind_gf0 = bz.find_qpd_zeros(qpd=gk['gk'][:, :, :, niv_cut].real, kgrid=k_grid)
+    gk_cont = do_max_ent_on_ind(mat=gk['gk'], ind_list=ind_gf0, v_real=v_real,
+                                               beta=dmft1p['beta'],
+                                               n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur = use_preblur, bw=bw)
+    return gk_cont, ind_gf0, gk
+
+def max_ent_irrk(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, use_preblur=False, bw=0.0, err=1e-3, nfit=60, scal=1):
+    dmft1p = config['dmft1p']
+    gk = twop.create_gk_dict(sigma=sigma, kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
+                                  mu0=dmft1p['mu'], adjust_mu=True, niv_cut=niv_cut)
+    nk_new = (k_grid.nk[0] / scal, k_grid.nk[1] / scal, 1)
+    print(nk_new)
+    nk_new = tuple([int(i) for i in nk_new])
+    k_grid_small = bz.KGrid(nk=nk_new)
+    ek = hamk.ek_3d(kgrid=k_grid_small.grid, hr=config['system']['hr'])
+    k_grid_small.get_irrk_from_ek(ek=ek, dec=11)
+    ind_irrk = [np.argmin(
+        np.abs(np.array(k_grid.irr_kgrid) - np.atleast_2d(np.array(k_grid_small.irr_kgrid)[:, i]).T).sum(axis=0)) for i
+                in k_grid_small.irrk_ind_lin]
+    ind_irrk = np.squeeze(np.array(np.unravel_index(k_grid.irrk_ind[ind_irrk], shape=k_grid.nk))).T
+    ind_irrk_fbz = [tuple(ind_irrk[i, :]) for i in np.arange(ind_irrk.shape[0])]
+
+    gk_dga_max_ent_irrk = do_max_ent_on_ind(mat=gk['gk'], ind_list=ind_irrk_fbz, v_real=v_real,
+                                                   beta=dmft1p['beta'],
+                                                   n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur = use_preblur, bw=bw)
+    gk_dga_max_ent_fbz = k_grid_small.irrk2fbz(mat=gk_dga_max_ent_irrk.T)
+    cont_dict = {
+        'gk_cont': gk_dga_max_ent_fbz,
+        'k_grid': k_grid_small,
+        'ind_irrk': ind_irrk,
+        'ind_irrk_fbz': ind_irrk_fbz
+    }
+    return cont_dict
+
+def do_max_ent_on_ind(mat=None, ind_list=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=1e-4, use_preblur = False, bw=None):
     ''' ind are the indizes on which the pade approximation shall be performed'''
     n_ind = len(ind_list)
     nw = np.size(v_real)
     mat_cont = np.zeros((nw, n_ind), dtype=complex)
     for i, ind in enumerate(ind_list):
-        mat_cont[:,i] = max_ent(mat=mat[ind], v_real=v_real, beta=beta, n_fit=n_fit, alpha_det_method=alpha_det_method, err=err)
+        mat_cont[:,i] = max_ent(mat=mat[ind], v_real=v_real, beta=beta, n_fit=n_fit, alpha_det_method=alpha_det_method, err=err, use_preblur = use_preblur, bw=bw)
 
     return mat_cont
 
-def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6):
+def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6, use_preblur = False, bw=None):
     niv_mat = np.size(mat) // 2
     mat_plus = mat[niv_mat:niv_mat + n_fit]
     iv_plus = mf.iv_plus(beta=beta, n=n_fit)
@@ -73,7 +131,7 @@ def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='histor
     model /= np.trapz(model, v_real)
     error_s = np.ones((n_fit,), dtype=np.float64) * err
     sol, _ = problem.solve(method='maxent_svd', model=model, stdev=error_s, alpha_determination=alpha_det_method,
-                                   optimizer="newton")
+                                   optimizer="newton", preblur=use_preblur, blur_width=bw)
     cont_mat = cont.GreensFunction(spectrum=sol.A_opt, wgrid=v_real, kind='fermionic').kkt()
     return cont_mat
 

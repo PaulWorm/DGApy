@@ -9,12 +9,17 @@ import TwoPoint as twop
 import Plotting as plotting
 import BrillouinZone as bz
 
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta60_n0.75/LambdaDga_lc_sp_Nk14400_Nq14400_core80_invbse80_vurange150_wurange80/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.85/LambdaDga_lc_sp_Nk19600_Nq19600_core70_invbse70_vurange150_wurange70/'
+#input_path = '/mnt/d/Research/ElectronDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.17/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange100_wurange100/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.80/LambdaDga_Nk14400_Nq14400_core50_urange100/'
+#input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n1.0/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
 output_path = input_path
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dmft1p = config['dmft1p']
 k_grid = config['grids']['k_grid']
+k_grid = bz.KGrid(nk=config['box_sizes']['nk'])
 niv_urange = config['box_sizes']['niv_urange']
 hr = config['system']['hr']
 dga_sde  = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()

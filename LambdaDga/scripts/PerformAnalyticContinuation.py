@@ -9,12 +9,19 @@ import matplotlib.pyplot as plt
 import PadeAux as pade_aux
 from Plotting import MidpointNormalize
 import Hk as hamk
+import Output as output
 
 # Define input path:
-input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
+#input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
 #input_path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/LambdaDga_Python/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse100_vurange100_wurange99/'
 #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/LambdaDga_lc_sp_Nk4096_Nq4096_core27_invbse80_vurange80_wurange80/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.875/LambdaDga_lc_sp_Nk10000_Nq10000_core59_invbse60_vurange500_wurange59/'
+
 output_path = input_path
+
+
+output_path = output.uniquify(output_path + 'AnaCont') + '/'
+os.mkdir(output_path)
 
 # Load config:
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
