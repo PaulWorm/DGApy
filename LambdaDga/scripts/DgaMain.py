@@ -67,7 +67,8 @@ lc_use_only_positive = True  # Use only frequency box where susceptibility is po
 
 # Create the real-space Hamiltonian:
 t = 1.0
-hr = hr_mod.standard_cuprates(t=t)
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=0,tpp=0)
+#hr = hr_mod.standard_cuprates(t=t)
 # hr = hr_mod.unfrustrated_square(t=t)
 #hr = hr_mod.motoharu_nickelates(t=t)
 # hr = hr_mod.motoharu_nickelates_2(t=t)
