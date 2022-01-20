@@ -120,6 +120,16 @@ def do_max_ent_on_ind(mat=None, ind_list=None, v_real=None, beta=None, n_fit=60,
 
     return mat_cont
 
+def do_max_ent_on_ind_T(mat=None, ind_list=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=1e-4, use_preblur = False, bw=None):
+    ''' ind are the indizes on which the pade approximation shall be performed'''
+    n_ind = len(ind_list)
+    nw = np.size(v_real)
+    mat_cont = np.zeros((n_ind, nw), dtype=complex)
+    for i, ind in enumerate(ind_list):
+        mat_cont[i,:] = max_ent(mat=mat[ind], v_real=v_real, beta=beta, n_fit=n_fit, alpha_det_method=alpha_det_method, err=err, use_preblur = use_preblur, bw=bw)
+
+    return mat_cont
+
 def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6, use_preblur = False, bw=None):
     niv_mat = np.size(mat) // 2
     mat_plus = mat[niv_mat:niv_mat + n_fit]
@@ -131,7 +141,7 @@ def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='histor
     model /= np.trapz(model, v_real)
     error_s = np.ones((n_fit,), dtype=np.float64) * err
     sol, _ = problem.solve(method='maxent_svd', model=model, stdev=error_s, alpha_determination=alpha_det_method,
-                                   optimizer="newton", preblur=use_preblur, blur_width=bw)
+                                   optimizer="newton", preblur=use_preblur, blur_width=bw, verbose=False)
     cont_mat = cont.GreensFunction(spectrum=sol.A_opt, wgrid=v_real, kind='fermionic').kkt()
     return cont_mat
 

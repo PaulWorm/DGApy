@@ -114,21 +114,21 @@ if __name__ == '__main__':
 
     comm = mpi.COMM_WORLD
     print(comm.Get_rank())
-    niw = 11
+    niw = 6
     iw = np.arange(-niw, niw+1)
     ntasks = iw.size
-    mpi_distributor = MpiDistributor(ntasks=ntasks,comm=comm,output_path='./', name='Test')
+    mpi_distributor = MpiDistributor(ntasks=ntasks,comm=comm)
     print(f'{mpi_distributor.my_rank} and I am doing slice: {mpi_distributor.my_slice}')
     print(f'My iw: {iw[mpi_distributor.my_slice]}')
-    my_iw = iw[mpi_distributor.my_slice]
+
+    k = np.arange(0,5)
+    mat,mat2 = np.meshgrid(k,iw)
+    my_iw = mat2[mpi_distributor.my_slice,:]
 
     gather_iw = mpi_distributor.allgather(rank_result=my_iw)
-    mpi_distributor.file['iw/my_iw'] = my_iw
-    mpi_distributor.file['iw/gather_iw'] = gather_iw
-    mpi_distributor.file['iw/complex'] = gather_iw*1j
-    mpi_distributor.file.close()
 
     print(f'Full iw: {gather_iw}')
+    print(f'Full iw: {mat2}')
 
 
 
