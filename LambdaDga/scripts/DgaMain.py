@@ -91,11 +91,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 40
-niw_urange = 40  # This seems not to save enough to be used.
-niv_core = 40
-niv_invbse = 40
-niv_urange = 100  # Must be larger than niv_invbse
+niw_core = 10
+niw_urange = 10  # This seems not to save enough to be used.
+niv_core = 10
+niv_invbse = 10
+niv_urange = 50  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 niv_pp = np.min((niw_core // 2, niv_core // 2))

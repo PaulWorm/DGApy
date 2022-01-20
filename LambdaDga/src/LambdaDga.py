@@ -320,7 +320,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         }
         np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
         # Safe chi_m at q = (0,0) and lowest Matsubara as proxy for the Knight shift:
-        np.savetxt(output_path + 'Knight_shift.txt', chi_magn_lambda.mat[0,0,0,niw_core])
+        np.savetxt(output_path + 'Knight_shift.txt', [chi_magn_lambda.mat[0,0,0,niw_core],chi_dens_lambda.mat[0,0,0,niw_core]], delimiter=',',
+               fmt='%.9f')
 
 
 
