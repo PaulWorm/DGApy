@@ -491,6 +491,7 @@ if(do_analytic_continuation):
         ind_irrk = [tuple(ind_irrk[i, :]) for i in np.arange(ind_irrk.shape[0])]
     else:
         ind_irrk = tuple(ind_irrk)
+
     # DMFT Green's function:
     gk = twop.create_gk_dict(sigma=dmft1p['sloc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'], adjust_mu=True, niv_cut=niv_urange)
@@ -500,11 +501,8 @@ if(do_analytic_continuation):
     gk_my_cont = a_cont.do_max_ent_on_ind_T(mat=gk['gk'], ind_list=ind_irrk, v_real=v_real,
                                                    beta=dmft1p['beta'],
                                                    n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur = use_preblur, bw=bw_dmft)
-    #print(f'{gk_my_cont=}')
+
     gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
-    print(f'{gk_cont[:,:]=}')
-    print(f'{gk_cont[:,nwr//2]=}')
-    print(f'{gk_cont.shape=}')
     if(comm.rank == 0):
         gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
         w_int = -0.2
