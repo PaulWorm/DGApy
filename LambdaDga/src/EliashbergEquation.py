@@ -74,7 +74,7 @@ def gram_schmidt(v=None, basis=None):
 def gram_schmidt_eliash(v=None, basis=None, gk=None):
     v_new = np.copy(v)
     for ui in basis:
-        v_new -= proj_eliash(v=v,u=ui,gk=gk)
+        v_new = v_new - proj_eliash(v=v,u=ui,gk=gk)
     return v_new
 
 def proj(v=None,u=None):
@@ -188,6 +188,8 @@ def get_gap_start(shape=None, k_type=None, v_type=None, k_grid=None):
         gap0[..., niv:] = np.repeat(d_wave(k_grid)[:, :, :, None], niv, axis=3)
     elif (k_type == 'p-wave-y'):
         gap0[..., niv:] = np.repeat(p_wave_y(k_grid)[:, :, :, None], niv, axis=3)
+    elif (k_type == 'p-wave-y'):
+        gap0[..., niv:] = np.repeat(p_wave_x(k_grid)[:, :, :, None], niv, axis=3)
     else:
         gap0 = np.random.random_sample(shape)
 
@@ -208,6 +210,8 @@ def d_wave(k_grid=None):
 def p_wave_y(k_grid=None):
     return (np.sin(k_grid[0])[:, None, None] * 0 + np.sin(k_grid[1])[None, :, None])
 
+def p_wave_x(k_grid=None):
+    return (np.sin(k_grid[0])[:, None, None] + 0*np.sin(k_grid[1])[None, :, None])
 
 def linear_eliashberg(gamma=None, gk=None, eps=10 ** -6, max_count=10000, norm=1.0, gap0=None, shift_mat=True, n=1):
     # Gamma has shape [nkx,nky,nkz,niv,niv]

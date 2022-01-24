@@ -23,10 +23,14 @@ import matplotlib.pyplot as plt
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/LambdaDga_lc_spch_Nk64_Nq64_core8_invbse10_vurange20_wurange10_4/'
 #input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.85/LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
 #input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.85/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta60_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core80_invbse80_vurange150_wurange80/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta60_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core80_invbse80_vurange150_wurange80/'
+input_path = '/mnt/d/Research/Ba2CuO4_DGA/U3.0eV_n0.9_b120/LambdaDga_lc_sp_Nk6400_Nq6400_core80_invbse120_vurange500_wurange80/'
 
 # Set options:
 update_mu = True
+n_eig = 3
+sym_sing = True
+sym_trip = True
 
 output_path = input_path
 
@@ -35,13 +39,13 @@ os.mkdir(output_path)
 
 # Starting gap functions:
 gap0_sing = {
-    'k': 'd-wave',
-    'v': 'even'
+    'k': 'p-wave-x',
+    'v': 'random'
 }
 
 gap0_trip = {
-    'k': 'd-wave',
-    'v': 'odd'
+    'k': 'p-wave-y',
+    'v': 'even'
 }
 
 # # Starting gap functions:
@@ -76,6 +80,14 @@ f_trip = pairing_vertices['f_trip']
 gamma_sing = -f_sing   #- 2*f_sing.mean(axis=(0,1,2))
 # gamma_sing = 0.5*(f_sing +  np.roll(np.flip(np.transpose(f_sing,axes=(0,1,2,4,3)),axis=(0,1)),shift=(1,1), axis=(0,1)))
 gamma_trip = -f_trip  # - 2*f_trip.mean(axis=(0,1,2))
+
+if (sym_sing):
+    gamma_sing = 0.5 * (gamma_sing + np.flip(gamma_sing, axis=(-1)))
+
+if (sym_trip):
+    gamma_trip = 0.5 * (gamma_trip - np.flip(gamma_trip, axis=(-1)))
+
+
 g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=q_grid.get_grid_as_tuple(), hr=hr,
                                            sigma=dga_sde['sigma'])
 if(update_mu):
@@ -87,7 +99,7 @@ gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=niv_pp).gk
 gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'],
                          k_grid=q_grid.get_grid_as_tuple())
 norm = np.prod(nq) * dmft1p['beta']
-n_eig = 2
+
 powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm,shift_mat=True, n_eig=n_eig)
 
 gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_trip['k'], v_type=gap0_trip['v'],

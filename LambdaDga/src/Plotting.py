@@ -197,6 +197,7 @@ def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
     ax[1].set_xlabel('$q_x$')
     ax[1].set_ylabel('$\chi$')
     plt.savefig(pdir + name + '.png')
+    plt.close()
 
 
 def plot_vrg_loc(vrg=None, niw_plot=None, niv_plot=0, pdir=None, name='vrg_loc'):
@@ -215,7 +216,7 @@ def plot_vrg_loc(vrg=None, niw_plot=None, niv_plot=0, pdir=None, name='vrg_loc')
     ax[0].grid()
     ax[1].grid()
     plt.savefig(pdir + name + '.png')
-    plt.show()
+    plt.close()
 
 
 def plot_susc(susc=None):
@@ -223,7 +224,7 @@ def plot_susc(susc=None):
     plt.xlim([-2, susc.beta])
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'\chi')
-    plt.show()
+    plt.close()
 
 
 def get_extent(kgrid=None):
@@ -293,9 +294,6 @@ def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot
     plt.ylabel(r'$\chi_{}$'.format(channel))
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'chiw_{}.png'.format(channel))
-    try:
-        plt.show()
-    except:
         plt.close()
 
 
@@ -335,9 +333,6 @@ def plot_siwk_fs(siwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'siwk_fermi_surface_{}.png'.format(name))
-    try:
-        plt.show()
-    except:
         plt.close()
 
 
@@ -364,9 +359,6 @@ def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'giwk_fermi_surface_{}.png'.format(name))
-    try:
-        plt.show()
-    except:
         plt.close()
 
 
@@ -378,9 +370,6 @@ def plot_giwk_qpd(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, ni
 
     if (plot_dir is not None):
         plt.savefig(plot_dir + 'QuasiParticleDispersion_{}.png'.format(name))
-    try:
-        plt.show()
-    except:
         plt.close()
 
 

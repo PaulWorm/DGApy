@@ -55,6 +55,36 @@ def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
     sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma
     return sigma
 
+def sde_dga_spin_fermion_contributions(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, nq=None, box_sizes=None, q_grid=None):
+    assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
+    niv_urange = box_sizes['niv_urange']
+    sigma_spre = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+    sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+
+    for iqw in range(qiw_grid.shape[0]):
+        wn = qiw_grid[iqw][-1]
+        q_ind = qiw_grid[iqw][0]
+        q = q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(q, wn)
+        gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange)
+        sigma_spre += (vrg.mat[iqw, niv_urange:][None, None, None, :].real * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
+                 q_grid.irrk_count[q_ind]
+        sigma_spim += (1j*vrg.mat[iqw, niv_urange:][None, None, None, :].imag * (1. - vrg.u_r * chir.mat[iqw])) * gkpq.gk * \
+                 q_grid.irrk_count[q_ind]
+        if(wn != 0):
+            qiw = np.append(q, -wn)
+            gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
+            sigma_spre += (np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:].real * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq * \
+                     q_grid.irrk_count[q_ind]
+            sigma_spim += (-1j*np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:].imag * (1. - vrg.u_r * np.conj(chir.mat[iqw]))) * gkpq * \
+                     q_grid.irrk_count[q_ind]
+
+    sigma_spre = - vrg.u_r / (2.0) * 1. / (nq) * sigma_spre
+    sigma_spim = - vrg.u_r / (2.0) * 1. / (nq) * sigma_spim
+    sigma = sigma_spre + sigma_spim
+    return sigma, sigma_spre, sigma_spim
+
 
 def rpa_sde(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None, mu=0,
             nq=None, u=None, qiw_grid=None, q_grid=None):

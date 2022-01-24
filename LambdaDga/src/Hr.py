@@ -29,6 +29,21 @@ def unfrustrated_square(t=1.00):
 
 def Ba2CuO4_plane():
     # Ba2CuO3.25 parameters
+    # tx = 0.018545
+    # ty = 0.470181
+    # tpxy = 0.006765
+    # tppx = 0.001255
+    # tppy = 0.084597
+    tx = 0.0185
+    ty = 0.47
+    tpxy = 0.0068
+    tppx = 0.0013
+    tppy = 0.085
+
+    return one_band_2d_quasi1D(tx=tx,ty=ty,tppx=tppx,tppy=tppy,tpxy=tpxy)
+
+def Ba2CuO4_plane_2D_projection():
+    # Ba2CuO3.25 2D-projection parameters
     tx = 0.0258
     ty = 0.5181
     tpxy = 0.0119

@@ -76,7 +76,7 @@ def max_ent_on_fs(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, 
     dmft1p = config['dmft1p']
     gk = twop.create_gk_dict(sigma=sigma, kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'], adjust_mu=adjust_mu, niv_cut=niv_cut)
-    ind_gf0 = bz.find_qpd_zeros(qpd=gk['gk'][:, :, :, niv_cut].real, kgrid=k_grid)
+    ind_gf0 = bz.find_qpd_zeros(qpd=(1./gk['gk'][:, :, :, niv_cut]).real, kgrid=k_grid)
     gk_cont = do_max_ent_on_ind(mat=gk['gk'], ind_list=ind_gf0, v_real=v_real,
                                                beta=dmft1p['beta'],
                                                n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur = use_preblur, bw=bw)
