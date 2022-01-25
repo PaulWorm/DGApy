@@ -49,8 +49,8 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 #input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
-#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 #input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.93_b080/LambdaDgaPython/'
 output_path = input_path
 
@@ -70,8 +70,8 @@ analyse_spin_fermion_contributions = True # Analyse the contributions of the Re/
 use_fbz = False # Perform the calculation in the full BZ
 
 # Create the real-space Hamiltonian:
-t = 0.25
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.25*t,tpp=0.12*t)
+t = 1.0
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.2*t,tpp=0.1*t)
 #hr = hr_mod.standard_cuprates(t=t)
 # hr = hr_mod.unfrustrated_square(t=t)
 #hr = hr_mod.motoharu_nickelates(t=t)
@@ -422,10 +422,12 @@ if (comm.rank == 0):
 
 # Plot the contribution of the real/imaginary part of the spin-fermion vertex.
 if(analyse_spin_fermion_contributions and comm.rank == 0):
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_re'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='magn_spre')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_im'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='magn_spim')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_re'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dens_spre')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_im'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dens_spim')
+    output_path_sp = output.uniquify(output_path + 'SpinFermionContributions') + '/'
+    os.mkdir(output_path_sp)
+    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spre')
+    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spim')
+    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spre')
+    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spim')
 
 
 # ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
@@ -723,6 +725,8 @@ if (do_pairing_vertex and comm.rank == 0):
     import EliashbergEquation as eq
 
     realt.write_time_to_file(string='Start Eliashberg:', rank=comm.rank)
+    output_path_el = output.uniquify(output_path + 'Eliashberg') + '/'
+    os.mkdir(output_path_el)
     gamma_sing = -f_sing
     gamma_trip = -f_trip
     #
@@ -756,17 +760,17 @@ if (do_pairing_vertex and comm.rank == 0):
         'delta_sing': powiter_sing.gap,
         'delta_trip': powiter_trip.gap,
     }
-    np.save(output_path + 'eliashberg.npy', eliashberg)
-    np.savetxt(output_path + 'eigenvalues.txt', [powiter_sing.lam.real, powiter_trip.lam.real], delimiter=',',
+    np.save(output_path_el + 'eliashberg.npy', eliashberg)
+    np.savetxt(output_path_el + 'eigenvalues.txt', [powiter_sing.lam.real, powiter_trip.lam.real], delimiter=',',
                fmt='%.9f')
-    np.savetxt(output_path + 'eigenvalues_s.txt', [powiter_sing.lam_s.real, powiter_trip.lam_s.real], delimiter=',',
+    np.savetxt(output_path_el + 'eigenvalues_s.txt', [powiter_sing.lam_s.real, powiter_trip.lam_s.real], delimiter=',',
                fmt='%.9f')
 
     for i in range(len(powiter_sing.gap)):
-        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path, name='sing_{}'.format(i),
+        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path_el, name='sing_{}'.format(i),
                                    kgrid=q_grid,
                                    do_shift=True)
-        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path, name='trip_{}'.format(i),
+        plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=output_path_el, name='trip_{}'.format(i),
                                    kgrid=q_grid,
                                    do_shift=True)
     realt.write_time_to_file(string='End Eliashberg:', rank=comm.rank)
