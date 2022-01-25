@@ -20,6 +20,7 @@ import Output as output
 import ChemicalPotential as chempot
 import TwoPoint as twop
 import OrnsteinZernickeFunction as ozfunc
+import RealTime as rt
 
 import Plotting as plotting
 from mpi4py import MPI as mpi
@@ -48,8 +49,8 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta70_n0.75/'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 #input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-#input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 #input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.93_b080/LambdaDgaPython/'
 output_path = input_path
 
@@ -58,7 +59,7 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_analytic_continuation = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+do_analytic_continuation = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 do_pairing_vertex = True
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
@@ -66,10 +67,11 @@ use_urange_for_lc = True  # Use with care. This is not really tested and at leas
 verbose = True
 lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 analyse_spin_fermion_contributions = True # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
+use_fbz = False # Perform the calculation in the full BZ
 
 # Create the real-space Hamiltonian:
-t = 1.0
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.2,tpp=0.1)
+t = 0.25
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.25*t,tpp=0.12*t)
 #hr = hr_mod.standard_cuprates(t=t)
 # hr = hr_mod.unfrustrated_square(t=t)
 #hr = hr_mod.motoharu_nickelates(t=t)
@@ -109,6 +111,10 @@ niv_invbse = 20
 niv_urange = 40  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
+# Box size for saving the spin-fermion vertex:
+niw_vrg_save = 5
+niv_vrg_save = 5
+
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
@@ -142,8 +148,12 @@ q_grid = bz.KGrid(nk=nq)
 ek = hamk.ek_3d(kgrid=k_grid.grid, hr=hr)
 eq = hamk.ek_3d(kgrid=q_grid.grid, hr=hr)
 
-k_grid.get_irrk_from_ek(ek=ek, dec=11)
-q_grid.get_irrk_from_ek(ek=eq, dec=11)
+if(use_fbz):
+    k_grid.set_irrk2fbz()
+    q_grid.set_irrk2fbz()
+else:
+    k_grid.get_irrk_from_ek(ek=ek, dec=11)
+    q_grid.get_irrk_from_ek(ek=eq, dec=11)
 print(f'{q_grid.nk_irr=}')
 
 # load contents from w2dynamics DMFT file:
@@ -163,7 +173,8 @@ options = {
     'use_urange_for_lc': use_urange_for_lc,
     'sym_sing': sym_sing,
     'sym_trip': sym_trip,
-    'analyse_spin_fermion_contributions': analyse_spin_fermion_contributions
+    'analyse_spin_fermion_contributions': analyse_spin_fermion_contributions,
+    'use_fbz': use_fbz
 }
 
 system = {
@@ -189,6 +200,8 @@ box_sizes = {
     "niv_urange": niv_urange,
     "niv_asympt": niv_asympt,
     "niv_pp": niv_pp,
+    "niw_vrg_save": niw_vrg_save,
+    "niv_vrg_save": niv_vrg_save,
     "nk": nk,
     "nq": nq
 }
@@ -413,6 +426,43 @@ if(analyse_spin_fermion_contributions and comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_im'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='magn_spim')
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_re'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dens_spre')
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_im'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dens_spim')
+
+
+# ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
+# %%
+if (comm.rank == 0):
+    import FourPoint as fp
+    qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * q_grid.nk_irr, comm=comm,
+                                            output_path=output_path,
+                                            name='Qiw')
+
+    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.grid + (grids['wn_core'],),
+                              keys=('qx', 'qy', 'qz', 'iw'),
+                              my_slice=None)
+
+    vrg_dens, vrg_magn = fp.load_spin_fermion(output_path=output_path, name='Qiw',mpi_size=comm.size, nq=q_grid.nk_irr,niv=niv_vrg_save,niw=niw_vrg_save)
+    vrg_dens = q_grid.irrk2fbz(mat=vrg_dens)
+    vrg_magn = q_grid.irrk2fbz(mat=vrg_magn)
+
+    #plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_dens_fs', vrg_fs=np.flip(vrg_dens[...,0,niv_vrg_save], (0,)), q_grid=q_grid)
+    plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_dens_fs', vrg_fs=vrg_dens[...,0,niv_vrg_save], q_grid=q_grid)
+    plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_magn_fs', vrg_fs=vrg_magn[...,0,niv_vrg_save], q_grid=q_grid)
+
+    # Plot the spin-fermion vertex as special locations in the BZ:
+    labels = [r'$\gamma_{dens; Node}$', r'$\gamma_{dens; Anti-Node}$', r'$\gamma_{dens; k-mean}$']
+    vrg_w0 = [vrg_dens[ind_node][0,:], vrg_dens[ind_anti_node][0,:], vrg_dens.mean(axis=(0,1,2))[0,:]]
+    plotting.plot_spin_fermion_w0_special_points(output_path=output_path, name='spin_fermion_dens_sl', vrg_w0=vrg_w0, labels=labels)
+
+    labels = [r'$\gamma_{magn; Node}$', r'$\gamma_{magn; Anti-Node}$', r'$\gamma_{magn; k-mean}$']
+    vrg_w0 = [vrg_magn[ind_node][0,:], vrg_magn[ind_anti_node][0,:], vrg_magn.mean(axis=(0,1,2))[0,:]]
+    plotting.plot_spin_fermion_w0_special_points(output_path=output_path, name='spin_fermion_magn_sl', vrg_w0=vrg_w0, labels=labels)
+
+    spin_fermion_vertex = {
+        'vrg_dens': vrg_dens,
+        'vrg_magn': vrg_magn
+    }
+
+    np.save(output_path + 'spin_fermion_vertex.npy', spin_fermion_vertex)
 
 
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------

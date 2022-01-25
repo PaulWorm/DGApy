@@ -18,7 +18,8 @@ def find_arc_anti_node(ak_fs=None,kgrid=None):
     return ind
 
 def shift_mat_by_pi(mat,nk):
-    mat_shift = np.roll(mat,nk[0]//2,0)
+    mat_shift = np.copy(mat)
+    mat_shift = np.roll(mat_shift,nk[0]//2,0)
     mat_shift = np.roll(mat_shift,nk[1]//2,1)
     return mat_shift
 
@@ -119,6 +120,15 @@ class KGrid():
 
     def get_irrk_from_ek(self, ek=None, dec=10):
         _, self.irrk_ind, self.irrk_inv, self.irrk_count = np.unique(np.round(ek, decimals=dec),
+                                                                             return_index=True, return_inverse=True,
+                                                                             return_counts=True)
+        self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
+        self.irrk_ind_lin = np.arange(0,self.nk_irr)
+        self.fbz2irrk = self.irrk_ind[self.irrk_inv]
+
+    def set_irrk2fbz(self):
+        mat = np.reshape(self.ind_lin,self.nk)
+        _, self.irrk_ind, self.irrk_inv, self.irrk_count = np.unique(np.round(mat),
                                                                              return_index=True, return_inverse=True,
                                                                              return_counts=True)
         self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])

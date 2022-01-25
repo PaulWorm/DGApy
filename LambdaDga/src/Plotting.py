@@ -40,10 +40,14 @@ def add_afzb(ax=None, kx=None, ky=None, lw=1.0, shift_pi=True):
     if(shift_pi):
         kx = kx - np.pi
         ky = ky - np.pi
+        ax.plot(-ky, ky - np.pi, '--k', lw=lw)
+        ax.plot(ky, ky - np.pi, '--k', lw=lw)
+    else:
+        ax.plot(ky, np.pi - ky , '--k', lw=lw)
+        ax.plot(ky, ky - np.pi, '--k', lw=lw)
     ax.plot(kx, 0 * kx, 'k', lw=lw)
     ax.plot(0 * ky, ky, 'k', lw=lw)
-    ax.plot(-ky, ky - np.pi, '--k', lw=lw)
-    ax.plot(ky, ky - np.pi, '--k', lw=lw)
+
     ax.set_xlim(kx[0], kx[-1])
     ax.set_ylim(ky[0], ky[-1])
     ax.set_xlabel('$k_y$')
@@ -55,6 +59,52 @@ def insert_colorbar(ax=None, im=None):
     cax = divider.append_axes('right', size='5%', pad=0.05)
     plt.colorbar(im, cax=cax, orientation='vertical')
 
+def plot_spin_fermion_w0_special_points(output_path=None, name='', vrg_w0=None, labels=None):
+
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 6))
+
+    n_loc = np.shape(vrg_w0)[0]
+    niv = np.shape(vrg_w0)[-1] // 2
+    v = mf.vn(n=niv)
+    for i in range(n_loc):
+        ax[0].plot(v,vrg_w0[i].real, '-o', label=labels[i])
+        ax[1].plot(v,vrg_w0[i].imag, '-o', label=labels[i])
+
+    ax[0].set_ylabel('$\Re \gamma$')
+    ax[1].set_ylabel('$\Im \gamma$')
+
+    ax[0].set_xlabel(r'$\nu$')
+    ax[1].set_xlabel(r'$\nu$')
+
+    ax[0].grid()
+    ax[1].grid()
+
+    ax[0].legend()
+    plt.savefig(output_path + name + '.png')
+    plt.close()
+
+
+def plot_spin_fermion_fs(output_path=None, name='', vrg_fs=None, q_grid=None, lw=1.0):
+    vrg_plot =  vrg_fs#np.squeeze(bz.shift_mat_by_pi(mat=vrg_fs, nk=q_grid.nk))
+
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+
+    im = ax[0].imshow(vrg_plot.real, cmap='terrain', extent=bz.get_extent(kgrid=q_grid), origin='lower')
+    insert_colorbar(ax=ax[0], im=im)
+    ax[0].set_title(r'$\Re \gamma(k,\omega=0, \nu=\pi/\beta)$')
+
+    im = ax[1].imshow(vrg_plot.imag, cmap='terrain', extent=bz.get_extent(kgrid=q_grid), origin='lower')
+    insert_colorbar(ax=ax[1], im=im)
+    ax[1].set_title(r'$\Im \gamma(k,\omega=0, \nu=\pi/\beta)$')
+
+    add_afzb(ax=ax[0], kx=q_grid.kx, ky=q_grid.kx, lw=lw, shift_pi=False)
+    add_afzb(ax=ax[1], kx=q_grid.kx, ky=q_grid.kx, lw=lw, shift_pi=False)
+
+    plt.tight_layout()
+    fig.suptitle(name)
+    plt.savefig(output_path + '{}.png'.format(name))
+    plt.show()
+    plt.close()
 
 def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=-0.2, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
@@ -68,11 +118,11 @@ def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w
     insert_colorbar(ax=ax[0], im=im)
     ax[0].set_title('$A(k,\omega=0)$')
     norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())
-    im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm)
+    im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[1], im=im)
     ax[1].set_title('$\Re G(k,\omega=0)$')
     norm = MidpointNormalize(midpoint=0, vmin=qdp.min(), vmax=qdp.max())
-    im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm)
+    im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[2], im=im)
     ax[2].set_title('QPD')
 
@@ -97,6 +147,8 @@ def plot_ploints_on_fs(output_path=None, gk_fs=None, k_grid=None, ind_fs=None, n
         gk_fs_plot = np.roll(gk_fs_plot, k_grid.nk[1] // 2, 1)
         kx = kx - np.pi
         ky = ky - np.pi
+
+    gk_fs_plot = bz.shift_mat_by_pi(mat=gk_fs,nk=k_grid.nk)
 
     extent = [kx[0], kx[-1], ky[0], ky[-1]]
 
@@ -123,14 +175,14 @@ def plot_ploints_on_fs(output_path=None, gk_fs=None, k_grid=None, ind_fs=None, n
 
     gr = gk_fs_plot.real
     norm = MidpointNormalize(midpoint=0, vmin=gr.min(), vmax=gr.max())
-    im = ax[1].imshow(gr, cmap='RdBu', extent=extent, norm=norm)
+    im = ax[1].imshow(gr, cmap='RdBu', extent=extent, norm=norm, origin='lower')
     insert_colorbar(ax=ax[1], im=im)
     for i in ind_fs:
         ax[1].plot(-k_grid.kx[i[0]], -k_grid.ky[i[1]], 'o')
 
     qpd = (1. / gk_fs_plot).real
     norm = MidpointNormalize(midpoint=0, vmin=qpd.min(), vmax=qpd.max())
-    im = ax[2].imshow(qpd, cmap='RdBu', extent=extent, norm=norm)
+    im = ax[2].imshow(qpd, cmap='RdBu', extent=extent, norm=norm, origin='lower')
     insert_colorbar(ax=ax[2], im=im)
     for i in ind_fs:
         ax[2].plot(-k_grid.kx[i[0]], -k_grid.ky[i[1]], 'o')
@@ -431,6 +483,7 @@ def plot_contour(ax=None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plot=
         kx = kx - np.pi
         ky = ky - np.pi
 
+    siwk_plot = bz.shift_mat_by_pi(mat=siwk[:, :, kz, niv_plot],nk=kgrid.nk)
     lw = 1.0
 
     def add_lines(ax):

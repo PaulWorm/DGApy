@@ -861,6 +861,8 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     niv_core = box_sizes['niv_core']
     niv_pp = box_sizes['niv_pp']
     niv_urange = box_sizes['niv_urange']
+    niw_vrg_save = box_sizes['niw_vrg_save']
+    niv_vrg_save = box_sizes['niv_vrg_save']
     siw = dmft_input['sloc']
     gamma_dens_loc = local_sde['gamma_dens']
     gamma_magn_loc = local_sde['gamma_magn']
@@ -888,7 +890,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
         q = q_grid.irr_kmesh[:, q_ind]
-        qiw = np.append(q, wn)
+        qiw = np.append(-q, wn) # WARNING: Here I am not sure if it should be +q or -q.
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
@@ -941,6 +943,12 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                 file[group + 'f2_dens/'] = pv.get_pp_slice_4pt(mat=f2_dens_slice, condition=condition, niv_pp=niv_pp)
                 file[group + 'condition/'] = condition
 
+        # Save the lowest 5 frequencies for the spin-fermion vertex::
+        if(np.abs(wn) < niw_vrg_save):
+            group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
+            file[group + 'vrg_magn/'] = beta * vrgq_magn.mat[niv_urange-niv_vrg_save:niv_urange+niv_vrg_save]
+            file[group + 'vrg_dens/'] = beta * vrgq_dens.mat[niv_urange-niv_vrg_save:niv_urange+niv_vrg_save]
+
     chi_dens_asympt.mat_to_array()
     chi_magn_asympt.mat_to_array()
 
@@ -955,6 +963,32 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         'vrg_magn': vrg_magn
     }
     return dga_susc
+
+
+def load_spin_fermion(output_path=None, name='Qiw',mpi_size=None, nq=None,niv=None,niw=None):
+    '''WARNING: This currently works only if we are using positive matsubaras only. '''
+    import h5py
+    import re
+
+    # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
+    vrg_dens = np.zeros((nq, niw, 2*niv), dtype=complex)
+    vrg_magn = np.zeros((nq, niw, 2*niv), dtype=complex)
+
+    for ir in range(mpi_size):
+        fname = output_path + name + 'Rank{0:05d}'.format(ir) + '.hdf5'
+        file_in = h5py.File(fname, 'r')
+        for key1 in list(file_in.file.keys()):
+            # extract the q indizes from the group name!
+            irrq = np.array(re.findall("\d+", key1), dtype=int)[0]
+            wn = np.array(re.findall("\d+", key1), dtype=int)[1]
+            if(wn < niw):
+                #wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
+                vrg_magn[irrq, wn,:] = file_in.file[key1 + '/vrg_magn/'][()]
+                vrg_dens[irrq, wn,:] = file_in.file[key1 + '/vrg_dens/'][()]
+
+        file_in.close()
+
+    return vrg_dens, vrg_magn
 
 
 if __name__ == "__main__":

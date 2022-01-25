@@ -16,6 +16,7 @@ def cen2lin(val=None, start=0):
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
+
 class MpiDistributor():
     ''' Distributes size tasks among cores
     '''
