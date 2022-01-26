@@ -59,6 +59,36 @@ def insert_colorbar(ax=None, im=None):
     cax = divider.append_axes('right', size='5%', pad=0.05)
     plt.colorbar(im, cax=cax, orientation='vertical')
 
+
+def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1):
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+
+    siwk_re_fs = np.squeeze(bz.shift_mat_by_pi(mat=siwk_re_fs, nk=k_grid.nk))
+    siwk_im_fs = np.squeeze(bz.shift_mat_by_pi(mat=siwk_im_fs, nk=k_grid.nk))
+    siwk_Z = np.squeeze(bz.shift_mat_by_pi(mat=siwk_Z, nk=k_grid.nk))
+    norm = MidpointNormalize(midpoint=0, vmin=siwk_re_fs.min(), vmax=siwk_re_fs.max())
+    im = ax[0].imshow(siwk_re_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    insert_colorbar(ax=ax[0], im=im)
+    ax[0].set_title(r'$\Re \Sigma(k,\nu=0)$')
+    norm = MidpointNormalize(midpoint=0, vmin=siwk_im_fs.min(), vmax=siwk_im_fs.max())
+    im = ax[1].imshow(siwk_im_fs, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    insert_colorbar(ax=ax[1], im=im)
+    ax[1].set_title(r'$\Im \Sigma(k,\nu=0)$')
+    norm = MidpointNormalize(midpoint=0, vmin=siwk_Z.min(), vmax=siwk_Z.max())
+    im = ax[2].imshow(siwk_Z, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    insert_colorbar(ax=ax[2], im=im)
+    ax[2].set_title('Z(k)')
+
+    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+
+    plt.tight_layout()
+    fig.suptitle(name)
+    plt.savefig(output_path + '{}.png'.format(name))
+    plt.show()
+    plt.close()
+
 def plot_spin_fermion_w0_special_points(output_path=None, name='', vrg_w0=None, labels=None):
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 6))
@@ -114,7 +144,7 @@ def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w
     gk_real = np.squeeze(bz.shift_mat_by_pi(mat=gk_fs.real, nk=k_grid.nk))
     v0 = np.argmin(np.abs(v_real))
     qdp = np.squeeze(bz.shift_mat_by_pi(mat=(1. / gk)[:, :, 0, v0].real, nk=k_grid.nk))
-    im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid))
+    im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), origin='lower')
     insert_colorbar(ax=ax[0], im=im)
     ax[0].set_title('$A(k,\omega=0)$')
     norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())

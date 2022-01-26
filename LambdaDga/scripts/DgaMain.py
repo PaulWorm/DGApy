@@ -50,7 +50,8 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 #input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 #input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.85/'
 #input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.93_b080/LambdaDgaPython/'
 output_path = input_path
 
@@ -60,7 +61,7 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
 do_analytic_continuation = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-do_pairing_vertex = True
+do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -104,11 +105,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 20
-niw_urange = 20  # This seems not to save enough to be used.
-niv_core = 20
-niv_invbse = 20
-niv_urange = 40  # Must be larger than niv_invbse
+niw_core = 60
+niw_urange = 60  # This seems not to save enough to be used.
+niv_core = 60
+niv_invbse = 60
+niv_urange = 120  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -118,9 +119,9 @@ niv_vrg_save = 5
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 12
+nkx = 36
 nky = nkx
-nqx = 12
+nqx = 36
 nqy = nkx
 
 nk = (nkx, nky, 1)
@@ -133,6 +134,10 @@ use_preblur = True
 bw_dmft = 0.01
 err = 1e-2
 nfit = niv_core
+
+# Parameter for the polynomial extrapolation to the Fermi-level:
+n_extrap = 4
+order_extrap = 3
 
 
 output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.format(lambda_correction_type,
@@ -428,6 +433,76 @@ if(analyse_spin_fermion_contributions and comm.rank == 0):
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spim')
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spre')
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spim')
+
+#%%
+# Extrapolate the self-energy to the Fermi-level via polynomial fit:
+if(comm.rank == 0):
+    import AnalyticContinuation as a_cont
+    v = mf.v_plus(beta=dmft1p['beta'], n=niv_urange)
+
+    siwk_re_fs, siwk_im_fs, siwk_Z = a_cont.extract_coeff_on_ind(siwk=dga_sde['sigma'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
+    siwk_re_fs = k_grid.irrk2fbz(mat=siwk_re_fs)
+    siwk_im_fs = k_grid.irrk2fbz(mat=siwk_im_fs)
+    siwk_Z = k_grid.irrk2fbz(mat=siwk_Z)
+
+    siwk_extrap = {
+        'siwk_re_fs': siwk_re_fs,
+        'siwk_im_fs': siwk_im_fs,
+        'siwk_Z': siwk_Z
+    }
+
+    np.save(output_path + 'siwk_extrap.npy', siwk_extrap, allow_pickle=True)
+
+    plotting.plot_siwk_extrap(siwk_re_fs=siwk_re_fs, siwk_im_fs=siwk_im_fs, siwk_Z=siwk_Z, output_path=output_path, name='siwk_fs_extrap', k_grid=k_grid)
+
+    # Do the same for the nc self-energy
+    siwk_re_fs, siwk_im_fs, siwk_Z = a_cont.extract_coeff_on_ind(siwk=dga_sde['sigma_nc'].reshape(-1,dga_sde['sigma_nc'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
+    siwk_re_fs = k_grid.irrk2fbz(mat=siwk_re_fs)
+    siwk_im_fs = k_grid.irrk2fbz(mat=siwk_im_fs)
+    siwk_Z = k_grid.irrk2fbz(mat=siwk_Z)
+
+    siwk_extrap_nc = {
+        'siwk_re_fs': siwk_re_fs,
+        'siwk_im_fs': siwk_im_fs,
+        'siwk_Z': siwk_Z
+    }
+
+    np.save(output_path + 'siwk_extrap_nc.npy', siwk_extrap_nc, allow_pickle=True)
+
+    plotting.plot_siwk_extrap(siwk_re_fs=siwk_re_fs, siwk_im_fs=siwk_im_fs, siwk_Z=siwk_Z, output_path=output_path, name='siwk_fs_extrap_nc', k_grid=k_grid)
+
+
+    # Do the same, but for the Green's function:
+    giwk_re_fs, giwk_im_fs, giwk_Z = a_cont.extract_coeff_on_ind(siwk=gf_dict['gk'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
+    giwk_re_fs = k_grid.irrk2fbz(mat=giwk_re_fs)
+    giwk_im_fs = k_grid.irrk2fbz(mat=giwk_im_fs)
+    giwk_Z = k_grid.irrk2fbz(mat=giwk_Z)
+
+    giwk_extrap = {
+        'giwk_re_fs': giwk_re_fs,
+        'giwk_im_fs': giwk_im_fs,
+        'giwk_Z': giwk_Z
+    }
+
+    np.save(output_path + 'giwk_extrap.npy', giwk_extrap, allow_pickle=True)
+
+    plotting.plot_siwk_extrap(siwk_re_fs=giwk_re_fs, siwk_im_fs=giwk_im_fs, siwk_Z=giwk_Z, output_path=output_path, name='giwk_fs_extrap', k_grid=k_grid)
+
+    # Do the same, but for the Green's function:
+    giwk_re_fs, giwk_im_fs, giwk_Z = a_cont.extract_coeff_on_ind(siwk=gf_dict_mu_dmft['gk'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
+    giwk_re_fs = k_grid.irrk2fbz(mat=giwk_re_fs)
+    giwk_im_fs = k_grid.irrk2fbz(mat=giwk_im_fs)
+    giwk_Z = k_grid.irrk2fbz(mat=giwk_Z)
+
+    giwk_extrap = {
+        'giwk_re_fs': giwk_re_fs,
+        'giwk_im_fs': giwk_im_fs,
+        'giwk_Z': giwk_Z
+    }
+
+    np.save(output_path + 'giwk_extrap_mu_dmft.npy', giwk_extrap, allow_pickle=True)
+
+    plotting.plot_siwk_extrap(siwk_re_fs=giwk_re_fs, siwk_im_fs=giwk_im_fs, siwk_Z=giwk_Z, output_path=output_path, name='giwk_fs_extrap_mu_dmft', k_grid=k_grid)
 
 
 # ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------

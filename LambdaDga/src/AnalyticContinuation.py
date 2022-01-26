@@ -146,6 +146,17 @@ def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='histor
     return cont_mat
 
 # -------------------------------------------- Matsubara Fit ----------------------------------------------------------
+def extract_coeff_on_ind(siwk=None,indizes=None, v=None, N=4, order=3):
+
+    siwk_re_fs = np.zeros((len(indizes),))
+    siwk_im_fs = np.zeros((len(indizes),))
+    siwk_Z = np.zeros((len(indizes),))
+
+    for i, ind in enumerate(indizes):
+        siwk_re_fs[i], siwk_im_fs[i], siwk_Z[i] = extract_coefficient_imaxis(siwk=siwk[ind], iw=v, N=N,order=order)
+    return siwk_re_fs, siwk_im_fs, siwk_Z
+
+
 def extract_coefficient_imaxis(siwk=None, iw=None, N=4, order=3):
     xnew = np.linspace(-0.0, iw[N - 1] + 0.01, num=50)
     coeff_imag = np.polyfit(iw[0:N], siwk[0:N].imag, order)
