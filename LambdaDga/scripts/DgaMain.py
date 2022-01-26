@@ -555,10 +555,11 @@ if(do_analytic_continuation):
     # For irrk use only continuation, as this will otherwise take too long and generate too many files.
     bw_irrk_range = [1.0/dmft1p['beta'] * t]
     output_path_ana_cont = output.uniquify(output_path + 'AnaCont') + '/'
-    os.mkdir(output_path_ana_cont)
 
-    realt = rt.real_time()
-    realt.create_file(fname=output_path_ana_cont+'cpu_time_ana_cont.txt')
+    if(comm.rank==0):
+        os.mkdir(output_path_ana_cont)
+        realt = rt.real_time()
+        realt.create_file(fname=output_path_ana_cont+'cpu_time_ana_cont.txt')
 
 
 # Do analytic continuation of local part:
@@ -592,7 +593,7 @@ if(do_analytic_continuation and comm.rank == 0):
         np.savetxt(output_path_ana_cont + 'n_dga_no_mu_adjust.txt'.format(bw), [n_int, gk_dga_nma['n']], delimiter=',', fmt='%.9f')
         np.save(output_path_ana_cont + 'gloc_cont_dga_no_mu_adjust_bw{}.npy'.format(bw),gloc_dga_cont_nma, allow_pickle=True)
 
-    realt.write_time_to_file(string='Local spectral function continuation:',rank=comm.rank)
+    if(comm.rank==0): realt.write_time_to_file(string='Local spectral function continuation:',rank=comm.rank)
 
 
 
@@ -738,7 +739,7 @@ if(do_analytic_continuation):
                                   gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
 
-    realt.write_time_to_file(string='Continuation of spectral function within the irreduzible Brillouin Zone:',rank=comm.rank)
+    if(comm.rank==0):  realt.write_time_to_file(string='Continuation of spectral function within the irreduzible Brillouin Zone:',rank=comm.rank)
 
 # ------------------------------------------------ PAIRING VERTEX ------------------------------------------------------
 # %%
