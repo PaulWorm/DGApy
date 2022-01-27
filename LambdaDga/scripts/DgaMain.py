@@ -702,7 +702,9 @@ if(do_analytic_continuation):
                                                        beta=dmft1p['beta'],
                                                        n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur = use_preblur, bw=bw)
 
+        comm.Barrier()
         gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
+        comm.Barrier()
         if(comm.rank == 0):
             gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
             w_int = -0.2
@@ -725,7 +727,9 @@ if(do_analytic_continuation):
                                               n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur=use_preblur,
                                               bw=bw)
 
+        comm.Barrier()
         gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
+        comm.Barrier()
         if (comm.rank == 0):
             gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
             w_int = -0.2
