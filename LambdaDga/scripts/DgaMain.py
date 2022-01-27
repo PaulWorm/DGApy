@@ -21,7 +21,7 @@ import ChemicalPotential as chempot
 import TwoPoint as twop
 import OrnsteinZernickeFunction as ozfunc
 import RealTime as rt
-
+import gc
 import Plotting as plotting
 from mpi4py import MPI as mpi
 import MpiAux as mpiaux
@@ -655,6 +655,7 @@ if(do_analytic_continuation and comm.rank == 0):
 
 #%%
 # Do analytic continuation within the irreducible Brillouin Zone:
+gc.collect() # garbage collection
 if(do_analytic_continuation):
 
     irrk_distributor = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm,
@@ -744,7 +745,7 @@ if(do_analytic_continuation):
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
 
     if(comm.rank==0):  realt.write_time_to_file(string='Continuation of spectral function within the irreduzible Brillouin Zone:',rank=comm.rank)
-
+    gc.collect() # Garbage collection
 # ------------------------------------------------ PAIRING VERTEX ------------------------------------------------------
 # %%
 if (do_pairing_vertex and comm.rank == 0):
