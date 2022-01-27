@@ -50,8 +50,8 @@ input_path = './'
 # input_path = '/mnt/c/users/pworm/Research/BEPS_Project/ElectronDoping/2DSquare_U8_tp-0.2_tpp0.1_beta25_n1.02/'
 #input_path = '/mnt/c/users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 #input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
-#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.85/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.85/'
 #input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.93_b080/LambdaDgaPython/'
 output_path = input_path
 
@@ -60,7 +60,7 @@ fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-do_analytic_continuation = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+do_analytic_continuation = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 do_pairing_vertex = False
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
@@ -105,11 +105,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 60
-niw_urange = 60  # This seems not to save enough to be used.
-niv_core = 60
-niv_invbse = 60
-niv_urange = 120  # Must be larger than niv_invbse
+niw_core = 20
+niw_urange = 20  # This seems not to save enough to be used.
+niv_core = 20
+niv_invbse = 20
+niv_urange = 40  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -119,9 +119,9 @@ niv_vrg_save = 5
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 36
+nkx = 16
 nky = nkx
-nqx = 36
+nqx = 16
 nqy = nkx
 
 nk = (nkx, nky, 1)
@@ -551,9 +551,9 @@ if(do_analytic_continuation):
 
     v_real = a_cont.v_real_tan(wmax=wmax, nw=nwr)
     #Use a range of blur widths to have an automatic check on the stability and quality of continuation results.
-    bw_range = [0.5/dmft1p['beta'] * t, 1.0/dmft1p['beta'] * t, 2.0/dmft1p['beta'] * t]
+    bw_range = [0.5/dmft1p['beta'] * t, 3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t]
     # For irrk use only continuation, as this will otherwise take too long and generate too many files.
-    bw_irrk_range = [1.0/dmft1p['beta'] * t]
+    bw_irrk_range = [3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t] # I use 3 instead of pi here.
     output_path_ana_cont = output.uniquify(output_path + 'AnaCont') + '/'
 
     if(comm.rank==0):
@@ -643,7 +643,7 @@ if(do_analytic_continuation and comm.rank == 0):
 
         plotting.plot_ploints_on_fs(output_path=output_path_ana_cont, gk_fs=gk_dgat_nma['gk'][:, :, 0, gk_dgat_nma['niv']], k_grid=k_grid,
                                     ind_fs=ind_gf0_dgat_nma,
-                                    name='fermi_surface_dmft-no-mu-adjust'.format(bw))
+                                    name='fermi_surface_dga-no-mu-adjust'.format(bw))
 
         plotting.plot_aw_ind(output_path=output_path_ana_cont, v_real=v_real, gk_cont=gk_fs_dga_cont_nma, ind=ind_gf0_dgat_nma,
                              name='aw-dga-fs-wide-no-mu-adjust-bw{}'.format(bw))
@@ -850,3 +850,11 @@ if (do_pairing_vertex and comm.rank == 0):
                                    kgrid=q_grid,
                                    do_shift=True)
     realt.write_time_to_file(string='End Eliashberg:', rank=comm.rank)
+
+
+# ---------------------------------------------- REMOVE THE RANK FILES -------------------------------------------------
+comm.Barrier()
+qiw = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm,
+                                            output_path=output_path,
+                                            name='Qiw')
+qiw.delete_file()

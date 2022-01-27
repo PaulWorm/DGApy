@@ -104,7 +104,6 @@ def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=Non
             f2_dens[irrq, condition.T] = file_in.file[key1 + '/f2_dens/'][()]
 
         file_in.close()
-        os.remove(fname)
 
     #f1_magn = f1_magn + np.transpose(f1_magn,axes=(0,2,1)) - np.diagonal(f1_magn, axis1=1, axis2=2)
 
