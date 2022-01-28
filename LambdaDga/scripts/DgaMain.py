@@ -52,7 +52,7 @@ input_path = './'
 #input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDgaPython/'
 input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 #input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.85/'
-#input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.93_b080/LambdaDgaPython/'
+#input_path = '/mnt/d/Research/Ba2CuO4/Ba2CuO4_plane1/U3.0eV_n0.96_b120/LambdaDgaPython/'
 output_path = input_path
 
 fname_dmft = '1p-data.hdf5'
@@ -61,7 +61,7 @@ fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
 do_analytic_continuation = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-do_pairing_vertex = False
+do_pairing_vertex = True
 keep_ladder_vertex = False
 lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -77,6 +77,7 @@ hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.2*t,tpp=0.1*t)
 # hr = hr_mod.unfrustrated_square(t=t)
 #hr = hr_mod.motoharu_nickelates(t=t)
 # hr = hr_mod.motoharu_nickelates_2(t=t)
+#t = 0.5
 #hr = hr_mod.Ba2CuO4_plane()
 
 # gap0_sing = {
@@ -109,7 +110,7 @@ niw_core = 20
 niw_urange = 20  # This seems not to save enough to be used.
 niv_core = 20
 niv_invbse = 20
-niv_urange = 40  # Must be larger than niv_invbse
+niv_urange = 80  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -119,9 +120,9 @@ niv_vrg_save = 5
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 16
+nkx = 8
 nky = nkx
-nqx = 16
+nqx = 8
 nqy = nkx
 
 nk = (nkx, nky, 1)
@@ -590,7 +591,7 @@ if(do_analytic_continuation and comm.rank == 0):
                                                      nfit=nfit, adjust_mu=False)
         plotting.plot_aw_loc(output_path=output_path_ana_cont, v_real=v_real, gloc=gloc_dga_cont_nma, name='aw-dga-no-mu-adjust-bw{}'.format(bw))
         n_int = a_cont.check_filling(v_real=v_real, gloc_cont=gloc_dga_cont_nma)
-        np.savetxt(output_path_ana_cont + 'n_dga_no_mu_adjust.txt'.format(bw), [n_int, gk_dga_nma['n']], delimiter=',', fmt='%.9f')
+        np.savetxt(output_path_ana_cont + 'n_dga_no_mu_adjust_bw{}.txt'.format(bw), [n_int, gk_dga_nma['n']], delimiter=',', fmt='%.9f')
         np.save(output_path_ana_cont + 'gloc_cont_dga_no_mu_adjust_bw{}.npy'.format(bw),gloc_dga_cont_nma, allow_pickle=True)
 
     if(comm.rank==0): realt.write_time_to_file(string='Local spectral function continuation:',rank=comm.rank)
@@ -744,8 +745,10 @@ if(do_analytic_continuation):
                                   gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
 
+        gc.collect() # Garbage collection
+
     if(comm.rank==0):  realt.write_time_to_file(string='Continuation of spectral function within the irreduzible Brillouin Zone:',rank=comm.rank)
-    gc.collect() # Garbage collection
+
 # ------------------------------------------------ PAIRING VERTEX ------------------------------------------------------
 # %%
 if (do_pairing_vertex and comm.rank == 0):

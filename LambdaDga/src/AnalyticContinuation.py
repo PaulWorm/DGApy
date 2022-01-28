@@ -9,6 +9,7 @@ import MatsubaraFrequencies as mf
 import TwoPoint as twop
 import BrillouinZone as bz
 import Hk as hamk
+import gc
 
 # --------------------------------------- Obtain the real frequency grid -----------------------------------------------
 
@@ -143,6 +144,10 @@ def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='histor
     sol, _ = problem.solve(method='maxent_svd', model=model, stdev=error_s, alpha_determination=alpha_det_method,
                                    optimizer="newton", preblur=use_preblur, blur_width=bw, verbose=False)
     cont_mat = cont.GreensFunction(spectrum=sol.A_opt, wgrid=v_real, kind='fermionic').kkt()
+    del problem
+    del sol
+    del _
+    gc.collect()
     return cont_mat
 
 # -------------------------------------------- Matsubara Fit ----------------------------------------------------------
