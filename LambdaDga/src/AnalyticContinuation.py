@@ -69,6 +69,8 @@ def max_ent_loc(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, us
 
     gloc = gk['gk'].mean(axis=(0, 1, 2))
 
+    if(bw == 0):
+        use_preblur = False
     gloc_cont = max_ent(mat=gloc, v_real=v_real, beta=dmft1p['beta'], n_fit=nfit,
                                     alpha_det_method='chi2kink', err=err, use_preblur=use_preblur, bw=bw)
     return gloc_cont, gk
@@ -126,6 +128,8 @@ def do_max_ent_on_ind_T(mat=None, ind_list=None, v_real=None, beta=None, n_fit=6
     n_ind = len(ind_list)
     nw = np.size(v_real)
     mat_cont = np.zeros((n_ind, nw), dtype=complex)
+    if(bw==0):
+        use_preblur = False
     for i, ind in enumerate(ind_list):
         mat_cont[i,:] = max_ent(mat=mat[ind], v_real=v_real, beta=beta, n_fit=n_fit, alpha_det_method=alpha_det_method, err=err, use_preblur = use_preblur, bw=bw)
 

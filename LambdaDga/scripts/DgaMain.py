@@ -70,6 +70,10 @@ lc_use_only_positive = True  # Use only frequency box where susceptibility is po
 analyse_spin_fermion_contributions = True # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
 use_fbz = False # Perform the calculation in the full BZ
 
+# Analytic continuation of no-mu-adjust dga:
+no_mu_adjust_fs_cont = False
+no_mu_adjust_fbz_cont = False
+
 # Create the real-space Hamiltonian:
 t = 1.0
 hr = hr_mod.one_band_2d_t_tp_tpp(t=t,tp=-0.2*t,tpp=0.1*t)
@@ -120,9 +124,9 @@ niv_vrg_save = 5
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 8
+nkx = 16
 nky = nkx
-nqx = 8
+nqx = 16
 nqy = nkx
 
 nk = (nkx, nky, 1)
@@ -134,7 +138,7 @@ wmax = 15*t
 use_preblur = True
 bw_dmft = 0.01
 err = 1e-2
-nfit = niv_core
+
 
 # Parameter for the polynomial extrapolation to the Fermi-level:
 n_extrap = 4
@@ -168,6 +172,8 @@ dmft1p = f1p.load_dmft1p_w2dyn()
 f1p.close()
 niv_dmft = dmft1p['niv']
 if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0
+
+
 
 # Define system paramters, like interaction or inverse temperature.
 # Note: I want this to be decoupled from dmft1p, because of later RPA/FLEX stuff.
@@ -550,11 +556,13 @@ if(do_analytic_continuation):
     import RealTime as rt
     import AnalyticContinuation as a_cont
 
+    nfit = np.max((niv_core, int(dmft1p['beta'] * 2)))
     v_real = a_cont.v_real_tan(wmax=wmax, nw=nwr)
     #Use a range of blur widths to have an automatic check on the stability and quality of continuation results.
-    bw_range = [0.5/dmft1p['beta'] * t, 3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t]
+    bw_range_loc = [0.5/dmft1p['beta'] * t, 3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t,0]
+    bw_range_arc = [0.5/dmft1p['beta'] * t]
     # For irrk use only continuation, as this will otherwise take too long and generate too many files.
-    bw_irrk_range = [3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t] # I use 3 instead of pi here.
+    bw_irrk_range = [3./dmft1p['beta'] * t*2, 3./dmft1p['beta'] * t,0.0] # I use 3 instead of pi here.
     output_path_ana_cont = output.uniquify(output_path + 'AnaCont') + '/'
 
     if(comm.rank==0):
@@ -575,7 +583,7 @@ if(do_analytic_continuation and comm.rank == 0):
     np.savetxt(output_path_ana_cont + 'n_dmft.txt', [n_int, gk_dmft['n']], delimiter=',', fmt='%.9f')
     np.save(output_path_ana_cont + 'gloc_cont_dmft.npy',gloc_dmft_cont, allow_pickle=True)
 
-    for bw in bw_range:
+    for bw in bw_range_loc:
         # mu-adjusted DGA Green's function:
         gloc_dga_cont, gk_dga = a_cont.max_ent_loc(v_real=v_real, sigma=dga_sde['sigma'], config=config, k_grid=k_grid,
                                                      niv_cut=niv_urange, use_preblur=use_preblur, bw=bw, err=err,
@@ -619,7 +627,7 @@ if(do_analytic_continuation and comm.rank == 0):
 
     np.save(output_path_ana_cont + 'gk_fs_dmft_cont.npy',gk_fs_dmft_cont, allow_pickle=True)
 
-    for bw in bw_range:
+    for bw in bw_range_arc:
         # mu-adjusted DGA Green's function:
         gk_fs_dga_cont, ind_gf0_dga, gk_dga = a_cont.max_ent_on_fs(v_real=v_real, sigma=dga_sde['sigma'], config=config,
                                                              k_grid=k_grid,
@@ -637,20 +645,21 @@ if(do_analytic_continuation and comm.rank == 0):
         np.save(output_path_ana_cont + 'gk_fs_dga_cont_bw{}.npy'.format(bw), gk_fs_dga_cont, allow_pickle=True)
 
         # not mu-adjusted DGA Green's function:
-        gk_fs_dga_cont_nma, ind_gf0_dgat_nma, gk_dgat_nma = a_cont.max_ent_on_fs(v_real=v_real, sigma=dga_sde['sigma'], config=config,
-                                                             k_grid=k_grid,
-                                                             niv_cut=niv_urange, use_preblur=use_preblur, bw=bw,
-                                                             err=err, nfit=nfit, adjust_mu=False)
+        if(no_mu_adjust_fs_cont):
+            gk_fs_dga_cont_nma, ind_gf0_dgat_nma, gk_dgat_nma = a_cont.max_ent_on_fs(v_real=v_real, sigma=dga_sde['sigma'], config=config,
+                                                                 k_grid=k_grid,
+                                                                 niv_cut=niv_urange, use_preblur=use_preblur, bw=bw,
+                                                                 err=err, nfit=nfit, adjust_mu=False)
 
-        plotting.plot_ploints_on_fs(output_path=output_path_ana_cont, gk_fs=gk_dgat_nma['gk'][:, :, 0, gk_dgat_nma['niv']], k_grid=k_grid,
-                                    ind_fs=ind_gf0_dgat_nma,
-                                    name='fermi_surface_dga-no-mu-adjust'.format(bw))
+            plotting.plot_ploints_on_fs(output_path=output_path_ana_cont, gk_fs=gk_dgat_nma['gk'][:, :, 0, gk_dgat_nma['niv']], k_grid=k_grid,
+                                        ind_fs=ind_gf0_dgat_nma,
+                                        name='fermi_surface_dga-no-mu-adjust'.format(bw))
 
-        plotting.plot_aw_ind(output_path=output_path_ana_cont, v_real=v_real, gk_cont=gk_fs_dga_cont_nma, ind=ind_gf0_dgat_nma,
-                             name='aw-dga-fs-wide-no-mu-adjust-bw{}'.format(bw))
-        plotting.plot_aw_ind(output_path=output_path_ana_cont, v_real=v_real, gk_cont=gk_fs_dga_cont_nma, ind=ind_gf0_dgat_nma,
-                             name='aw-dga-fs-narrow-no-mu-adjust-bw{}'.format(bw), xlim=(-t, t))
-        np.save(output_path_ana_cont + 'gk_fs_dga_cont_no_mu_adjust_bw{}.npy'.format(bw), gk_fs_dga_cont_nma, allow_pickle=True)
+            plotting.plot_aw_ind(output_path=output_path_ana_cont, v_real=v_real, gk_cont=gk_fs_dga_cont_nma, ind=ind_gf0_dgat_nma,
+                                 name='aw-dga-fs-wide-no-mu-adjust-bw{}'.format(bw))
+            plotting.plot_aw_ind(output_path=output_path_ana_cont, v_real=v_real, gk_cont=gk_fs_dga_cont_nma, ind=ind_gf0_dgat_nma,
+                                 name='aw-dga-fs-narrow-no-mu-adjust-bw{}'.format(bw), xlim=(-t, t))
+            np.save(output_path_ana_cont + 'gk_fs_dga_cont_no_mu_adjust_bw{}.npy'.format(bw), gk_fs_dga_cont_nma, allow_pickle=True)
 
     realt.write_time_to_file(string='Continuation of spectral function along Fermi-arc:',rank=comm.rank)
 
@@ -695,6 +704,7 @@ if(do_analytic_continuation):
         plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_wint-0.05',
                               gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
         np.save(output_path_ana_cont + 'gk_dmft_cont_fbz.npy', gk_cont_fbz, allow_pickle=True)
+        plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid, output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_edc_maps')
 
     for bw in bw_irrk_range:
         # mu-adjust DGA Green's function:
@@ -720,30 +730,35 @@ if(do_analytic_continuation):
             plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.05-bw{}'.format(bw),
                                   gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
+            plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
+                                        output_path=output_path_ana_cont, name='fermi_surface_dga_cont_edc_maps')
 
         # not mu-adjust DGA Green's function:
-        gk = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
-                                 mu0=dmft1p['mu'], adjust_mu=False, niv_cut=niv_urange)
-        gk_my_cont = a_cont.do_max_ent_on_ind_T(mat=gk['gk'], ind_list=ind_irrk, v_real=v_real,
-                                              beta=dmft1p['beta'],
-                                              n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur=use_preblur,
-                                              bw=bw)
+        if(no_mu_adjust_fbz_cont):
+            gk = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
+                                     mu0=dmft1p['mu'], adjust_mu=False, niv_cut=niv_urange)
+            gk_my_cont = a_cont.do_max_ent_on_ind_T(mat=gk['gk'], ind_list=ind_irrk, v_real=v_real,
+                                                  beta=dmft1p['beta'],
+                                                  n_fit=nfit, err=err, alpha_det_method='chi2kink', use_preblur=use_preblur,
+                                                  bw=bw)
 
-        comm.Barrier()
-        gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
-        comm.Barrier()
-        if (comm.rank == 0):
-            gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
-            w_int = -0.2
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.2_no_mu_adjust_bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            w_int = -0.1
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.1_no_mu_adjust_bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            w_int = -0.05
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.05_no_mu_adjust_bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
+            comm.Barrier()
+            gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
+            comm.Barrier()
+            if (comm.rank == 0):
+                gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
+                w_int = -0.2
+                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.2_no_mu_adjust_bw{}'.format(bw),
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+                w_int = -0.1
+                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.1_no_mu_adjust_bw{}'.format(bw),
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+                w_int = -0.05
+                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.05_no_mu_adjust_bw{}'.format(bw),
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+                np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
+                plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
+                                            output_path=output_path_ana_cont, name='fermi_surface_dga_no_mu_adjust_cont_edc_maps')
 
         gc.collect() # Garbage collection
 

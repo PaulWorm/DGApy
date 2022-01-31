@@ -60,6 +60,49 @@ def insert_colorbar(ax=None, im=None):
     plt.colorbar(im, cax=cax, orientation='vertical')
 
 
+def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map = 7, wplot=2):
+    nk = k_grid.nk
+    v0_ind = v_real == 0
+    gk_cont_shift = bz.shift_mat_by_pi(mat=gk_cont, nk=nk)
+    extent = bz.get_extent_pi_shift(kgrid=k_grid)
+
+    cuts = np.round(np.linspace(1,nk[0]//4,n_map,endpoint=False)).astype(int)
+
+    ind_fs = bz.find_qpd_zeros(qpd=(1./gk_cont[:, :, :, v0_ind]).real, kgrid=k_grid)
+    kx_fs = np.array([k_grid.kmesh[0][i] for i in ind_fs])
+    ky_fs = np.array([k_grid.kmesh[1][i] for i in ind_fs])
+
+    fig, axes = plt.subplots(2,4,figsize=[13,6])
+    axes = axes.flatten()
+
+    im = axes[0].imshow(-1./np.pi * gk_cont_shift.imag[:,:,0,v0_ind], extent=extent,cmap='terrain', origin='lower', aspect='auto')
+    axes[0].set_ylabel('$k_x$')
+    axes[0].set_xlabel('$k_y$')
+    axes[0].plot(-kx_fs, -ky_fs, color='k')
+    insert_colorbar(ax=axes[0], im=im)
+    axes[0].set_xlim([extent[0],0])
+    axes[0].set_ylim([extent[2],0])
+    for i in range(n_map):
+        im = axes[i+1].imshow(-1. / np.pi * gk_cont_shift.imag[cuts[i],:, 0, :].T, cmap='terrain', aspect='auto',
+                            origin='lower', extent=extent)
+        insert_colorbar(ax=axes[i+1], im=im)
+        axes[0].plot(k_grid.ky-np.pi,(k_grid.kx[cuts[i]]-np.pi) * np.ones((nk[1])),  '--', color = 'orange')
+        kx_line_ind = np.argmin(np.abs(ky_fs-k_grid.kx[cuts[i]]))
+        axes[i+1].vlines(-ky_fs[kx_line_ind],-wplot,wplot,'k', ls='--')
+
+    for ax in axes[1:]:
+        ax.hlines(0, -np.pi, np.pi, 'k')
+        ax.set_ylim([-wplot, wplot])
+        ax.set_xlim([extent[2],0])
+        ax.set_ylabel('$\omega$')
+        ax.set_xlabel('$k_y$')
+
+    fig.suptitle(name)
+    plt.tight_layout()
+    plt.savefig(output_path + '{}.png'.format(name))
+    plt.show()
+    plt.close()
+
 def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
@@ -252,12 +295,12 @@ def plot_aw_ind(v_real=None, gk_cont=None, ind=None, output_path=None, name='', 
     plt.close('all')
 
 
-def plot_fs_peaks(ax=None, k_grid=None, ind_fs=None):
+def plot_fs_peaks(ax=None, k_grid=None, ind_fs=None, color='b'):
     kx = np.array([k_grid.kmesh[0][i] for i in ind_fs])
     ky = np.array([k_grid.kmesh[1][i] for i in ind_fs])
     shift_x = 0.0  # np.pi/(k_grid.nk[0])
     shift_y = 0.0  # np.pi/(k_grid.nk[1])
-    ax.plot(kx - shift_x, ky - shift_y)
+    ax.plot(kx - shift_x, ky - shift_y, color=color)
 
 
 def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
