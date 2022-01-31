@@ -22,7 +22,7 @@ def oz_spin_w0(qgrid, A, xi):
 
 
 def fit_oz_spin(qgrid, chi):
-    initial_guess = (1,4.)
+    initial_guess = (np.max(chi),2.)
     params = sciopt.curve_fit(oz_spin_w0,qgrid,chi,p0=initial_guess)
     return params
 

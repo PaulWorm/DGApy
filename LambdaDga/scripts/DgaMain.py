@@ -110,11 +110,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-niw_core = 20
-niw_urange = 20  # This seems not to save enough to be used.
-niv_core = 20
-niv_invbse = 20
-niv_urange = 80  # Must be larger than niv_invbse
+niw_core = 10
+niw_urange = 10  # This seems not to save enough to be used.
+niv_core = 10
+niv_invbse = 10
+niv_urange = 20  # Must be larger than niv_invbse
 niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -124,9 +124,9 @@ niv_vrg_save = 5
 niv_pp = np.min((niw_core // 2, niv_core // 2))
 
 # Define k-ranges:
-nkx = 16
+nkx = 32
 nky = nkx
-nqx = 16
+nqx = 32
 nqy = nkx
 
 nk = (nkx, nky, 1)
@@ -425,7 +425,10 @@ if (comm.rank == 0):
     plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
                           name='vrg_dens_loc')
 
-    oz_coeff, _ = ozfunc.fit_oz_spin(q_grid, chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core].flatten())
+    try:
+        oz_coeff, _ = ozfunc.fit_oz_spin(q_grid, chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core].real.flatten())
+    except:
+        oz_coeff = [-1,-1]
 
     np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f')
     plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core], oz_coeff=oz_coeff, qgrid=q_grid,
@@ -731,7 +734,7 @@ if(do_analytic_continuation):
                                   gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
             plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
-                                        output_path=output_path_ana_cont, name='fermi_surface_dga_cont_edc_maps')
+                                        output_path=output_path_ana_cont, name='fermi_surface_dga_cont_edc_maps_bw{}'.format(bw))
 
         # not mu-adjust DGA Green's function:
         if(no_mu_adjust_fbz_cont):
@@ -758,7 +761,7 @@ if(do_analytic_continuation):
                                       gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
                 np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
                 plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
-                                            output_path=output_path_ana_cont, name='fermi_surface_dga_no_mu_adjust_cont_edc_maps')
+                                            output_path=output_path_ana_cont, name='fermi_surface_dga_no_mu_adjust_cont_edc_maps_bw{}'.format(bw))
 
         gc.collect() # Garbage collection
 
