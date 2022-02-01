@@ -27,6 +27,8 @@ from Plotting import plot_cont_edc_maps
 # Define MPI communicator:
 comm = mpi.COMM_WORLD
 
+# Define path for input files:
+input_path = './'
 input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta130_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120/'
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
@@ -39,7 +41,6 @@ beta = config['dmft1p']['beta']
 dmft1p = config['dmft1p']
 # Set output path:
 output_path = output.uniquify(input_path + 'AnaCont') + '/'
-os.mkdir(output_path)
 
 # Set ana-cont paramter:
 t = 1.0
@@ -61,9 +62,6 @@ if (comm.rank == 0):
     text_file.close()
 
 comm.Barrier()
-
-
-
 
 # Perform analytical continuation in the full BZ:
 
