@@ -60,13 +60,13 @@ def insert_colorbar(ax=None, im=None):
     plt.colorbar(im, cax=cax, orientation='vertical')
 
 
-def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map = 7, wplot=2):
+def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map = 7, wplot=1):
     nk = k_grid.nk
     v0_ind = v_real == 0
     gk_cont_shift = bz.shift_mat_by_pi(mat=gk_cont, nk=nk)
     extent = bz.get_extent_pi_shift(kgrid=k_grid)
 
-    cuts = np.round(np.linspace(1,nk[0]//4,n_map,endpoint=False)).astype(int)
+    cuts = np.round(np.linspace(1,nk[0]//4,n_map,endpoint=True)).astype(int)
 
     ind_fs = bz.find_qpd_zeros(qpd=(1./gk_cont[:, :, :, v0_ind]).real, kgrid=k_grid)
     kx_fs = np.array([k_grid.kmesh[0][i] for i in ind_fs])
