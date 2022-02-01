@@ -52,6 +52,7 @@ err = 1e-2
 nfit = np.min((np.max((niv_core,int(beta * 4))),niv_urange))
 v_real = a_cont.v_real_tan(wmax=wmax,nw=nwr)
 
+comm.Barrier()
 if (comm.rank == 0):
     os.mkdir(output_path)
     text_file = open(output_path + 'cont_settings.txt', 'w')
@@ -65,9 +66,7 @@ comm.Barrier()
 
 # Perform analytical continuation in the full BZ:
 
-irrk_distributor = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm,
-                                         output_path=output_path,
-                                         name='Qiw')
+irrk_distributor = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm)
 
 index_grid_keys = ('irrk',)
 irrk_grid = ind.IndexGrids(grid_arrays=(k_grid.irrk_ind_lin,), keys=index_grid_keys,
