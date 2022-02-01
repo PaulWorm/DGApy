@@ -587,10 +587,17 @@ if(do_analytic_continuation):
     bw_irrk_range = [3./dmft1p['beta'] * t*2, 3./dmft1p['beta'] * t] # I use 3 instead of pi here.
     output_path_ana_cont = output.uniquify(output_path + 'AnaCont') + '/'
 
+
     if(comm.rank==0):
         os.mkdir(output_path_ana_cont)
         realt = rt.real_time()
         realt.create_file(fname=output_path_ana_cont+'cpu_time_ana_cont.txt')
+        text_file = open(output_path_ana_cont + 'cont_settings.txt', 'w')
+        text_file.write(f'nfit={nfit} \n')
+        text_file.write(f'err={err} \n')
+        text_file.write(f'wmax={wmax} \n')
+        text_file.write(f'nwr={nwr} \n')
+        text_file.close()
 
 
 # Do analytic continuation of local part:
