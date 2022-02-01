@@ -181,8 +181,14 @@ def plot_spin_fermion_fs(output_path=None, name='', vrg_fs=None, q_grid=None, lw
 
 def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=-0.2, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
-    ind_int = np.logical_and(v_real < 0, w_int < v_real)
-    gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int])
+
+    if(w_int == None):
+        w0_ind = v_real == 0
+        gk_fs = gk[:,:,0,w0_ind]
+    else:
+        ind_int = np.logical_and(v_real < 0, w_int < v_real)
+        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int])/np.abs(w_int)
+
     awk_fs = np.squeeze(bz.shift_mat_by_pi(mat=-1. / np.pi * gk_fs.imag, nk=k_grid.nk))
     gk_real = np.squeeze(bz.shift_mat_by_pi(mat=gk_fs.real, nk=k_grid.nk))
     v0 = np.argmin(np.abs(v_real))

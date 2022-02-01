@@ -718,15 +718,8 @@ if(do_analytic_continuation):
         gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
         if(comm.rank == 0):
             gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
-            w_int = -0.2
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_wint-0.2',
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            w_int = -0.1
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_wint-0.1',
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            w_int = -0.05
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_wint-0.05',
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dmft_cont',
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=None)
             np.save(output_path_ana_cont + 'gk_dmft_cont_fbz.npy', gk_cont_fbz, allow_pickle=True)
             plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid, output_path=output_path_ana_cont, name='fermi_surface_dmft_cont_edc_maps')
 
@@ -743,16 +736,14 @@ if(do_analytic_continuation):
         comm.Barrier()
         if(comm.rank == 0):
             gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
-            w_int = -0.2
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.2-bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-            w_int = -0.1
-            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.1-bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
 
-            w_int = -0.05
+            plotting.plot_cont_fs(output_path=output_path_ana_cont,
+                                  name='fermi_surface_dga_cont_wint-0.1-bw{}'.format(bw),
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=-0.1)
             plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.05-bw{}'.format(bw),
-                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=-0.05)
+            plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_w0-bw{}'.format(bw),
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=None)
             np.save(output_path_ana_cont + 'gk_dga_cont_fbz_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
             plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
                                         output_path=output_path_ana_cont, name='fermi_surface_dga_cont_edc_maps_bw{}'.format(bw))
@@ -771,15 +762,14 @@ if(do_analytic_continuation):
             comm.Barrier()
             if (comm.rank == 0):
                 gk_cont_fbz = k_grid.irrk2fbz(mat=gk_cont)
-                w_int = -0.2
-                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.2_no_mu_adjust_bw{}'.format(bw),
-                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-                w_int = -0.1
-                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.1_no_mu_adjust_bw{}'.format(bw),
-                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
-                w_int = -0.05
+                plotting.plot_cont_fs(output_path=output_path_ana_cont,
+                                      name='fermi_surface_dga_cont_wint-0.1_no_mu_adjust_bw{}'.format(bw),
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=-0.1)
                 plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_wint-0.05_no_mu_adjust_bw{}'.format(bw),
-                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=w_int)
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=-0.05)
+                plotting.plot_cont_fs(output_path=output_path_ana_cont, name='fermi_surface_dga_cont_w0_no_mu_adjust_bw{}'.format(bw),
+                                      gk=gk_cont_fbz, v_real=v_real, k_grid=k_grid, w_int=None)
+
                 np.save(output_path_ana_cont + 'gk_dga_cont_fbz_no_mu_adjust_bw{}.npy'.format(bw), gk_cont_fbz, allow_pickle=True)
                 plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=k_grid,
                                             output_path=output_path_ana_cont, name='fermi_surface_dga_no_mu_adjust_cont_edc_maps_bw{}'.format(bw))

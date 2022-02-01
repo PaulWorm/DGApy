@@ -364,10 +364,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         np.savetxt(output_path + 'Knight_shift.txt', [chi_magn_lambda.mat[0,0,0,niw_core],chi_dens_lambda.mat[0,0,0,niw_core]], delimiter=',',
                fmt='%.9f')
 
-
-
-
-
     realt.write_time_to_file(string='Building fbz and overhead:', rank=comm.rank)
 
     return dga_sde, dmft_sde, dmft_gamma, dga_sde_sf_contrib
