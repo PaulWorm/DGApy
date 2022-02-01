@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -N 2
-#SBATCH -J LambdaDga_Nk16
+#SBATCH -J LambdaDga
 #SBATCH --ntasks-per-node=16
 #SBATCH --partition=vsc3plus_0064
 #SBATCH --qos=vsc3plus_0064
