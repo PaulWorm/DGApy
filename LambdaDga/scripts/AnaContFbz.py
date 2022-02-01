@@ -24,6 +24,8 @@ from Plotting import plot_cont_fs
 from Plotting import plot_cont_edc_maps
 
 # -------------------------------------------- LOAD INPUT DATA ---------------------------------------------------------
+# Define MPI communicator:
+comm = mpi.COMM_WORLD
 
 input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta130_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120/'
 
@@ -42,15 +44,26 @@ os.mkdir(output_path)
 # Set ana-cont paramter:
 t = 1.0
 wmax = 15 * t
-nw = 1001
+nwr = 1001
 use_preblur = True
 bw = 2*np.pi/beta
 err = 1e-2
 nfit = np.min((np.max((niv_core,int(beta * 4))),niv_urange))
-v_real = a_cont.v_real_tan(wmax=wmax,nw=nw)
+v_real = a_cont.v_real_tan(wmax=wmax,nw=nwr)
 
-# Define MPI communicator:
-comm = mpi.COMM_WORLD
+if (comm.rank == 0):
+    os.mkdir(output_path)
+    text_file = open(output_path + 'cont_settings.txt', 'w')
+    text_file.write(f'nfit={nfit} \n')
+    text_file.write(f'err={err} \n')
+    text_file.write(f'wmax={wmax} \n')
+    text_file.write(f'nwr={nwr} \n')
+    text_file.close()
+
+comm.Barrier()
+
+
+
 
 # Perform analytical continuation in the full BZ:
 
