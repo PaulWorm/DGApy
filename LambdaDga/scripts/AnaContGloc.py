@@ -37,11 +37,13 @@ t = 1.0
 wmax = 15 * t
 nw = 1001
 use_preblur = True
-bw = 0.0#np.pi/beta
+bw = 2*np.pi/beta
 err = 1e-2
 nfit = np.min((np.max((niv_core,int(beta * 4))),niv_urange))
 v_real = a_cont.v_real_tan(wmax=wmax,nw=nw)
 
+
+# Perform analytic continuation for the local Green's function:
 gloc_dga_cont, gk_dga = a_cont.max_ent_loc(v_real=v_real, sigma=dga_sde['sigma'], config=config, k_grid=k_grid,
                                            niv_cut=niv_urange, use_preblur=use_preblur, bw=bw, err=err,
                                            nfit=nfit, adjust_mu=True)
