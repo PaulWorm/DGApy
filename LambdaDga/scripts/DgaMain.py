@@ -272,33 +272,64 @@ if (comm.rank == 0):
 
 comm.Barrier()
 
-dga_sde, dmft_sde, gamma_dmft = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
+dga_sde, dmft_sde, gamma_dmft, dga_sde_sf_contrib = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
 comm.Barrier()
 log("Lambda-Dga finished %s", time.strftime("%c"))
-# %%
-if (comm.rank == 0):
-    np.save(output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
+# %% Save output and generate plots. Non master rank delete unnecessary objects.
+if(comm.rank != 0):
+    del gamma_dmft, dmft_sde, dga_sde_sf_contrib
+    gc.collect()
+elif(comm.rank == 0):
+
+    # Save everything vital to files:
     np.save(output_path + 'gamma_dmft.npy', gamma_dmft, allow_pickle=True)
+    np.save(output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
     np.save(output_path + 'dga_sde.npy', dga_sde, allow_pickle=True)
 
-    chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
-    np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
-               fmt='%.9f')
+    # DMFT Gamma plots:
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path,
+                             name='gamma_magn')
+    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path,
+                             name='gamma_dens')
+    del gamma_dmft
+    gc.collect()
 
+    # Local spin-fermion vertex:
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_magn'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
+                          name='vrg_magn_loc')
+    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
+                          name='vrg_dens_loc')
+
+    # Plot Siw-check:
+    vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
+    siw_list = [dmft1p['sloc'], dmft_sde['siw'], dga_sde['sigma'].mean(axis=(0, 1, 2)), dga_sde['sigma_nc'].mean(axis=(0, 1, 2))]
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
+
+    # Plot non-local Siw contributions:
+    vn_list = [grids['vn_urange'], grids['vn_urange']]
+    siw_dga_magn_ksum = 3*dga_sde['sigma_magn'].mean(axis=(0, 1, 2))  - 3 * dmft_sde['siw_magn']
+    siw_dga_dens_ksum = -dga_sde['sigma_dens'].mean(axis=(0, 1, 2))  +  dmft_sde['siw_dens']
+    siw_list = [siw_dga_magn_ksum, siw_dga_dens_ksum]
+    labels = [r'$\Sigma_{DGA-Magn}(\nu)$', r'$\Sigma_{DGA-Dens}(\nu)$']
+    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100,name='siw_channel_contribution')
 
 
     # Create DMFT Green's function:
     gf_dict_dmft = twop.create_gk_dict(sigma=dmft1p['sloc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'], niv_cut=niv_urange)
-    np.save(output_path + 'gk_dmft.npy', gf_dict_dmft, allow_pickle=True)
+    ind_fs_dmft = bz.find_fermi_surface_peak(ak_fs=-1. / np.pi * gf_dict_dmft['gk'][:, :, :, niv_urange].imag, kgrid=k_grid)
+    plotting.plot_giwk_fs(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft',
+                          ind_fs=ind_fs_dmft)
+    plotting.plot_giwk_qpd(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft')
+    del gf_dict_dmft
+    gc.collect()
 
-    # Create the Green's functions:
+    # Create the DGA Green's functions:
     gf_dict = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'])
     gf_dict_mu_dmft = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
                                   mu0=dmft1p['mu'],adjust_mu=False)
-    np.save(output_path + 'gk_dga.npy', gf_dict, allow_pickle=True)
-    np.save(output_path + 'gk_dga_mu_dmft.npy', gf_dict_mu_dmft, allow_pickle=True)
     np.savetxt(output_path + 'mu.txt', [[gf_dict['mu'],dmft1p['mu']], [gf_dict['n'], gf_dict_mu_dmft['n']]], delimiter=',',
                fmt='%.9f')
 
@@ -307,26 +338,34 @@ if (comm.rank == 0):
 
     gf_dict_nc = twop.create_gk_dict(sigma=dga_sde['sigma_nc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'],
                                      n=dmft1p['n'], mu0=dmft1p['mu'])
-    np.save(output_path + 'gk_dga_nc.npy', gf_dict_nc, allow_pickle=True)
 
-    siw_dga_ksum_nc = dga_sde['sigma_nc'].mean(axis=(0, 1, 2))
-    siw_dga_ksum = dga_sde['sigma'].mean(axis=(0, 1, 2))
-    siw_dens_ksum = dga_sde['sigma_dens'].mean(axis=(0, 1, 2))
-    siw_magn_ksum = dga_sde['sigma_magn'].mean(axis=(0, 1, 2))
 
-    # Plot Siw-check:
-    vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange'], grids['vn_urange']]
-    siw_list = [dmft1p['sloc'], dmft_sde['siw'], siw_dga_ksum, siw_dga_ksum_nc]
-    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100)
+    # Find specific locations on the Fermi-arc:
+    ak_fs = -1. / np.pi * gf_dict['gk'][:, :, :, niv_urange].imag
+    ak_fs_mu_dmft = -1. / np.pi * gf_dict_mu_dmft['gk'][:, :, :, niv_urange].imag
+    ind_node = bz.find_arc_node(ak_fs=ak_fs, kgrid=k_grid)
+    ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs, kgrid=k_grid)
+    ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs, kgrid=k_grid)
+    ind_fs_mu_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_mu_dmft, kgrid=k_grid)
 
-    # Plot non-local Siw contributions:
-    vn_list = [grids['vn_urange'], grids['vn_urange']]
-    siw_dga_magn_ksum = 3*siw_magn_ksum  - 3 * dmft_sde['siw_magn']
-    siw_dga_dens_ksum = -siw_dens_ksum  +  dmft_sde['siw_dens']
-    siw_list = [siw_dga_magn_ksum, siw_dga_dens_ksum]
-    labels = [r'$\Sigma_{DGA-Magn}(\nu)$', r'$\Sigma_{DGA-Dens}(\nu)$']
-    plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot=100,name='siw_channel_contribution')
+    ak_fs_nc = -1. / np.pi * gf_dict_nc['gk'][:, :, :, niv_urange].imag
+    ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc, kgrid=k_grid)
+    ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc, kgrid=k_grid)
+
+    # DGA with adjusted mu:
+    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga',
+                          ind_fs=ind_fs)
+    plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
+
+    # DGA with mu from DMFT:
+    plotting.plot_giwk_fs(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft',
+                          ind_fs=ind_fs_mu_dmft)
+    plotting.plot_giwk_qpd(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft')
+
+    # Slight variant of the DGA:
+    plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
+    plotting.plot_giwk_qpd(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
+
 
     # Plot Giw:
     vn_list = [grids['vn_urange'], grids['vn_urange']]
@@ -335,28 +374,12 @@ if (comm.rank == 0):
     plotting.plot_siw(vn_list=vn_list, siw_list=giw_list, labels_list=labels, plot_dir=output_path, niv_plot=100,
                       name='giw_loc')
 
-    # Plot siw at important locations:
-
-    ak_fs = -1. / np.pi * gf_dict['gk'][:, :, :, niv_urange].imag
-    ak_fs_mu_dmft = -1. / np.pi * gf_dict_mu_dmft['gk'][:, :, :, niv_urange].imag
-    ak_fs_dmft = -1. / np.pi * gf_dict_dmft['gk'][:, :, :, niv_urange].imag
-    ak_fs_nc = -1. / np.pi * gf_dict_nc['gk'][:, :, :, niv_urange].imag
-
-    ind_node = bz.find_arc_node(ak_fs=ak_fs, kgrid=k_grid)
-    ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs, kgrid=k_grid)
-    ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs, kgrid=k_grid)
-    ind_fs_mu_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_mu_dmft, kgrid=k_grid)
-    ind_fs_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_dmft, kgrid=k_grid)
-    ind_arc = bz.find_arc_peaks(ak_fs=ak_fs, kgrid=k_grid)
-
     np.savetxt(output_path + 'loc_nodes_antinode.txt',
                [k_grid.kmesh.transpose((1, 2, 3, 0))[ind_node], k_grid.kmesh.transpose((1, 2, 3, 0))[ind_anti_node]],
                delimiter=',',
                fmt='%.9f')
 
-    ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc, kgrid=k_grid)
-    ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc, kgrid=k_grid)
-
+    # Plot self-energy at specific Fermi-arc locations
     siw_dga_an = dga_sde['sigma'][ind_anti_node]
     siw_dga_n = dga_sde['sigma'][ind_node]
     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
@@ -373,43 +396,29 @@ if (comm.rank == 0):
     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
                       niv_plot=10, name='siw_at_bz_points_nc', ms=5)
 
+    # Plot self-energy at the Fermi-surface:
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=3*dga_sde['sigma_magn']- 3 * dmft_sde['siw_magn'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='magn')
     plotting.plot_siwk_fs(siwk=-dga_sde['sigma_dens'] + dmft_sde['siw_dens'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dens')
     plotting.plot_siwk_fs(siwk=dga_sde['sigma'], plot_dir=output_path, kgrid=k_grid, do_shift=True)
     plotting.plot_siwk_fs(siwk=dga_sde['sigma_nc'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='nc')
 
-    # DGA with adjusted mu:
-    plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga',
-                          ind_fs=ind_fs)
-    plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
 
-    # DGA with mu from DMFT:
-    plotting.plot_giwk_fs(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft',
-                          ind_fs=ind_fs_mu_dmft)
-    plotting.plot_giwk_qpd(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft')
+    # Manual garbage collection:
+    del gf_dict_nc
+    del dmft_sde
+    gc.collect()
 
-    # DMFT:
-    plotting.plot_giwk_fs(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft',
-                          ind_fs=ind_fs_dmft)
-    plotting.plot_giwk_qpd(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft')
 
-    # Slight variant of the DGA:
-    plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
-    plotting.plot_giwk_qpd(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
 
-    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_magn'].mat[niw_core, :, :].real, pdir=output_path,
-                             name='gamma_magn')
-    plotting.plot_vertex_vvp(vertex=gamma_dmft['gamma_dens'].mat[niw_core, :, :].real, pdir=output_path,
-                             name='gamma_dens')
 
-    plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
-                         name='magn_w0')
-    plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
-                         name='dens_w0')
+#%% OZ-fit to the lambda-correction susceptibility:
+if(comm.rank == 0):
+    chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
+    np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
+               fmt='%.9f')
 
     import matplotlib.pyplot as plt
-
     plt.figure()
     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_node])
     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_anti_node])
@@ -422,11 +431,6 @@ if (comm.rank == 0):
     plt.savefig(output_path + 'chi_magn_lambda_node_anti_node_imag.png')
     plt.show()
 
-    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_magn'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
-                          name='vrg_magn_loc')
-    plotting.plot_vrg_loc(vrg=dmft_sde['vrg_dens'].mat * dmft1p['beta'], niv_plot=niv_urange, pdir=output_path,
-                          name='vrg_dens_loc')
-
     try:
         oz_coeff, _ = ozfunc.fit_oz_spin(q_grid, chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core].real.flatten())
     except:
@@ -436,15 +440,25 @@ if (comm.rank == 0):
     plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core], oz_coeff=oz_coeff, qgrid=q_grid,
                          pdir=output_path, name='oz_fit')
 
+    plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
+                         name='magn_w0')
+    plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
+                         name='dens_w0')
 
+
+#%%
 # Plot the contribution of the real/imaginary part of the spin-fermion vertex.
 if(analyse_spin_fermion_contributions and comm.rank == 0):
     output_path_sp = output.uniquify(output_path + 'SpinFermionContributions') + '/'
     os.mkdir(output_path_sp)
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spre')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_magn_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spim')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spre')
-    plotting.plot_siwk_fs(siwk=dga_sde['sigma_dens_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spim')
+    np.save(output_path_sp + 'dga_sde_sf_contrib.npy',dga_sde_sf_contrib, allow_pickle=True)
+    plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_magn_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spre')
+    plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_magn_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spim')
+    plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_dens_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spre')
+    plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_dens_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spim')
+
+    del dga_sde_sf_contrib
+    gc.collect()
 
 #%%
 # Extrapolate the self-energy to the Fermi-level via polynomial fit:
@@ -516,7 +530,8 @@ if(comm.rank == 0):
 
     plotting.plot_siwk_extrap(siwk_re_fs=giwk_re_fs, siwk_im_fs=giwk_im_fs, siwk_Z=giwk_Z, output_path=output_path, name='giwk_fs_extrap_mu_dmft', k_grid=k_grid)
 
-
+    del gf_dict, gf_dict_mu_dmft
+    gc.collect()
 # ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
 # # %%
 if (comm.rank == 0):
@@ -552,6 +567,8 @@ if (comm.rank == 0):
     }
 
     np.save(output_path + 'spin_fermion_vertex.npy', spin_fermion_vertex)
+    del spin_fermion_vertex, vrg_dens, vrg_magn
+    gc.collect()
 
 
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
@@ -564,10 +581,10 @@ if(do_analytic_continuation):
     nfit = np.min((np.max((niv_core, int(dmft1p['beta'] * 4))),niv_urange))
     v_real = a_cont.v_real_tan(wmax=wmax, nw=nwr)
     #Use a range of blur widths to have an automatic check on the stability and quality of continuation results.
-    bw_range_loc = [0.5/dmft1p['beta'] * t, 3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t,0]
-    bw_range_arc = [0.5/dmft1p['beta'] * t]
+    bw_range_loc = [3./dmft1p['beta'] * t*0.5, 3./dmft1p['beta'] * t, 3./dmft1p['beta'] * t*2, 0.0]
+    bw_range_arc = [3./dmft1p['beta'] * t]
     # For irrk use only continuation, as this will otherwise take too long and generate too many files.
-    bw_irrk_range = [3./dmft1p['beta'] * t*2, 3./dmft1p['beta'] * t,0.0] # I use 3 instead of pi here.
+    bw_irrk_range = [3./dmft1p['beta'] * t*2, 3./dmft1p['beta'] * t] # I use 3 instead of pi here.
     output_path_ana_cont = output.uniquify(output_path + 'AnaCont') + '/'
 
     if(comm.rank==0):
@@ -794,22 +811,30 @@ if (do_pairing_vertex and comm.rank == 0):
     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=output_path, name='Qiw',
                                                                                 mpi_size=comm.size, nq=q_grid.nk_irr,
                                                                                 niv_pp=niv_pp)
+
+    # Create f_magn:
     f1_magn = q_grid.irrk2fbz(mat=f1_magn)
     f2_magn = q_grid.irrk2fbz(mat=f2_magn)
+    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['chi_magn_lambda'].mat, niv_pp=niv_pp)
+    f_magn = f1_magn + (1 + dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
+    del f1_magn, f2_magn, chi_magn_lambda_pp
+    gc.collect()
+    plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_magn_loc')
+
+    # Create f_dens:
     f1_dens = q_grid.irrk2fbz(mat=f1_dens)
     f2_dens = q_grid.irrk2fbz(mat=f2_dens)
-
     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_lambda['chi_dens_lambda'].mat, niv_pp=niv_pp)
-    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['chi_magn_lambda'].mat, niv_pp=niv_pp)
-
-    f_magn = f1_magn + (1 + dmft1p['u'] * chi_magn_lambda_pp) * f2_magn
     f_dens = f1_dens + (1 - dmft1p['u'] * chi_dens_lambda_pp) * f2_dens
+    del f1_dens, f2_dens, chi_dens_lambda_pp, chi_lambda
+    gc.collect()
+    plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_dens_loc')
 
+    # Create f_sing and f_trip:
     f_sing = -1.5 * f_magn + 0.5 * f_dens
     f_trip = -0.5 * f_magn - 0.5 * f_dens
-
-    plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_dens_loc')
-    plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_magn_loc')
+    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_sing_loc')
+    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_trip_loc')
 
     pairing_vertices = {
         'f_sing': f_sing,
@@ -817,10 +842,6 @@ if (do_pairing_vertex and comm.rank == 0):
     }
 
     np.save(output_path + 'pairing_vertices.npy', pairing_vertices)
-
-    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_sing_loc')
-    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir=output_path, name='f_trip_loc')
-
     realt.write_time_to_file(string='End pairing vertex:',rank=comm.rank)
 #
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------

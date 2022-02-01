@@ -337,10 +337,14 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         sigma_magn_dga_re = k_grid.symmetrize_irrk(mat=sigma_magn_dga_re)
         sigma_magn_dga_im = k_grid.symmetrize_irrk(mat=sigma_magn_dga_im)
 
-        dga_sde['sigma_dens_re'] = sigma_dens_dga_re
-        dga_sde['sigma_dens_im'] = sigma_dens_dga_im
-        dga_sde['sigma_magn_re'] = sigma_magn_dga_re
-        dga_sde['sigma_magn_im'] = sigma_magn_dga_im
+        dga_sde_sf_contrib = {
+            'sigma_dens_re':sigma_dens_dga_re,
+            'sigma_dens_im':sigma_dens_dga_im,
+            'sigma_magn_re':sigma_magn_dga_re,
+            'sigma_magn_im':sigma_magn_dga_im
+        }
+    else:
+        dga_sde_sf_contrib = None
 
     if(qiw_distributor.my_rank == 0):
         chi_dens_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat)))
@@ -366,4 +370,4 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
 
     realt.write_time_to_file(string='Building fbz and overhead:', rank=comm.rank)
 
-    return dga_sde, dmft_sde, dmft_gamma
+    return dga_sde, dmft_sde, dmft_gamma, dga_sde_sf_contrib
