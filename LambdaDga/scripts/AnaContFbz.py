@@ -20,6 +20,7 @@ import TwoPoint as twop
 from mpi4py import MPI as mpi
 import MpiAux as mpiaux
 import Indizes as ind
+import Plotting
 from Plotting import plot_cont_fs
 from Plotting import plot_cont_edc_maps
 
@@ -29,7 +30,8 @@ comm = mpi.COMM_WORLD
 
 # Define path for input files:
 input_path = './'
-input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta130_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120/'
+#input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta130_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/LambdaDga_lc_sp_Nk576_Nq576_core10_invbse10_vurange20_wurange10_1/'
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dga_sde = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()
@@ -42,7 +44,7 @@ dmft1p = config['dmft1p']
 # Set output path:
 output_path = output.uniquify(input_path + 'AnaCont') + '/'
 
-# Set ana-cont paramter:
+# Set ana-cont parameter:
 t = 1.0
 wmax = 15 * t
 nwr = 1001

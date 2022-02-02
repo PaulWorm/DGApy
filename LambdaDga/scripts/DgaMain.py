@@ -698,9 +698,7 @@ if(do_analytic_continuation and comm.rank == 0):
 gc.collect() # garbage collection
 if(do_analytic_continuation):
 
-    irrk_distributor = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm,
-                                            output_path=output_path,
-                                            name='Qiw')
+    irrk_distributor = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm)
 
     index_grid_keys = ('irrk',)
     irrk_grid = ind.IndexGrids(grid_arrays=(k_grid.irrk_ind_lin,), keys=index_grid_keys,
