@@ -33,8 +33,20 @@ input_path = './'
 #input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta130_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120/'
 input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/LambdaDga_lc_sp_Nk576_Nq576_core10_invbse10_vurange20_wurange10_1/'
 
-config = np.load(input_path + 'config.npy', allow_pickle=True).item()
-dga_sde = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()
+if(comm.rank==0):
+    config = np.load(input_path + 'config.npy', allow_pickle=True).item()
+    dga_sde = np.load(input_path + 'dga_sde.npy', allow_pickle=True).item()
+else:
+    config = None
+config = comm.bcast(config, root=0)
+
+comm.Barrier()
+if(comm.rank==0):
+    sigma = dga_sde['sigma']
+else:
+    sigma = np.empty(config['box_sizes']['nk'] + (config['box_sizes']['niv_urange']*2,), dtype=complex)
+
+comm.Bcast(sigma, root=0)
 
 k_grid = config['grids']['k_grid']
 niv_urange = config['box_sizes']['niv_urange']
@@ -78,7 +90,7 @@ if (np.size(ind_irrk.shape) > 1):
     ind_irrk = [tuple(ind_irrk[i, :]) for i in np.arange(ind_irrk.shape[0])]
 else:
     ind_irrk = tuple(ind_irrk)
-gk = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
+gk = twop.create_gk_dict(sigma=sigma, kgrid=k_grid.grid, hr=config['system']['hr'], beta=dmft1p['beta'], n=dmft1p['n'],
                          mu0=dmft1p['mu'], adjust_mu=True, niv_cut=niv_urange)
 gk_my_cont = a_cont.do_max_ent_on_ind_T(mat=gk['gk'], ind_list=ind_irrk, v_real=v_real,
                                         beta=dmft1p['beta'],
