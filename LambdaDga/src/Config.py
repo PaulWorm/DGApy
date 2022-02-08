@@ -136,6 +136,7 @@ class Names(ConfigBase):
     def __init__(self):
         self.input_path = None # Input path where the input files are located
         self.output_path = None # Path where the output is written to
+        self.output_path_sp = None # Path where the spin-fermion vertex and it's plots are written to
         self.fname_g2 = 'g4iw_sym.hdf5' # File containing the DMFT two-particle vertex
         self.fname_dmft = '1p-data.hdf5' # File containing the DMFT one-particle run
         self.fname_ladder_vertex = None # Name for the ladder vertex

@@ -61,7 +61,7 @@ options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
-options.analyse_spin_fermion_contributions = False  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
+options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
 options.use_fbz = False  # Perform the calculation in the full BZ
 
 # Analytic continuation flags:
@@ -131,12 +131,16 @@ output_folder = 'LambdaDga_lc_{}_Nk{}_Nq{}_core{}_invbse{}_vurange{}_wurange{}'.
 names.output_path = output.uniquify(names.output_path + output_folder) + '/'
 fname_ladder_vertex = names.output_path + names.fname_ladder_vertex
 
+names.output_path_sp = output.uniquify(names.output_path + 'SpinFermion') + '/'
+
+
 # Create the DGA Config object:
 dga_conf = conf.DgaConfig(BoxSizes=box_sizes, Options=options, SystemParameter=sys_param, Names=names,
                           ek_funk=hamk.ek_3d)
 
-# --------------------------------------------- CREATE THE OUTPUT PATH -------------------------------------------------
+# --------------------------------------------- CREATE THE OUTPUT PATHS -------------------------------------------------
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path)
+if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_sp)
 
 # ------------------------------------------------ DMFT 1P INPUT -------------------------------------------------------
 dmft1p = input.load_1p_data(dga_conf=dga_conf)
@@ -252,9 +256,28 @@ sigma_rpa = sde.rpa_sde_wrapper(dga_conf = dga_conf, dmft_input=dmft1p, chi=chi_
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_rpa, allow_pickle=True)
 
 sigma_dga = sde.build_dga_sigma(dga_conf = dga_conf, sigma_dga = sigma_dga, sigma_rpa = sigma_rpa, dmft_sde = dmft_sde, dmft1p=dmft1p)
+
+# --------------------------------------------------- PLOTTING ---------------------------------------------------------
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
 if (comm.rank == 0): plotting.sigma_plots(dga_conf = dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p)
-if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p)
+if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma=sigma_dga['sigma'],  dmft1p=dmft1p, output_path=dga_conf.nam.output_path)
+if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma=sigma_dga['sigma_nc'],  dmft1p=dmft1p, name='_nc', output_path=dga_conf.nam.output_path)
+
+
+
+# Plot the contribution of the real/imaginary part of the spin-fermion vertex.
+if(dga_conf.opt.analyse_spin_fermion_contributions and comm.rank == 0):
+    output.spin_fermion_contributions_output(dga_conf=dga_conf, sigma_dga_contributions=sigma_dga_components)
+    sigma_vrg_re = sde.buid_dga_sigma_vrg_re(dga_conf = dga_conf, sigma_dga_components=sigma_dga_components, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
+                          dmft1p=dmft1p)
+    plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_vrg_re, dmft1p=dmft1p, name='_vrg_re',
+                        output_path=dga_conf.nam.output_path_sp)
+
+if (comm.rank == 0): output.prepare_and_plot_vrg_dga(dga_conf = dga_conf, distributor=qiw_distributor)
+
+# ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
+# # %%
+
 
 
 #
@@ -279,110 +302,6 @@ if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma_dga=sigma_dg
 # comm.Barrier()
 #
 
-#
-#
-#
-# # ------------------------------------ NON LOCAL SCHWINGER DYSON EQUATION ----------------------------------------------
-#
-#
-# dga_sde, dmft_sde, gamma_dmft, dga_sde_sf_contrib = ldga.lambda_dga(config=config, verbose=verbose, outpfunc=log)
-# comm.Barrier()
-# log("Lambda-Dga finished %s", time.strftime("%c"))
-# # %% Save output and generate plots. Non master rank delete unnecessary objects.
-# if(comm.rank != 0):
-#     del gamma_dmft, dmft_sde, dga_sde_sf_contrib
-#     gc.collect()
-# elif(comm.rank == 0):
-
-#
-#     # Create DMFT Green's function:
-#     gf_dict_dmft = twop.create_gk_dict(sigma=dmft1p['sloc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
-#                                   mu0=dmft1p['mu'], niv_cut=niv_urange)
-#     ind_fs_dmft = bz.find_fermi_surface_peak(ak_fs=-1. / np.pi * gf_dict_dmft['gk'][:, :, :, niv_urange].imag, kgrid=k_grid)
-#     plotting.plot_giwk_fs(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft',
-#                           ind_fs=ind_fs_dmft)
-#     plotting.plot_giwk_qpd(giwk=gf_dict_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dmft')
-#     del gf_dict_dmft
-#     gc.collect()
-#
-#     # Create the DGA Green's functions:
-#     gf_dict = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
-#                                   mu0=dmft1p['mu'])
-#     gf_dict_mu_dmft = twop.create_gk_dict(sigma=dga_sde['sigma'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'], n=dmft1p['n'],
-#                                   mu0=dmft1p['mu'],adjust_mu=False)
-#     np.savetxt(output_path + 'mu.txt', [[gf_dict['mu'],dmft1p['mu']], [gf_dict['n'], gf_dict_mu_dmft['n']]], delimiter=',',
-#                fmt='%.9f')
-#
-#
-#
-#
-#     gf_dict_nc = twop.create_gk_dict(sigma=dga_sde['sigma_nc'], kgrid=k_grid.grid, hr=hr, beta=dmft1p['beta'],
-#                                      n=dmft1p['n'], mu0=dmft1p['mu'])
-#
-#
-#     # Find specific locations on the Fermi-arc:
-#     ak_fs = -1. / np.pi * gf_dict['gk'][:, :, :, niv_urange].imag
-#     ak_fs_mu_dmft = -1. / np.pi * gf_dict_mu_dmft['gk'][:, :, :, niv_urange].imag
-#     ind_node = bz.find_arc_node(ak_fs=ak_fs, kgrid=k_grid)
-#     ind_anti_node = bz.find_arc_anti_node(ak_fs=ak_fs, kgrid=k_grid)
-#     ind_fs = bz.find_fermi_surface_peak(ak_fs=ak_fs, kgrid=k_grid)
-#     ind_fs_mu_dmft = bz.find_fermi_surface_peak(ak_fs=ak_fs_mu_dmft, kgrid=k_grid)
-#
-#     ak_fs_nc = -1. / np.pi * gf_dict_nc['gk'][:, :, :, niv_urange].imag
-#     ind_node_nc = bz.find_arc_node(ak_fs=ak_fs_nc, kgrid=k_grid)
-#     ind_anti_node_nc = bz.find_arc_anti_node(ak_fs=ak_fs_nc, kgrid=k_grid)
-#
-#     # DGA with adjusted mu:
-#     plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga',
-#                           ind_fs=ind_fs)
-#     plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
-#
-#     # DGA with mu from DMFT:
-#     plotting.plot_giwk_fs(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft',
-#                           ind_fs=ind_fs_mu_dmft)
-#     plotting.plot_giwk_qpd(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dmft')
-#
-#     # Slight variant of the DGA:
-#     plotting.plot_giwk_fs(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
-#     plotting.plot_giwk_qpd(giwk=gf_dict_nc['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_nc')
-#
-#
-#     # Plot Giw:
-#     vn_list = [grids['vn_urange'], grids['vn_urange']]
-#     giw_list = [gf_dict['gk'].mean(axis=(0, 1, 2)), gf_dict_nc['gk'].mean(axis=(0, 1, 2))]
-#     labels = [r'$G_{DGA}(\nu)$', r'$G_{DGA-NC}(\nu)$']
-#     plotting.plot_siw(vn_list=vn_list, siw_list=giw_list, labels_list=labels, plot_dir=output_path, niv_plot=100,
-#                       name='giw_loc')
-#
-#     np.savetxt(output_path + 'loc_nodes_antinode.txt',
-#                [k_grid.kmesh.transpose((1, 2, 3, 0))[ind_node], k_grid.kmesh.transpose((1, 2, 3, 0))[ind_anti_node]],
-#                delimiter=',',
-#                fmt='%.9f')
-#
-#     # Plot self-energy at specific Fermi-arc locations
-#     siw_dga_an = dga_sde['sigma'][ind_anti_node]
-#     siw_dga_n = dga_sde['sigma'][ind_node]
-#     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
-#     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
-#     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
-#     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
-#                       niv_plot=10, name='siw_at_bz_points', ms=5)
-#
-#     siw_dga_an = dga_sde['sigma_nc'][ind_anti_node_nc]
-#     siw_dga_n = dga_sde['sigma_nc'][ind_node]
-#     vn_list = [grids['vn_dmft'], grids['vn_urange'], grids['vn_urange']]
-#     siw_list = [dmft1p['sloc'], siw_dga_n, siw_dga_an]
-#     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DGA; Node}(\nu)$', r'$\Sigma_{DGA; Anti-Node}(\nu)$']
-#     plotting.plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=output_path, niv_plot_min=0,
-#                       niv_plot=10, name='siw_at_bz_points_nc', ms=5)
-#
-
-#
-#
-#     # Manual garbage collection:
-#     del gf_dict_nc
-#     del dmft_sde
-#     gc.collect()
 #
 #
 #
@@ -420,21 +339,7 @@ if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma_dga=sigma_dg
 #     plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
 #                          name='dens_w0')
 #
-#
-# #%%
-# # Plot the contribution of the real/imaginary part of the spin-fermion vertex.
-# if(analyse_spin_fermion_contributions and comm.rank == 0):
-#     output_path_sp = output.uniquify(output_path + 'SpinFermionContributions') + '/'
-#     os.mkdir(output_path_sp)
-#     np.save(output_path_sp + 'dga_sde_sf_contrib.npy',dga_sde_sf_contrib, allow_pickle=True)
-#     plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_magn_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spre')
-#     plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_magn_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='magn_spim')
-#     plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_dens_re'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spre')
-#     plotting.plot_siwk_fs(siwk=dga_sde_sf_contrib['sigma_dens_im'], plot_dir=output_path_sp, kgrid=k_grid, do_shift=True, name='dens_spim')
-#
-#     del dga_sde_sf_contrib
-#     gc.collect()
-#
+
 # #%%
 # # Extrapolate the self-energy to the Fermi-level via polynomial fit:
 # if(comm.rank == 0):
@@ -507,43 +412,7 @@ if (comm.rank == 0): plotting.giwk_plots(dga_conf = dga_conf, sigma_dga=sigma_dg
 #
 #     del gf_dict, gf_dict_mu_dmft
 #     gc.collect()
-# # ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
-# # # %%
-# if (comm.rank == 0):
-#     import FourPoint as fp
-#     qiw_distributor = mpiaux.MpiDistributor(ntasks=box_sizes['niw_core'] * q_grid.nk_irr, comm=comm,
-#                                             output_path=output_path,
-#                                             name='Qiw')
-#
-#     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.grid + (grids['wn_core'],),
-#                               keys=('qx', 'qy', 'qz', 'iw'),
-#                               my_slice=None)
-#
-#     vrg_dens, vrg_magn = fp.load_spin_fermion(output_path=output_path, name='Qiw',mpi_size=comm.size, nq=q_grid.nk_irr,niv=niv_vrg_save,niw=niw_vrg_save)
-#     vrg_dens = q_grid.irrk2fbz(mat=vrg_dens)
-#     vrg_magn = q_grid.irrk2fbz(mat=vrg_magn)
-#
-#     #plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_dens_fs', vrg_fs=np.flip(vrg_dens[...,0,niv_vrg_save], (0,)), q_grid=q_grid)
-#     plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_dens_fs', vrg_fs=vrg_dens[...,0,niv_vrg_save], q_grid=q_grid)
-#     plotting.plot_spin_fermion_fs(output_path=output_path, name='spin_fermion_magn_fs', vrg_fs=vrg_magn[...,0,niv_vrg_save], q_grid=q_grid)
-#
-#     # Plot the spin-fermion vertex as special locations in the BZ:
-#     labels = [r'$\gamma_{dens; Node}$', r'$\gamma_{dens; Anti-Node}$', r'$\gamma_{dens; k-mean}$']
-#     vrg_w0 = [vrg_dens[ind_node][0,:], vrg_dens[ind_anti_node][0,:], vrg_dens.mean(axis=(0,1,2))[0,:]]
-#     plotting.plot_spin_fermion_w0_special_points(output_path=output_path, name='spin_fermion_dens_sl', vrg_w0=vrg_w0, labels=labels)
-#
-#     labels = [r'$\gamma_{magn; Node}$', r'$\gamma_{magn; Anti-Node}$', r'$\gamma_{magn; k-mean}$']
-#     vrg_w0 = [vrg_magn[ind_node][0,:], vrg_magn[ind_anti_node][0,:], vrg_magn.mean(axis=(0,1,2))[0,:]]
-#     plotting.plot_spin_fermion_w0_special_points(output_path=output_path, name='spin_fermion_magn_sl', vrg_w0=vrg_w0, labels=labels)
-#
-#     spin_fermion_vertex = {
-#         'vrg_dens': vrg_dens,
-#         'vrg_magn': vrg_magn
-#     }
-#
-#     np.save(output_path + 'spin_fermion_vertex.npy', spin_fermion_vertex)
-#     del spin_fermion_vertex, vrg_dens, vrg_magn
-#     gc.collect()
+
 #
 #
 # # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
