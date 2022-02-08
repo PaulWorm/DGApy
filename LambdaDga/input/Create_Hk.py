@@ -22,8 +22,8 @@ nky = 200
 nkz = 1
 # t0  = -0.879
 t = 1.0
-tp = -0.1
-tpp = 0.1
+tp = -0.15
+tpp = 0.075
 
 hr = hr_mod.Ba2CuO4_plane()
 kgrid = bz.KGrid(nk=(nkx,nky,nkz))

@@ -41,16 +41,16 @@ class two_point():
             self.set_vn()
         self._iv = (self._vn * 2 + 1) * 1j * np.pi / self._beta
 
-def create_gk_dict(sigma=None,kgrid=None,hr=None,beta=None,n=None,mu0=None, adjust_mu=True, niv_cut=None):
 
-    if(niv_cut is not None):
+def create_gk_dict(dga_conf=None, sigma=None, mu0=None, adjust_mu=True, niv_cut=None):
+    if (niv_cut is not None):
         niv = sigma.shape[-1] // 2
-        sigma = sigma[...,niv-niv_cut:niv+niv_cut]
+        sigma = sigma[..., niv - niv_cut:niv + niv_cut]
 
-    gk_dga_generator = GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr,
-                                                    sigma=sigma)
-    if(adjust_mu):
-        mu_dga = gk_dga_generator.adjust_mu(n=n, mu0=mu0)
+    gk_dga_generator = GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+                                               sigma=sigma)
+    if (adjust_mu):
+        mu_dga = gk_dga_generator.adjust_mu(n=dga_conf.sys.n, mu0=mu0)
     else:
         mu_dga = mu0
     n_dga = gk_dga_generator.get_fill(mu=mu_dga)
@@ -201,7 +201,7 @@ class GreensFunctionGenerator():
         wn = int(qiw[-1])
         kgrid = self.add_q_to_kgrid(q=q)
         ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[...,niv:]
+        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[..., niv:]
         iv = self.get_iv(niv=niv, wn=wn)[niv:]
         return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
 
@@ -210,10 +210,9 @@ class GreensFunctionGenerator():
         wn = int(qiw[-1])
         kgrid = self.add_q_to_kgrid(q=q)
         ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[...,:niv]
+        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[..., :niv]
         iv = self.get_iv(niv=niv, wn=wn)[:niv]
         return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
-
 
     def get_iv(self, niv=0, wn=0):
         if (niv == -1):
@@ -245,12 +244,14 @@ class GreensFunctionGenerator():
                                beta=self.beta, smom0=self.smom[0], verbose=verbose)
         return mu
 
-    def get_fill(self,mu=None, verbose=False):
+    def get_fill(self, mu=None, verbose=False):
         iv = self.get_iv(niv=-1, wn=0)
         ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
         hloc = np.mean(ek)
-        n,_ = chempot.get_fill(iv=iv, hk=ek, siwk=self.sigma, beta=self.beta, smom0=self.smom[0], hloc=hloc, mu=mu, verbose=verbose)
+        n, _ = chempot.get_fill(iv=iv, hk=ek, siwk=self.sigma, beta=self.beta, smom0=self.smom[0], hloc=hloc, mu=mu,
+                                verbose=verbose)
         return n
+
 
 # ======================================================================================================================
 # ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------
@@ -305,16 +306,17 @@ if __name__ == '__main__':
     index_grid_keys = ('qx', 'qy', 'qz', 'iw')
     qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (0,), keys=index_grid_keys)
     qx = q_grid.grid['qx'][0]
-    qy = q_grid.grid['qy'][nqf//2]
+    qy = q_grid.grid['qy'][nqf // 2]
     qz = q_grid.grid['qz'][0]
-    q = [qx,qy,qz,0]
-    gkpq = g_generator.generate_gk(mu=dmft1p['mu'], qiw=q + [0,], niv=niv_urange)
-
+    q = [qx, qy, qz, 0]
+    gkpq = g_generator.generate_gk(mu=dmft1p['mu'], qiw=q + [0, ], niv=niv_urange)
 
     # Plot the Fermi-surface:
     import Plotting as plotting
 
-    plotting.plot_giwk_fs(giwk=gk.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange, name='gk')
-    plotting.plot_giwk_fs(giwk=gkpq.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange, name='gkpq')
+    plotting.plot_giwk_fs(giwk=gk.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange,
+                          name='gk')
+    plotting.plot_giwk_fs(giwk=gkpq.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange,
+                          name='gkpq')
 
 #

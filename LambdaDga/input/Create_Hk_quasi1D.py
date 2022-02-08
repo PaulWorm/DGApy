@@ -16,8 +16,8 @@ kpoints = 200
 Nkz = 1
 # t0  = -0.879
 t = 1.0
-tp = -0.1
-tpp = 0.1
+tp = -0.15
+tpp = 0.075
 # generate non-interacting 2d Hamiltonian
 # kmesh = np.linspace(-(kpoints)//2+1, kpoints//2, kpoints, endpoint=True)/float(kpoints)
 kmesh = np.linspace(0, kpoints, kpoints, endpoint=False) / float(kpoints)

@@ -10,6 +10,7 @@ import copy
 import numpy as np
 import Indizes as ind
 import MatsubaraFrequencies as mf
+import Config as conf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -799,15 +800,15 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw_indizes=None, q_grid=None):
-    beta = dmft_input['beta']
-    u = dmft_input['u']
+def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_indizes=None):
+    beta = dga_conf.sys.beta
+    u = dga_conf.sys.u
     mu = dmft_input['mu']
-    niv_urange = box_sizes['niv_urange']
-    niv_asympt = box_sizes['niv_asympt']
+    niv_urange = dga_conf.box.niv_urange
+    niv_asympt = dga_conf.box.niv_asympt
     siw = dmft_input['sloc']
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr, sigma=siw)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=siw)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
 
@@ -817,7 +818,7 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
     for iqw in range(qiw_indizes.shape[0]):
         wn = qiw_indizes[iqw][-1]
         q_ind = qiw_indizes[iqw][0]
-        q = q_grid.irr_kmesh[:, q_ind]
+        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
@@ -833,16 +834,16 @@ def rpa_susceptibility(dmft_input=None, box_sizes=None, hr=None, kgrid=None, qiw
     chi_rpa_magn.mat_to_array()
 
     chi = {
-        'chi_rpa_dens': chi_rpa_dens,
-        'chi_rpa_magn': chi_rpa_magn
+        'dens': chi_rpa_dens,
+        'magn': chi_rpa_magn
     }
 
     return chi
 
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box_sizes=None, qiw_grid=None, niw=None,
-                       file=None, do_pairing_vertex=False, q_grid=None):
+def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_dmft=None, qiw_grid=None,
+                       file=None):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -853,19 +854,20 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     :param qiw_grid: [nqx*nqy*nqz*2*niw,4] flattened meshgrid. Layout: {qx,qy,qz,iw}
     :return:
     '''
-    if (do_pairing_vertex):
+    if (dga_conf.opt.do_pairing_vertex):
         import PairingVertex as pv
     beta = dmft_input['beta']
     u = dmft_input['u']
     mu = dmft_input['mu']
-    niv_core = box_sizes['niv_core']
-    niv_pp = box_sizes['niv_pp']
-    niv_urange = box_sizes['niv_urange']
-    niw_vrg_save = box_sizes['niw_vrg_save']
-    niv_vrg_save = box_sizes['niv_vrg_save']
+    niw = dga_conf.box.niw_core
+    niv_core = dga_conf.box.niv_core
+    niv_pp = dga_conf.box.niv_pp
+    niv_urange = dga_conf.box.niv_urange
+    niw_vrg_save = dga_conf.box.niw_vrg_save
+    niv_vrg_save = dga_conf.box.niv_vrg_save
     siw = dmft_input['sloc']
-    gamma_dens_loc = local_sde['gamma_dens']
-    gamma_magn_loc = local_sde['gamma_magn']
+    gamma_dens_loc = gamma_dmft['dens']
+    gamma_magn_loc = gamma_dmft['magn']
 
     chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
     chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
@@ -873,13 +875,13 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     vrg_dens = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=kgrid, hr=hr, sigma=siw)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=siw)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
     gk_core.cut_self_iv(niv_cut=niv_core)
 
-    if (do_pairing_vertex):
+    if (dga_conf.opt.do_pairing_vertex):
         ivn = np.arange(-niv_pp, niv_pp)
         omega = np.zeros((2 * niv_pp, 2 * niv_pp))
         for i, vi in enumerate(ivn):
@@ -889,8 +891,8 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
-        q = q_grid.irr_kmesh[:, q_ind]
-        qiw = np.append(-q, wn) # WARNING: Here I am not sure if it should be +q or -q.
+        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(-q, wn)  # WARNING: Here I am not sure if it should be +q or -q.
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
@@ -912,8 +914,10 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         chiq_magn_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
 
-        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core, niv_urange=niv_urange)
-        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core, niv_urange=niv_urange)
+        vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
+                                                                   niv_urange=niv_urange)
+        vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
+                                                                   niv_urange=niv_urange)
 
         chi_dens_asympt.mat[iqw] = chiq_dens_urange.mat
         chi_magn_asympt.mat[iqw] = chiq_magn_urange.mat
@@ -921,7 +925,7 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
 
-        if (do_pairing_vertex):
+        if (dga_conf.opt.do_pairing_vertex):
             if (np.abs(wn) < 2 * niv_pp):
                 condition = omega == wn
 
@@ -944,10 +948,10 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
                 file[group + 'condition/'] = condition
 
         # Save the lowest 5 frequencies for the spin-fermion vertex::
-        if(np.abs(wn) < niw_vrg_save):
+        if (np.abs(wn) < niw_vrg_save):
             group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
-            file[group + 'vrg_magn/'] = beta * vrgq_magn.mat[niv_urange-niv_vrg_save:niv_urange+niv_vrg_save]
-            file[group + 'vrg_dens/'] = beta * vrgq_dens.mat[niv_urange-niv_vrg_save:niv_urange+niv_vrg_save]
+            file[group + 'vrg_magn/'] = beta * vrgq_magn.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
+            file[group + 'vrg_dens/'] = beta * vrgq_dens.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
 
     chi_dens_asympt.mat_to_array()
     chi_magn_asympt.mat_to_array()
@@ -955,24 +959,25 @@ def dga_susceptibility(dmft_input=None, local_sde=None, hr=None, kgrid=None, box
     vrg_dens.set_qiw_mat()
     vrg_magn.set_qiw_mat()
 
-
-    dga_susc = {
-        'chi_dens_asympt': chi_dens_asympt,
-        'chi_magn_asympt': chi_magn_asympt,
-        'vrg_dens': vrg_dens,
-        'vrg_magn': vrg_magn
+    dga_chi = {
+        'dens': chi_dens_asympt,
+        'magn': chi_magn_asympt
     }
-    return dga_susc
+    dga_vrg = {
+        'dens': vrg_dens,
+        'magn': vrg_magn
+    }
+    return dga_chi, dga_vrg
 
 
-def load_spin_fermion(output_path=None, name='Qiw',mpi_size=None, nq=None,niv=None,niw=None):
+def load_spin_fermion(output_path=None, name='Qiw', mpi_size=None, nq=None, niv=None, niw=None):
     '''WARNING: This currently works only if we are using positive matsubaras only. '''
     import h5py
     import re
 
     # Collect data from subfiles (This is quite ugly, as it is hardcoded to my structure. This should be replaced by a general routine):
-    vrg_dens = np.zeros((nq, niw, 2*niv), dtype=complex)
-    vrg_magn = np.zeros((nq, niw, 2*niv), dtype=complex)
+    vrg_dens = np.zeros((nq, niw, 2 * niv), dtype=complex)
+    vrg_magn = np.zeros((nq, niw, 2 * niv), dtype=complex)
 
     for ir in range(mpi_size):
         fname = output_path + name + 'Rank{0:05d}'.format(ir) + '.hdf5'
@@ -981,14 +986,51 @@ def load_spin_fermion(output_path=None, name='Qiw',mpi_size=None, nq=None,niv=No
             # extract the q indizes from the group name!
             irrq = np.array(re.findall("\d+", key1), dtype=int)[0]
             wn = np.array(re.findall("\d+", key1), dtype=int)[1]
-            if(wn < niw):
-                #wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
-                vrg_magn[irrq, wn,:] = file_in.file[key1 + '/vrg_magn/'][()]
-                vrg_dens[irrq, wn,:] = file_in.file[key1 + '/vrg_dens/'][()]
+            if (wn < niw):
+                # wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
+                vrg_magn[irrq, wn, :] = file_in.file[key1 + '/vrg_magn/'][()]
+                vrg_dens[irrq, wn, :] = file_in.file[key1 + '/vrg_dens/'][()]
 
         file_in.close()
 
     return vrg_dens, vrg_magn
+
+
+def gather_qiw_and_build_fbziw(dga_conf=None, mat=None,distributor=None, qiw_grid=None):
+    ''' Gather a {q,iw} object and rebuild the full q, iw structure'''
+    mat = distributor.allgather(rank_result=mat)
+    mat = dga_conf.q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(mat))
+    mat = mf.wplus2wfull(mat=mat)
+    return mat
+
+def ladder_susc_gather_qiw_and_build_fbziw(dga_conf=None, distributor=None, mat=None, qiw_grid=None, qiw_grid_fbz=None, channel=None):
+    ''' Gather a Ladder suszeptibility object and rebuild the full q, iw structure'''
+    gathered_qiw = LadderSusceptibility(qiw=qiw_grid_fbz.meshgrid, channel=channel, u=dga_conf.sys.u,
+                                        beta=dga_conf.sys.beta)
+    gathered_qiw.mat = gather_qiw_and_build_fbziw(dga_conf=dga_conf, mat=mat,distributor=distributor,qiw_grid=qiw_grid)
+    return gathered_qiw
+
+def gather_save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_dga=None, distributor=None, qiw_grid=None, qiw_grid_fbz=None):
+    chi_dens_lambda = ladder_susc_gather_qiw_and_build_fbziw(distributor=distributor, mat=chi_dga['dens'].mat,
+                                                    qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz,
+                                                    dga_conf=dga_conf, channel='dens')
+    chi_magn_lambda = ladder_susc_gather_qiw_and_build_fbziw(distributor=distributor, mat=chi_dga['magn'].mat,
+                                                    qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz,
+                                                    dga_conf=dga_conf, channel='magn')
+    chi_lambda = {
+        'dens': chi_dens_lambda,
+        'magn': chi_magn_lambda,
+    }
+    np.save(dga_conf.nam.output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
+    string_temp = 'Chi[q=(0,0),iw=0,{}]: {}'
+    np.savetxt(dga_conf.nam.output_path + 'Knight_shift.txt',
+               [string_temp.format('magn', chi_magn_lambda.mat[0, 0, 0, dga_conf.box.niw_core]),
+                string_temp.format('dens', chi_dens_lambda.mat[0, 0, 0, dga_conf.box.niw_core])], delimiter=' ',fmt='%s')
+    import Plotting as plotting
+    plotting.plot_chi_fs(chi=chi_lambda['magn'].mat.real, output_path=dga_conf.nam.output_path, kgrid=dga_conf.q_grid,
+                         name='magn_w0')
+    plotting.plot_chi_fs(chi=chi_lambda['dens'].mat.real, output_path=dga_conf.nam.output_path, kgrid=dga_conf.q_grid,
+                         name='dens_w0')
 
 
 if __name__ == "__main__":

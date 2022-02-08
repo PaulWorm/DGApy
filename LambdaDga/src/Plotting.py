@@ -15,6 +15,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import MatsubaraFrequencies as mf
 import OrnsteinZernickeFunction as ozfunc
 import BrillouinZone as bz
+import Config as conf
+import TwoPoint as twop
 
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
@@ -37,13 +39,13 @@ class MidpointNormalize(colors.Normalize):
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def add_afzb(ax=None, kx=None, ky=None, lw=1.0, shift_pi=True):
-    if(shift_pi):
+    if (shift_pi):
         kx = kx - np.pi
         ky = ky - np.pi
         ax.plot(-ky, ky - np.pi, '--k', lw=lw)
         ax.plot(ky, ky - np.pi, '--k', lw=lw)
     else:
-        ax.plot(ky, np.pi - ky , '--k', lw=lw)
+        ax.plot(ky, np.pi - ky, '--k', lw=lw)
         ax.plot(ky, ky - np.pi, '--k', lw=lw)
     ax.plot(kx, 0 * kx, 'k', lw=lw)
     ax.plot(0 * ky, ky, 'k', lw=lw)
@@ -60,40 +62,119 @@ def insert_colorbar(ax=None, im=None):
     plt.colorbar(im, cax=cax, orientation='vertical')
 
 
-def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map = 7, wplot=1):
+def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None):
+
+
+    # Plot Siw-check:
+    vn_list = [dga_conf.box.vn_dmft, dga_conf.box.vn_urange, dga_conf.box.vn_urange, dga_conf.box.vn_urange]
+    siw_list = [dmft1p['sloc'], dmft_sde['siw'], sigma_dga['sigma'].mean(axis=(0, 1, 2)), sigma_dga['sigma_nc'].mean(axis=(0, 1, 2))]
+    labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
+    plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100)
+
+    # Plot non-local Siw contributions:
+    vn_list = [dga_conf.box.vn_urange, dga_conf.box.vn_urange]
+    siw_dga_magn_ksum = 3*sigma_dga['magn'].mean(axis=(0, 1, 2))  - 3 * dmft_sde['magn']
+    siw_dga_dens_ksum = -sigma_dga['dens'].mean(axis=(0, 1, 2))  +  dmft_sde['dens']
+    siw_list = [siw_dga_magn_ksum, siw_dga_dens_ksum]
+    labels = [r'$\Sigma_{DGA-Magn}(\nu)$', r'$\Sigma_{DGA-Dens}(\nu)$']
+    plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100,name='siw_channel_contribution')
+
+    # Plot self-energy at the Fermi-surface:
+    plot_siwk_fs(siwk=sigma_dga['sigma'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True)
+    plot_siwk_fs(siwk=3*sigma_dga['magn']- 3 * dmft_sde['magn'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='magn')
+    plot_siwk_fs(siwk=-sigma_dga['dens'] + dmft_sde['dens'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dens')
+    plot_siwk_fs(siwk=sigma_dga['sigma'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True)
+    plot_siwk_fs(siwk=sigma_dga['sigma_nc'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='nc')
+
+def giwk_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None):
+    # Create the DGA Green's functions:
+    gf_dict = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma_dga['sigma'], mu0=dmft1p['mu'], adjust_mu=True)
+    ind_gf0 = bz.find_qpd_zeros(qpd=(1. / gf_dict['gk'][:, :, :, gf_dict['niv']]).real, kgrid=dga_conf.k_grid)
+    plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga',
+                          ind_fs=ind_gf0)
+    plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga')
+    niv_plot = 100 # np.min(100,dga_conf.box.niv_urange)
+    plot_siw_along_fs(vn=dga_conf.box.vn_urange, siwk=sigma_dga['sigma'], ind_fs=ind_gf0, output_path=dga_conf.nam.output_path, niv_plot=niv_plot,name='sigma_along_fs')
+
+def plot_siw_along_fs(siwk=None,ind_fs=None,vn=None, niv_plot = 10,niv_plot_min=-1, output_path=None, name='sigma_along_fs'):
+
+    ind_v = np.logical_and(vn >= niv_plot_min, vn <= niv_plot)
+
+    n_plots = len(ind_fs)
+    line_colors = plt.cm.rainbow(np.linspace(0, 1, n_plots))
+    lines = []
+
+    plt.figure()
+    plt.subplot(211)
+
+    for i, ind in enumerate(ind_fs):
+        tmp, = plt.plot(vn[ind_v], siwk[ind][ind_v].real,'-o', color=line_colors[i])
+        lines.append(tmp)
+    plt.legend(handles=[lines[0], lines[-1]], labels=['Anti-Node', 'Node'])
+    plt.xlabel(r'$\omega$')
+    plt.ylabel(r'$\Re \Sigma$')
+    plt.subplot(212)
+    for i, ind in enumerate(ind_fs):
+        plt.plot(vn[ind_v], siwk[ind][ind_v].imag,'-o', color=line_colors[i])
+    plt.hlines(0,vn[ind_v][0],vn[ind_v][-1],linestyles='dashed', colors='k')
+    plt.xlabel(r'$\omega$')
+    plt.ylabel(r'$\Im \Sigma$')
+    plt.tight_layout()
+    if (output_path is not None):
+        plt.savefig(output_path + '{}.png'.format(name))
+    plt.close()
+
+
+def plot_vrg_dmft(vrg_dmft=None, beta=None, niv_plot=None, output_path=None):
+    # Local spin-fermion vertex:
+    plot_vrg_loc(vrg=vrg_dmft['magn'].mat * beta, niv_plot=niv_plot, pdir=output_path,
+                 name='vrg_magn_loc')
+    plot_vrg_loc(vrg=vrg_dmft['dens'].mat * beta, niv_plot=niv_plot, pdir=output_path,
+                 name='vrg_dens_loc')
+
+
+def plot_gamma_dmft(gamma_dmft=None, output_path=None, niw_core=None):
+    plot_vertex_vvp(vertex=gamma_dmft['magn'].mat[niw_core, :, :].real, pdir=output_path,
+                    name='gamma_magn')
+    plot_vertex_vvp(vertex=gamma_dmft['dens'].mat[niw_core, :, :].real, pdir=output_path,
+                    name='gamma_dens')
+
+
+def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map=7, wplot=1):
     nk = k_grid.nk
     v0_ind = v_real == 0
     gk_cont_shift = bz.shift_mat_by_pi(mat=gk_cont, nk=nk)
     extent = bz.get_extent_pi_shift(kgrid=k_grid)
 
-    cuts = np.round(np.linspace(1,nk[0]//4,n_map,endpoint=True)).astype(int)
+    cuts = np.round(np.linspace(1, nk[0] // 4, n_map, endpoint=True)).astype(int)
 
-    ind_fs = bz.find_qpd_zeros(qpd=(1./gk_cont[:, :, :, v0_ind]).real, kgrid=k_grid)
+    ind_fs = bz.find_qpd_zeros(qpd=(1. / gk_cont[:, :, :, v0_ind]).real, kgrid=k_grid)
     kx_fs = np.array([k_grid.kmesh[0][i] for i in ind_fs])
     ky_fs = np.array([k_grid.kmesh[1][i] for i in ind_fs])
 
-    fig, axes = plt.subplots(2,4,figsize=[13,6])
+    fig, axes = plt.subplots(2, 4, figsize=[13, 6])
     axes = axes.flatten()
 
-    im = axes[0].imshow(-1./np.pi * gk_cont_shift.imag[:,:,0,v0_ind], extent=extent,cmap='terrain', origin='lower', aspect='auto')
+    im = axes[0].imshow(-1. / np.pi * gk_cont_shift.imag[:, :, 0, v0_ind], extent=extent, cmap='terrain',
+                        origin='lower', aspect='auto')
     axes[0].set_ylabel('$k_x$')
     axes[0].set_xlabel('$k_y$')
     axes[0].plot(-kx_fs, -ky_fs, color='k')
     insert_colorbar(ax=axes[0], im=im)
-    axes[0].set_xlim([extent[0],0])
-    axes[0].set_ylim([extent[2],0])
+    axes[0].set_xlim([extent[0], 0])
+    axes[0].set_ylim([extent[2], 0])
     for i in range(n_map):
-        im = axes[i+1].imshow(-1. / np.pi * gk_cont_shift.imag[cuts[i],:, 0, :].T, cmap='terrain', aspect='auto',
-                            origin='lower', extent=extent)
-        insert_colorbar(ax=axes[i+1], im=im)
-        axes[0].plot(k_grid.ky-np.pi,(k_grid.kx[cuts[i]]-np.pi) * np.ones((nk[1])),  '--', color = 'orange')
-        kx_line_ind = np.argmin(np.abs(ky_fs-k_grid.kx[cuts[i]]))
-        axes[i+1].vlines(-ky_fs[kx_line_ind],-wplot,wplot,'k', ls='--')
+        im = axes[i + 1].imshow(-1. / np.pi * gk_cont_shift.imag[cuts[i], :, 0, :].T, cmap='terrain', aspect='auto',
+                                origin='lower', extent=extent)
+        insert_colorbar(ax=axes[i + 1], im=im)
+        axes[0].plot(k_grid.ky - np.pi, (k_grid.kx[cuts[i]] - np.pi) * np.ones((nk[1])), '--', color='orange')
+        kx_line_ind = np.argmin(np.abs(ky_fs - k_grid.kx[cuts[i]]))
+        axes[i + 1].vlines(-ky_fs[kx_line_ind], -wplot, wplot, 'k', ls='--')
 
     for ax in axes[1:]:
         ax.hlines(0, -np.pi, np.pi, 'k')
         ax.set_ylim([-wplot, wplot])
-        ax.set_xlim([extent[2],0])
+        ax.set_xlim([extent[2], 0])
         ax.set_ylabel('$\omega$')
         ax.set_xlabel('$k_y$')
 
@@ -102,6 +183,7 @@ def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None,
     plt.savefig(output_path + '{}.png'.format(name))
     plt.show()
     plt.close()
+
 
 def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
@@ -132,16 +214,16 @@ def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=
     plt.show()
     plt.close()
 
-def plot_spin_fermion_w0_special_points(output_path=None, name='', vrg_w0=None, labels=None):
 
+def plot_spin_fermion_w0_special_points(output_path=None, name='', vrg_w0=None, labels=None):
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 6))
 
     n_loc = np.shape(vrg_w0)[0]
     niv = np.shape(vrg_w0)[-1] // 2
     v = mf.vn(n=niv)
     for i in range(n_loc):
-        ax[0].plot(v,vrg_w0[i].real, '-o', label=labels[i])
-        ax[1].plot(v,vrg_w0[i].imag, '-o', label=labels[i])
+        ax[0].plot(v, vrg_w0[i].real, '-o', label=labels[i])
+        ax[1].plot(v, vrg_w0[i].imag, '-o', label=labels[i])
 
     ax[0].set_ylabel('$\Re \gamma$')
     ax[1].set_ylabel('$\Im \gamma$')
@@ -158,7 +240,7 @@ def plot_spin_fermion_w0_special_points(output_path=None, name='', vrg_w0=None, 
 
 
 def plot_spin_fermion_fs(output_path=None, name='', vrg_fs=None, q_grid=None, lw=1.0):
-    vrg_plot =  vrg_fs#np.squeeze(bz.shift_mat_by_pi(mat=vrg_fs, nk=q_grid.nk))
+    vrg_plot = vrg_fs  # np.squeeze(bz.shift_mat_by_pi(mat=vrg_fs, nk=q_grid.nk))
 
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
@@ -179,15 +261,16 @@ def plot_spin_fermion_fs(output_path=None, name='', vrg_fs=None, q_grid=None, lw
     plt.show()
     plt.close()
 
+
 def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=-0.2, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
-    if(w_int == None):
+    if (w_int == None):
         w0_ind = v_real == 0
-        gk_fs = gk[:,:,0,w0_ind]
+        gk_fs = gk[:, :, 0, w0_ind]
     else:
         ind_int = np.logical_and(v_real < 0, w_int < v_real)
-        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int])/np.abs(w_int)
+        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
 
     awk_fs = np.squeeze(bz.shift_mat_by_pi(mat=-1. / np.pi * gk_fs.imag, nk=k_grid.nk))
     gk_real = np.squeeze(bz.shift_mat_by_pi(mat=gk_fs.real, nk=k_grid.nk))
@@ -227,7 +310,7 @@ def plot_ploints_on_fs(output_path=None, gk_fs=None, k_grid=None, ind_fs=None, n
         kx = kx - np.pi
         ky = ky - np.pi
 
-    gk_fs_plot = bz.shift_mat_by_pi(mat=gk_fs,nk=k_grid.nk)
+    gk_fs_plot = bz.shift_mat_by_pi(mat=gk_fs, nk=k_grid.nk)
 
     extent = [kx[0], kx[-1], ky[0], ky[-1]]
 
@@ -474,6 +557,16 @@ def plot_giwk_fs(giwk=None, plot_dir=None, kgrid=None, do_shift=False, kz=0, niv
         plot_fs_peaks(ax=ax[0][1], k_grid=kgrid, ind_fs=ind_fs)
         plot_fs_peaks(ax=ax[1][0], k_grid=kgrid, ind_fs=ind_fs)
         plot_fs_peaks(ax=ax[1][1], k_grid=kgrid, ind_fs=ind_fs)
+
+        n_plots = len(ind_fs)
+        line_colors = plt.cm.rainbow(np.linspace(0, 1, n_plots))
+        for i, ind in enumerate(ind_fs):
+            ax[0][0].plot(-kgrid.kx[ind[0]], -kgrid.ky[ind[1]], 'o', color=line_colors[i])
+            ax[0][1].plot(-kgrid.kx[ind[0]], -kgrid.ky[ind[1]], 'o', color=line_colors[i])
+            ax[1][0].plot(-kgrid.kx[ind[0]], -kgrid.ky[ind[1]], 'o', color=line_colors[i])
+            ax[1][1].plot(-kgrid.kx[ind[0]], -kgrid.ky[ind[1]], 'o', color=line_colors[i])
+
+
     plot_contour(ax=ax[0][0], siwk=giwk.real, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu',
                  midpoint_norm=True)
     plot_contour(ax=ax[0][1], siwk=giwk.imag, kgrid=kgrid, do_shift=do_shift, kz=kz, niv_plot=niv_plot, cmap='RdBu',
@@ -562,7 +655,7 @@ def plot_contour(ax=None, siwk=None, kgrid=None, do_shift=False, kz=0, niv_plot=
         kx = kx - np.pi
         ky = ky - np.pi
 
-    siwk_plot = bz.shift_mat_by_pi(mat=siwk[:, :, kz, niv_plot],nk=kgrid.nk)
+    siwk_plot = bz.shift_mat_by_pi(mat=siwk[:, :, kz, niv_plot], nk=kgrid.nk)
     lw = 1.0
 
     def add_lines(ax):

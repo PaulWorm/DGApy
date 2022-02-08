@@ -4,6 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 import FourPoint as fp
+import Config as conf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -65,64 +66,87 @@ def lambda_correction_single_use_rpa(lambda_start=0, chir: fp.LadderSusceptibili
     return lambda_
 
 
-def lambda_correction(chi_magn_ladder=None, chi_dens_ladder=None, chi_dens_rpa=None, chi_magn_rpa=None,
-                      chi_magn_dmft=None,
-                      chi_dens_dmft=None, chi_magn_rpa_loc=None, chi_dens_rpa_loc=None, nq=None, use_rpa_for_lc=False,
-                      lc_use_only_positive=True):
-    if (lc_use_only_positive):
-        mask_dens_loc = chi_dens_dmft.mat > 0
-        mask_magn_loc = chi_magn_dmft.mat > 0
+def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None, chi_rpa=None, chi_dmft=None, chi_rpa_loc=None):
+    if (dga_conf.opt.lc_use_only_positive):
+        mask_dens_loc = chi_dmft['dens'].mat > 0
+        mask_magn_loc = chi_dmft['magn'].mat > 0
     else:
-        mask_dens_loc = np.ones(np.shape(chi_dens_dmft.mat), dtype=bool)
-        mask_magn_loc = np.ones(np.shape(chi_magn_dmft.mat), dtype=bool)
+        mask_dens_loc = np.ones(np.shape(chi_dmft['dens'].mat), dtype=bool)
+        mask_magn_loc = np.ones(np.shape(chi_dmft['magn'].mat), dtype=bool)
 
     n_dens = np.sum(mask_dens_loc)
     n_magn = np.sum(mask_magn_loc)
 
-    # Make sure that the masks have the same size (though I am not sure if this is really needed)
-    # if(n_dens > n_magn):
-    #     mask_dens_loc = mask_magn_loc
-    # else:
-    #     mask_magn_loc = mask_dens_loc
+    lambda_dens_start = get_lambda_start(chi_ladder['dens'])
+    lambda_magn_start = get_lambda_start(chi_ladder['magn'])
+    beta = dga_conf.sys.beta
+    nq = dga_conf.q_grid.nk_tot
+    chi_dens_loc_sum = 1. / beta * np.sum(chi_dmft['dens'].mat[mask_dens_loc])
+    chi_magn_loc_sum = 1. / beta * np.sum(chi_dmft['magn'].mat[mask_magn_loc])
+    chi_dens_ladder_sum = 1. / (beta * dga_conf.q_grid.nk_tot) * np.sum(chi_ladder['dens'].mat)
 
-
-    lambda_dens_start = get_lambda_start(chi_dens_ladder)
-    lambda_magn_start = get_lambda_start(chi_magn_ladder)
-    beta = chi_magn_ladder.beta
-    chi_dens_loc_sum = 1. / beta * np.sum(chi_dens_dmft.mat[mask_dens_loc])
-    chi_magn_loc_sum = 1. / beta * np.sum(chi_magn_dmft.mat[mask_magn_loc])
-    chi_dens_ladder_sum = 1. / (beta*nq) * np.sum(chi_dens_ladder.mat)
-
-    if (use_rpa_for_lc):
-        chi_dens_loc_sum = chi_dens_loc_sum + 1. / beta * np.sum(chi_dens_rpa_loc.mat)
-        lambda_dens_single = lambda_correction_single_use_rpa(lambda_start=lambda_dens_start, chir=chi_dens_ladder,
-                                                              chir_rpa=chi_dens_rpa, chi_loc_sum=chi_dens_loc_sum,
+    if (dga_conf.opt.use_urange_for_lc):
+        chi_dens_loc_sum = chi_dens_loc_sum + 1. / beta * np.sum(chi_rpa_loc['dens'].mat)
+        lambda_dens_single = lambda_correction_single_use_rpa(lambda_start=lambda_dens_start, chir=chi_ladder['dens'],
+                                                              chir_rpa=chi_rpa['dens'], chi_loc_sum=chi_dens_loc_sum,
                                                               nq=nq, mask=mask_dens_loc)
 
-        chi_magn_loc_sum = chi_magn_loc_sum + 1. / beta * np.sum(chi_magn_rpa_loc.mat)
-        lambda_magn_single = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_magn_ladder,
-                                                              chir_rpa=chi_magn_rpa, chi_loc_sum=chi_magn_loc_sum,
+        chi_magn_loc_sum = chi_magn_loc_sum + 1. / beta * np.sum(chi_rpa_loc['magn'].mat)
+        lambda_magn_single = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
+                                                              chir_rpa=chi_rpa['magn'], chi_loc_sum=chi_magn_loc_sum,
                                                               nq=nq, mask=mask_magn_loc)
 
-        chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum - 1. / (beta*nq) * np.sum(chi_dens_rpa.mat)
-        lambda_magn_totdens = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_magn_ladder,
-                                                               chir_rpa=chi_magn_rpa, chi_loc_sum=chi_sum, nq=nq,
+        chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum - 1. / (beta * nq) * np.sum(
+            chi_rpa['dens'].mat)
+        lambda_magn_totdens = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
+                                                               chir_rpa=chi_rpa['magn'], chi_loc_sum=chi_sum, nq=nq,
                                                                mask=mask_magn_loc)
     else:
-        lambda_dens_single = lambda_correction_single(lambda_start=lambda_dens_start, chir=chi_dens_ladder,
+        lambda_dens_single = lambda_correction_single(lambda_start=lambda_dens_start, chir=chi_ladder['dens'],
                                                       chi_loc_sum=chi_dens_loc_sum, nq=nq, mask=mask_dens_loc)
-        lambda_magn_single = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_magn_ladder,
+        lambda_magn_single = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
                                                       chi_loc_sum=chi_magn_loc_sum, nq=nq, mask=mask_magn_loc)
 
         chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum
-        lambda_magn_totdens = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_magn_ladder,
+        lambda_magn_totdens = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
                                                        chi_loc_sum=chi_sum, nq=nq, mask=mask_magn_loc)
 
+    if (dga_conf.opt.lambda_correction_type == 'spch'):
+        lambda_dens = lambda_dens_single
+        lambda_magn = lambda_magn_single
+    elif (dga_conf.opt.lambda_correction_type == 'sp'):
+        lambda_dens = 0.0
+        lambda_magn = lambda_magn_totdens
+    elif (dga_conf.opt.lambda_correction_type == 'sp_only'):
+        lambda_dens = 0.0
+        lambda_magn = lambda_magn_single
+    elif (dga_conf.opt.lambda_correction_type == 'none'):
+        lambda_dens = 0.0
+        lambda_magn = 0.0
+    else:
+        raise ValueError('Unknown value for lambda_correction_type!')
+
     lambda_ = {
-        'lambda_dens_single': lambda_dens_single,
-        'lambda_magn_single': lambda_magn_single,
-        'lambda_magn_totdens': lambda_magn_totdens,
-        'n_sum_dens': n_dens,
-        'n_sum_magn': n_magn
+        'dens': lambda_dens,
+        'magn': lambda_magn
     }
-    return lambda_
+    n_lambda = {
+        'dens': n_dens,
+        'magn': n_magn
+    }
+
+    return lambda_, n_lambda
+
+
+def build_chi_lambda(dga_conf: conf.DgaConfig = None, chi_ladder = None, chi_rpa=None, lambda_=None):
+    chi_ladder['dens'].mat = use_lambda(chi_ladder=chi_ladder['dens'].mat, lambda_=lambda_['dens'])
+    chi_ladder['magn'].mat = use_lambda(chi_ladder=chi_ladder['magn'].mat, lambda_=lambda_['magn'])
+    if (dga_conf.opt.use_urange_for_lc):
+        if (np.size(dga_conf.box.wn_rpa) > 0):
+            chi_rpa['dens'].mat = use_lambda(chi_ladder=chi_rpa['dens'].mat, lambda_=lambda_['dens'])
+            chi_rpa['magn'].mat = use_lambda(chi_ladder=chi_rpa['magn'].mat, lambda_=lambda_['magn'])
+
+
+
+def use_lambda(chi_ladder=None, lambda_= 0.0):
+    return 1. / (1. / chi_ladder + lambda_)

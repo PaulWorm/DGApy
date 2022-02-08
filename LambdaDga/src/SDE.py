@@ -8,6 +8,8 @@ import copy
 import numpy as np
 import TwoPoint as twop
 import FourPoint as fp
+import Config as conf
+import MatsubaraFrequencies as mf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -32,79 +34,148 @@ def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, u=None):
     return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat[:, None] * giw_grid, axis=0)
 
 
-def sde_dga(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
-            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, nq=None, box_sizes=None, q_grid=None):
-    assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
-    niv_urange = box_sizes['niv_urange']
+def sde_dga(dga_conf: conf.DgaConfig = None, vrg = None, chir: fp.LadderSusceptibility = None,
+            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None):
+    #assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
+    niv_urange = dga_conf.box.niv_urange
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
 
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
-        q = q_grid.irr_kmesh[:, q_ind]
+        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange)
-        sigma += (vrg.mat[iqw, niv_urange:][None, None, None, :] * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
-                 q_grid.irrk_count[q_ind]
-        if(wn != 0):
+        sigma += (vrg[iqw, niv_urange:][None, None, None, :] * (
+                1. - chir.u_r * chir.mat[iqw]) - 1. / chir.beta) * gkpq.gk * \
+                 dga_conf.q_grid.irrk_count[q_ind]
+        if (wn != 0):
             qiw = np.append(q, -wn)
             gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
-            sigma += (np.conj(np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:]) * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq * \
-                     q_grid.irrk_count[q_ind]
+            sigma += (np.conj(np.flip(vrg[iqw, :], axis=-1)[None, None, None, niv_urange:]) * (
+                    1. - chir.u_r * np.conj(chir.mat[iqw])) - 1. / chir.beta) * gkpq * \
+                     dga_conf.q_grid.irrk_count[q_ind]
 
-    sigma = - vrg.u_r / (2.0) * 1. / (nq) * sigma
+    sigma = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma
     return sigma
 
-def sde_dga_spin_fermion_contributions(vrg: fp.LadderObject = None, chir: fp.LadderSusceptibility = None,
-            g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, nq=None, box_sizes=None, q_grid=None):
-    assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
-    niv_urange = box_sizes['niv_urange']
-    sigma_spre = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
-    sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
 
-    for iqw in range(qiw_grid.shape[0]):
-        wn = qiw_grid[iqw][-1]
-        q_ind = qiw_grid[iqw][0]
-        q = q_grid.irr_kmesh[:, q_ind]
-        qiw = np.append(q, wn)
-        gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange)
-        sigma_spre += (vrg.mat[iqw, niv_urange:][None, None, None, :].real * (1. - vrg.u_r * chir.mat[iqw]) - 1. / vrg.beta) * gkpq.gk * \
-                 q_grid.irrk_count[q_ind]
-        sigma_spim += (1j*vrg.mat[iqw, niv_urange:][None, None, None, :].imag * (1. - vrg.u_r * chir.mat[iqw])) * gkpq.gk * \
-                 q_grid.irrk_count[q_ind]
-        if(wn != 0):
-            qiw = np.append(q, -wn)
-            gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
-            sigma_spre += (np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:].real * (1. - vrg.u_r * np.conj(chir.mat[iqw])) - 1. / vrg.beta) * gkpq * \
-                     q_grid.irrk_count[q_ind]
-            sigma_spim += (-1j*np.flip(vrg.mat[iqw, :],axis=-1)[None, None, None, niv_urange:].imag * (1. - vrg.u_r * np.conj(chir.mat[iqw]))) * gkpq * \
-                     q_grid.irrk_count[q_ind]
+def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_grid=None, dmft_input=None,
+                    distributor=None):
+    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+                                               sigma=dmft_input['sloc'])
 
-    sigma_spre = - vrg.u_r / (2.0) * 1. / (nq) * sigma_spre
-    sigma_spim = - vrg.u_r / (2.0) * 1. / (nq) * sigma_spim
-    sigma = sigma_spre + sigma_spim
-    return sigma, sigma_spre, sigma_spim
+    if (dga_conf.analyse_spin_fermion_contributions):
+        sigma_dens_re = sde_dga(dga_conf=dga_conf, vrg=vrg['dens'].mat.real, chir=chi['dens'], g_generator=g_generator,
+                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+        sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg=1j * vrg['dens'].mat.imag, chir=chi['dens'], g_generator=g_generator,
+                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+        sigma_magn_re = sde_dga(dga_conf=dga_conf, vrg=vrg['magn'].mat.real, chir=chi['magn'], g_generator=g_generator,
+                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+        sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg=1j * vrg['magn'].mat.imag, chir=chi['magn'], g_generator=g_generator,
+                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+        sigma_dens_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_re, distributor=distributor)
+        sigma_dens_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_im, distributor=distributor)
+        sigma_magn_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn_re, distributor=distributor)
+        sigma_magn_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn_im, distributor=distributor)
+
+        sigma_dens = sigma_dens_re + sigma_dens_im
+        sigma_magn = sigma_magn_re + sigma_magn_im
 
 
-def rpa_sde(chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None, niv_giw=None, mu=0,
-            nq=None, u=None, qiw_grid=None, q_grid=None):
-    u_r = fp.get_ur(u=u, channel=chir.channel)
+
+    else:
+        sigma_dens = sde_dga(dga_conf=dga_conf, vrg=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
+                             mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+        sigma_magn = sde_dga(dga_conf=dga_conf, vrg=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
+                             mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+        sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
+        sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
+
+        sigma_dens_re = None
+        sigma_dens_im = None
+        sigma_magn_re = None
+        sigma_magn_im = None
+
+    sigma = {
+        'dens': sigma_dens,
+        'magn': sigma_magn
+    }
+
+    sigma_components = {
+        'dens_re': sigma_dens_re,
+        'dens_im': sigma_dens_im,
+        'magn_re': sigma_magn_re,
+        'magn_im': sigma_magn_im,
+    }
+
+    return sigma, sigma_components
+
+def reduce_and_symmetrize_fbz(dga_conf: conf.DgaConfig = None, mat=None, distributor=None):
+    ''' Reduce the results from the different ranks and create full {k,iv}.'''
+    mat = distributor.allreduce(mat)
+    mat = mf.vplus2vfull(mat=mat)
+    mat = dga_conf.k_grid.symmetrize_irrk(mat=mat)
+    return mat
+
+
+def rpa_sde(dga_conf=None, chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None,
+            niv_giw=None, mu=0, qiw_grid=None):
+    u_r = fp.get_ur(u=dga_conf.sys.u, channel=chir.channel)
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_giw), dtype=complex)
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
-        q = q_grid.irr_kmesh[:, q_ind]
+        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
-        sigma += chir.mat[iqw, None] * gkpq.gk * q_grid.irrk_count[q_ind]
-        if(wn != 0):
+        sigma += chir.mat[iqw, None] * gkpq.gk * dga_conf.q_grid.irrk_count[q_ind]
+        if (wn != 0):
             qiw = np.append(q, -wn)
             gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
-            sigma += np.conj(chir.mat[iqw, None]) * gkpq.gk * q_grid.irrk_count[q_ind]
+            sigma += np.conj(chir.mat[iqw, None]) * gkpq.gk * dga_conf.q_grid.irrk_count[q_ind]
 
-    sigma = u_r ** 2 / (2. * chir.beta) * 1. / (nq) * sigma
+    sigma = u_r ** 2 / (2. * chir.beta) * 1. / (dga_conf.q_grid.nk_tot) * sigma
     return sigma
 
+
+def rpa_sde_wrapper(dga_conf: conf.DgaConfig = None, dmft_input=None, chi=None, qiw_grid=None, distributor=None):
+    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+                                               sigma=dmft_input['sloc'])
+    sigma_dens = rpa_sde(dga_conf=dga_conf,chir=chi['dens'], g_generator=g_generator, niv_giw=dga_conf.box.niv_urange,
+                         mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+    sigma_magn = rpa_sde(dga_conf=dga_conf,chir=chi['magn'], g_generator=g_generator, niv_giw=dga_conf.box.niv_urange,
+                         mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+
+    sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
+    sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
+
+    sigma = {
+        'dens': sigma_dens,
+        'magn': sigma_magn
+    }
+    return sigma
+
+
+def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga = None, sigma_rpa = None, dmft_sde = None, dmft1p=None):
+    if (dga_conf.box.wn_rpa.size > 0):
+        sigma_dga['dens'] = sigma_dga['dens'] + sigma_rpa['dens']
+        sigma_dga['magn'] = sigma_dga['magn'] + sigma_rpa['magn']
+
+    sigma_dmft_clip = dmft1p['sloc'][dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
+    sigma_dga['sigma'] = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde['magn'] + 2 * \
+                dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
+    sigma_dga['sigma_nc'] = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
+                   dmft_sde['siw'] + sigma_dmft_clip
+    return sigma_dga
+
+
+# ---------------------------------------------- MPI FUNCTIONS ---------------------------------------------------------
 
 # -------------------------------------------- WRAPPER FUNCTIONS -------------------------------------------------------
 
@@ -114,8 +185,8 @@ def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
     beta = dmft_input['beta']
     u = dmft_input['u']
 
-    niv_urange = box_sizes['niv_urange']
-    niv_asympt = box_sizes['niv_asympt']
+    niv_urange = box_sizes.niv_urange
+    niv_asympt = box_sizes.niv_asympt
 
     chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
     chi0_asympt = copy.deepcopy(chi0_urange)
@@ -128,13 +199,16 @@ def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
     siw_rpa_magn = local_rpa_sde(chir=chi_rpa_magn, niv_giw=niv_urange, u=u)
 
     rpa_sde = {
-        'siw_rpa_dens': siw_rpa_dens,
-        'siw_rpa_magn': siw_rpa_magn,
-        'chi_rpa_dens': chi_rpa_dens,
-        'chi_rpa_magn': chi_rpa_magn
+        'dens': siw_rpa_dens,
+        'magn': siw_rpa_magn
     }
 
-    return rpa_sde
+    chi_rpa = {
+        'dens': chi_rpa_dens,
+        'magn': chi_rpa_magn
+    }
+
+    return rpa_sde, chi_rpa
 
 
 # ======================================================================================================================

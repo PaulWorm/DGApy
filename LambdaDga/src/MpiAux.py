@@ -110,6 +110,10 @@ class MpiDistributor():
         self.comm.Allgatherv(rank_result,[tot_result, self.sizes * other_dims])
         return tot_result
 
+    def allreduce(self, rank_result = None):
+        tot_result = np.zeros(np.shape(rank_result), dtype=rank_result.dtype)
+        self.comm.Allreduce(rank_result, tot_result)
+        return tot_result
 
 if __name__ == '__main__':
 
