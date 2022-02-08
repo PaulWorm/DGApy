@@ -26,6 +26,7 @@ def fit_oz_spin(qgrid, chi):
     params = sciopt.curve_fit(oz_spin_w0,qgrid,chi,p0=initial_guess)
     return params
 
+
 if __name__ == '__main__':
     nk = (8,8,1)
     qgrid = bz.KGrid(nk=nk)

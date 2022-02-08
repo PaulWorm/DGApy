@@ -12,18 +12,9 @@ import numpy as np
 import Hr as hr_mod
 import Hk as hamk
 import Indizes as ind
-import w2dyn_aux
-import MatsubaraFrequencies as mf
-import BrillouinZone as bz
-import LambdaDga as ldga
-import time
 import Output as output
 import Input as input
-import ChemicalPotential as chempot
 import TwoPoint as twop
-import OrnsteinZernickeFunction as ozfunc
-import RealTime as rt
-import gc
 import Plotting as plotting
 from mpi4py import MPI as mpi
 import MpiAux as mpiaux
@@ -32,11 +23,13 @@ import LocalRoutines as lr
 import SDE as sde
 import FourPoint as fp
 import LambdaCorrection as lc
-
+import Loggers as loggers
 # ----------------------------------------------- PARAMETERS -----------------------------------------------------------
 
 # Define MPI communicator:
 comm = mpi.COMM_WORLD
+
+
 
 # Define Config objects:
 names = conf.Names()
@@ -132,16 +125,26 @@ names.output_path = output.uniquify(names.output_path + output_folder) + '/'
 fname_ladder_vertex = names.output_path + names.fname_ladder_vertex
 
 names.output_path_sp = output.uniquify(names.output_path + 'SpinFermion') + '/'
+names.output_path_pf = output.uniquify(names.output_path + 'PolyFit') + '/'
+names.output_path_ac = output.uniquify(names.output_path + 'AnaCont') + '/'
 
 
 # Create the DGA Config object:
 dga_conf = conf.DgaConfig(BoxSizes=box_sizes, Options=options, SystemParameter=sys_param, Names=names,
                           ek_funk=hamk.ek_3d)
 
+
+
 # --------------------------------------------- CREATE THE OUTPUT PATHS -------------------------------------------------
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path)
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_sp)
+if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_pf)
+if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_ac)
 
+# Initialize Logger:
+logger = loggers.MpiLogger(logfile=dga_conf.nam.output_path + 'dga.log', comm=comm)
+
+logger.log_event(message=' Config Init and folder set up done!')
 # ------------------------------------------------ DMFT 1P INPUT -------------------------------------------------------
 dmft1p = input.load_1p_data(dga_conf=dga_conf)
 box_sizes.niv_dmft = dmft1p['niv']
@@ -151,6 +154,7 @@ sys_param.n = dmft1p['n']
 
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'config.npy', dga_conf)
 
+logger.log_event(message=' DMFT one-particle input read!')
 # ----------------------------------------------- LOAD GAMMA -----------------------------------------------------------
 gamma_dmft = input.get_gamma_loc(dga_conf=dga_conf, giw_dmft=dmft1p['gloc'])
 
@@ -158,6 +162,7 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'gamma_dmft.npy', gamma_
 if (comm.rank == 0): plotting.plot_gamma_dmft(gamma_dmft=gamma_dmft, output_path=dga_conf.nam.output_path,
                                               niw_core=dga_conf.box.niw_core)
 
+logger.log_cpu_time(task=' DMFT gamma extraction ')
 # -------------------------------------- LOCAL SCHWINGER DYSON EQUATION ------------------------------------------------
 dmft_sde, chi_dmft, vrg_dmft = lr.local_dmft_sde_from_gamma(dga_conf=dga_conf, giw=dmft1p['gloc'],
                                                             gamma_dmft=gamma_dmft)
@@ -173,6 +178,7 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'vrg_dmft.npy', vrg_dmft
 if (comm.rank == 0): plotting.plot_vrg_dmft(vrg_dmft=vrg_dmft, beta=dga_conf.sys.beta, niv_plot=dga_conf.box.niv_urange,
                                             output_path=dga_conf.nam.output_path)
 
+logger.log_cpu_time(task=' DMFT SDE ')
 # ----------------------------------------- CREATE MPI DISTRIBUTORS ----------------------------------------------------
 qiw_distributor = mpiaux.MpiDistributor(ntasks=dga_conf.box.wn_core_plus.size * dga_conf.q_grid.nk_irr, comm=comm,
                                         output_path=dga_conf.nam.output_path,
@@ -193,12 +199,14 @@ qiw_grid_rpa = ind.IndexGrids(grid_arrays=(dga_conf.q_grid.irrk_ind_lin,) + (dga
 # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -----------------------------------------------
 chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, dga_conf=dga_conf, qiw_indizes=qiw_grid_rpa.my_mesh)
 
+logger.log_cpu_time(task=' RPA susceptibility ')
 # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 qiw_distributor.open_file()
 chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, qiw_grid=qiw_grid.my_mesh,
                                          file=qiw_distributor.file, gamma_dmft=gamma_dmft)
 qiw_distributor.close_file()
 
+logger.log_cpu_time(task=' ladder susceptibility ')
 # ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
 
 
@@ -247,6 +255,7 @@ lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lamb
 if (comm.rank == 0): fp.gather_save_and_plot_chi_lambda(dga_conf=dga_conf, chi_dga=chi_dga, distributor=qiw_distributor,
                                                         qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
 
+logger.log_cpu_time(task=' lambda correction ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
 sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga, qiw_grid=qiw_grid,
@@ -257,6 +266,8 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_r
 
 sigma_dga = sde.build_dga_sigma(dga_conf = dga_conf, sigma_dga = sigma_dga, sigma_rpa = sigma_rpa, dmft_sde = dmft_sde, dmft1p=dmft1p)
 
+
+logger.log_cpu_time(task=' DGA SDE ')
 # --------------------------------------------------- PLOTTING ---------------------------------------------------------
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
 if (comm.rank == 0): plotting.sigma_plots(dga_conf = dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p)
@@ -275,11 +286,35 @@ if(dga_conf.opt.analyse_spin_fermion_contributions and comm.rank == 0):
 
 if (comm.rank == 0): output.prepare_and_plot_vrg_dga(dga_conf = dga_conf, distributor=qiw_distributor)
 
-# ---------------------------------------------- SPIN FERMION VERTEX ---------------------------------------------------
-# # %%
+
+logger.log_cpu_time(task=' Plotting ')
+# ------------------------------------------------- OZ-FIT -------------------------------------------------------------
+if(comm.rank == 0): output.fit_and_plot_oz(dga_conf=dga_conf)
+
+logger.log_cpu_time(task=' OZ-fit ')
+# ------------------------------------------------- POLYFIT ------------------------------------------------------------
+# Extrapolate the self-energy to the Fermi-level via polynomial fit:
+if(comm.rank == 0): output.poly_fit(dga_conf = dga_conf, mat_data = sigma_dga['sigma'],name='sigma_extrap', n_extrap=n_extrap, order_extrap=order_extrap)
+if(comm.rank == 0): output.poly_fit(dga_conf = dga_conf, mat_data = sigma_dga['sigma_nc'],name='sigma_nc_extrap', n_extrap=n_extrap, order_extrap=order_extrap)
+
+if(comm.rank == 0):
+    gk = twop.create_gk_dict(dga_conf=dga_conf,sigma=dmft1p['sloc'],mu0=dmft1p['mu'], adjust_mu=True)
+    output.poly_fit(dga_conf = dga_conf, mat_data = gk['gk'],name='giwk_dmft', n_extrap=n_extrap, order_extrap=order_extrap)
+
+if(comm.rank == 0):
+    gk = twop.create_gk_dict(dga_conf=dga_conf,sigma=sigma_dga['sigma'],mu0=dmft1p['mu'], adjust_mu=True)
+    output.poly_fit(dga_conf = dga_conf, mat_data = gk['gk'],name='giwk', n_extrap=n_extrap, order_extrap=order_extrap)
+
+if(comm.rank == 0):
+    gk = twop.create_gk_dict(dga_conf=dga_conf,sigma=sigma_dga['sigma_nc'],mu0=dmft1p['mu'], adjust_mu=True)
+    output.poly_fit(dga_conf = dga_conf, mat_data = gk['gk'],name='giwk_nc', n_extrap=n_extrap, order_extrap=order_extrap)
+
+if(comm.rank == 0 and dga_conf.opt.analyse_spin_fermion_contributions):
+    gk = twop.create_gk_dict(dga_conf=dga_conf,sigma=sigma_vrg_re,mu0=dmft1p['mu'], adjust_mu=True)
+    output.poly_fit(dga_conf = dga_conf, mat_data = gk['gk'],name='giwk_vrg_re', n_extrap=n_extrap, order_extrap=order_extrap)
 
 
-
+logger.log_cpu_time(task=' Poly-fits ')
 #
 # # %%
 # # ------------------------------------------------ MAIN ----------------------------------------------------------------
@@ -306,112 +341,9 @@ if (comm.rank == 0): output.prepare_and_plot_vrg_dga(dga_conf = dga_conf, distri
 #
 #
 #
-# #%% OZ-fit to the lambda-correction susceptibility:
-# if(comm.rank == 0):
-#     chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
-#     np.savetxt(output_path + 'lambda_values.txt', [chi_lambda['lambda_dens'], chi_lambda['lambda_magn']], delimiter=',',
-#                fmt='%.9f')
-#
-#     import matplotlib.pyplot as plt
-#     plt.figure()
-#     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_node])
-#     plt.plot(chi_lambda['chi_magn_lambda'].mat.real[ind_anti_node])
-#     plt.savefig(output_path + 'chi_magn_lambda_node_anti_node.png')
-#     plt.show()
-#
-#     plt.figure()
-#     plt.plot(chi_lambda['chi_magn_lambda'].mat.imag[ind_node])
-#     plt.plot(chi_lambda['chi_magn_lambda'].mat.imag[ind_anti_node])
-#     plt.savefig(output_path + 'chi_magn_lambda_node_anti_node_imag.png')
-#     plt.show()
-#
-#     try:
-#         oz_coeff, _ = ozfunc.fit_oz_spin(q_grid, chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core].real.flatten())
-#     except:
-#         oz_coeff = [-1,-1]
-#
-#     np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f')
-#     plotting.plot_oz_fit(chi_w0=chi_lambda['chi_magn_lambda'].mat[:, :, :, niw_core], oz_coeff=oz_coeff, qgrid=q_grid,
-#                          pdir=output_path, name='oz_fit')
-#
-#     plotting.plot_chi_fs(chi=chi_lambda['chi_magn_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
-#                          name='magn_w0')
-#     plotting.plot_chi_fs(chi=chi_lambda['chi_dens_lambda'].mat.real, output_path=output_path, kgrid=q_grid,
-#                          name='dens_w0')
-#
 
-# #%%
-# # Extrapolate the self-energy to the Fermi-level via polynomial fit:
-# if(comm.rank == 0):
-#     import AnalyticContinuation as a_cont
-#     v = mf.v_plus(beta=dmft1p['beta'], n=niv_urange)
-#
-#     siwk_re_fs, siwk_im_fs, siwk_Z = a_cont.extract_coeff_on_ind(siwk=dga_sde['sigma'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
-#     siwk_re_fs = k_grid.irrk2fbz(mat=siwk_re_fs)
-#     siwk_im_fs = k_grid.irrk2fbz(mat=siwk_im_fs)
-#     siwk_Z = k_grid.irrk2fbz(mat=siwk_Z)
-#
-#     siwk_extrap = {
-#         'siwk_re_fs': siwk_re_fs,
-#         'siwk_im_fs': siwk_im_fs,
-#         'siwk_Z': siwk_Z
-#     }
-#
-#     np.save(output_path + 'siwk_extrap.npy', siwk_extrap, allow_pickle=True)
-#
-#     plotting.plot_siwk_extrap(siwk_re_fs=siwk_re_fs, siwk_im_fs=siwk_im_fs, siwk_Z=siwk_Z, output_path=output_path, name='siwk_fs_extrap', k_grid=k_grid)
-#
-#     # Do the same for the nc self-energy
-#     siwk_re_fs, siwk_im_fs, siwk_Z = a_cont.extract_coeff_on_ind(siwk=dga_sde['sigma_nc'].reshape(-1,dga_sde['sigma_nc'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
-#     siwk_re_fs = k_grid.irrk2fbz(mat=siwk_re_fs)
-#     siwk_im_fs = k_grid.irrk2fbz(mat=siwk_im_fs)
-#     siwk_Z = k_grid.irrk2fbz(mat=siwk_Z)
-#
-#     siwk_extrap_nc = {
-#         'siwk_re_fs': siwk_re_fs,
-#         'siwk_im_fs': siwk_im_fs,
-#         'siwk_Z': siwk_Z
-#     }
-#
-#     np.save(output_path + 'siwk_extrap_nc.npy', siwk_extrap_nc, allow_pickle=True)
-#
-#     plotting.plot_siwk_extrap(siwk_re_fs=siwk_re_fs, siwk_im_fs=siwk_im_fs, siwk_Z=siwk_Z, output_path=output_path, name='siwk_fs_extrap_nc', k_grid=k_grid)
-#
-#
-#     # Do the same, but for the Green's function:
-#     giwk_re_fs, giwk_im_fs, giwk_Z = a_cont.extract_coeff_on_ind(siwk=gf_dict['gk'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
-#     giwk_re_fs = k_grid.irrk2fbz(mat=giwk_re_fs)
-#     giwk_im_fs = k_grid.irrk2fbz(mat=giwk_im_fs)
-#     giwk_Z = k_grid.irrk2fbz(mat=giwk_Z)
-#
-#     giwk_extrap = {
-#         'giwk_re_fs': giwk_re_fs,
-#         'giwk_im_fs': giwk_im_fs,
-#         'giwk_Z': giwk_Z
-#     }
-#
-#     np.save(output_path + 'giwk_extrap.npy', giwk_extrap, allow_pickle=True)
-#
-#     plotting.plot_siwk_extrap(siwk_re_fs=giwk_re_fs, siwk_im_fs=giwk_im_fs, siwk_Z=giwk_Z, output_path=output_path, name='giwk_fs_extrap', k_grid=k_grid)
-#
-#     # Do the same, but for the Green's function:
-#     giwk_re_fs, giwk_im_fs, giwk_Z = a_cont.extract_coeff_on_ind(siwk=gf_dict_mu_dmft['gk'].reshape(-1,dga_sde['sigma'].shape[-1])[:,niv_urange:],indizes=k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
-#     giwk_re_fs = k_grid.irrk2fbz(mat=giwk_re_fs)
-#     giwk_im_fs = k_grid.irrk2fbz(mat=giwk_im_fs)
-#     giwk_Z = k_grid.irrk2fbz(mat=giwk_Z)
-#
-#     giwk_extrap = {
-#         'giwk_re_fs': giwk_re_fs,
-#         'giwk_im_fs': giwk_im_fs,
-#         'giwk_Z': giwk_Z
-#     }
-#
-#     np.save(output_path + 'giwk_extrap_mu_dmft.npy', giwk_extrap, allow_pickle=True)
-#
-#     plotting.plot_siwk_extrap(siwk_re_fs=giwk_re_fs, siwk_im_fs=giwk_im_fs, siwk_Z=giwk_Z, output_path=output_path, name='giwk_fs_extrap_mu_dmft', k_grid=k_grid)
-#
-#     del gf_dict, gf_dict_mu_dmft
-#     gc.collect()
+
+
 
 #
 #

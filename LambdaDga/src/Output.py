@@ -8,8 +8,9 @@ import numpy as np
 import Plotting as plotting
 import Config as conf
 import FourPoint as fp
-
-
+import OrnsteinZernickeFunction as ozfunc
+import MatsubaraFrequencies as mf
+import AnalyticContinuation as a_cont
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def uniquify(path=None):
@@ -41,7 +42,7 @@ def spin_fermion_contributions_output(dga_conf=None, sigma_dga_contributions=Non
                           do_shift=True, name='dens_spim')
 
 
-def prepare_and_plot_vrg_dga(dga_conf: conf.DgaConfig = None, output_path=None, distributor=None):
+def prepare_and_plot_vrg_dga(dga_conf: conf.DgaConfig = None, distributor=None):
     output_path = dga_conf.nam.output_path_sp
     vrg_dens, vrg_magn = fp.load_spin_fermion(output_path=dga_conf.nam.output_path, name='Qiw', mpi_size=distributor.comm.size,
                                               nq=dga_conf.q_grid.nk_irr, niv=dga_conf.box.niv_vrg_save,
@@ -59,6 +60,37 @@ def prepare_and_plot_vrg_dga(dga_conf: conf.DgaConfig = None, output_path=None, 
     }
 
     np.save(output_path + 'spin_fermion_vertex.npy', spin_fermion_vertex)
+
+def fit_and_plot_oz(dga_conf: conf.DgaConfig = None):
+    output_path = dga_conf.nam.output_path
+    chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
+    try:
+        oz_coeff, _ = ozfunc.fit_oz_spin(dga_conf.q_grid, chi_lambda['magn'].mat[:, :, :, dga_conf.box.niw_core].real.flatten())
+    except:
+        oz_coeff = [-1,-1]
+
+    np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f')
+    plotting.plot_oz_fit(chi_w0=chi_lambda['magn'].mat[:, :, :, dga_conf.box.niw_core], oz_coeff=oz_coeff, qgrid=dga_conf.q_grid,
+                         pdir=output_path, name='oz_fit')
+
+def poly_fit(dga_conf: conf.DgaConfig = None, mat_data = None,name='poly_cont', n_extrap=4, order_extrap=3):
+    v = mf.v_plus(beta=dga_conf.sys.beta, n=mat_data.shape[-1]//2)
+
+    re_fs, im_fs, Z = a_cont.extract_coeff_on_ind(siwk=np.squeeze(mat_data.reshape(-1, mat_data.shape[-1])[:, mat_data.shape[-1]//2:]), indizes=dga_conf.k_grid.irrk_ind, v=v, N=n_extrap, order=order_extrap)
+    re_fs = dga_conf.k_grid.irrk2fbz(mat=re_fs)
+    im_fs = dga_conf.k_grid.irrk2fbz(mat=im_fs)
+    Z = dga_conf.k_grid.irrk2fbz(mat=Z)
+
+    extrap = {
+        're_fs': re_fs,
+        'im_fs': im_fs,
+        'Z': Z
+    }
+
+    np.save(dga_conf.nam.output_path_pf + '{}.npy'.format(name), extrap, allow_pickle=True)
+    plotting.plot_siwk_extrap(siwk_re_fs=re_fs, siwk_im_fs=im_fs, siwk_Z=Z, output_path=dga_conf.nam.output_path_pf, name=name, k_grid=dga_conf.k_grid)
+
+
 
 
 if __name__ == "__main__":
