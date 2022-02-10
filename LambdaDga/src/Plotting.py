@@ -142,7 +142,7 @@ def plot_gamma_dmft(gamma_dmft=None, output_path=None, niw_core=None):
 
 def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map=7, wplot=1):
     nk = k_grid.nk
-    v0_ind = v_real == 0
+    v0_ind = np.argmin(np.abs(v_real))
     gk_cont_shift = bz.shift_mat_by_pi(mat=gk_cont, nk=nk)
     extent = bz.get_extent_pi_shift(kgrid=k_grid)
 
@@ -262,11 +262,11 @@ def plot_spin_fermion_fs(output_path=None, name='', vrg_fs=None, q_grid=None, lw
     plt.close()
 
 
-def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=-0.2, lw=1.0):
+def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
     if (w_int == None):
-        w0_ind = v_real == 0
+        w0_ind = np.argmin(np.abs(v_real-w_plot))
         gk_fs = gk[:, :, 0, w0_ind]
     else:
         ind_int = np.logical_and(v_real < 0, w_int < v_real)

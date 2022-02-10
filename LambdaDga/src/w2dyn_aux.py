@@ -178,7 +178,8 @@ class w2dyn_file:
             "n": totdens,
             "niv": sloc.shape[0] // 2,
             "gloc": gloc,
-            "sloc": sloc
+            "sloc": sloc,
+            'hartree': totdens*u/2.0
         }
 
         return dmft1p

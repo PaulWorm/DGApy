@@ -1,12 +1,11 @@
 import sys
 import numpy as np
 import scipy.optimize as opt
-import scipy.interpolate as interp
 import kernels
 
 if sys.version_info[0] > 2:
     try:
-        from . import pade
+        from LambdaDga.ana_cont import pade
     except:
         pass
 else:

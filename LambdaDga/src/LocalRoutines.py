@@ -10,11 +10,13 @@ import numpy as np
 
 # ---------------------------------------------- FUNCTIONS -------------------------------------------------------------
 
-def add_rpa_correction(dmft_sde=None,rpa_sde_loc=None,wn_rpa = None):
+def add_rpa_correction(dmft_sde=None,rpa_sde_loc=None,wn_rpa = None, sigma_comp=None):
     if (np.size(wn_rpa) > 0):
         dmft_sde['dens'] = dmft_sde['dens'] + rpa_sde_loc['dens']
         dmft_sde['magn'] = dmft_sde['magn'] + rpa_sde_loc['magn']
         dmft_sde['siw'] = dmft_sde['dens'] + dmft_sde['magn'] + dmft_sde['hartree']
+        if sigma_comp['dens_re'] is not None: sigma_comp['dens_re'] = sigma_comp['dens_re'] + rpa_sde_loc['dens']
+        if sigma_comp['magn_re'] is not None: sigma_comp['magn_re'] = sigma_comp['magn_re'] + rpa_sde_loc['magn']
 
     else:
         dmft_sde['siw'] = dmft_sde['siw'] + dmft_sde['hartree']
@@ -63,8 +65,23 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
                                                            niv_urange=niv_urange,
                                                            u=u)
 
-    siw_dens = sde.local_dmft_sde(vrg=vrg_dens_loc, chir=chi_dens_urange_loc, u=u)
-    siw_magn = sde.local_dmft_sde(vrg=vrg_magn_loc, chir=chi_magn_urange_loc, u=u)
+    if(dga_conf.opt.analyse_spin_fermion_contributions):
+        siw_dens_re = sde.local_dmft_sde(vrg=vrg_dens_loc.mat.real, chir=chi_dens_urange_loc, u=u)
+        siw_dens_im = sde.local_dmft_sde(vrg=1j*vrg_dens_loc.mat.imag, chir=chi_dens_urange_loc, u=u,scal_const=0.0)
+        siw_magn_re = sde.local_dmft_sde(vrg=vrg_magn_loc.mat.real, chir=chi_magn_urange_loc, u=u)
+        siw_magn_im = sde.local_dmft_sde(vrg=1j*vrg_magn_loc.mat.imag, chir=chi_magn_urange_loc, u=u,scal_const=0.0)
+
+        siw_dens = siw_dens_re + siw_dens_im
+        siw_magn = siw_magn_re + siw_magn_im
+
+    else:
+        siw_dens = sde.local_dmft_sde(vrg=vrg_dens_loc.mat, chir=chi_dens_urange_loc, u=u)
+        siw_magn = sde.local_dmft_sde(vrg=vrg_magn_loc.mat, chir=chi_magn_urange_loc, u=u)
+
+        siw_dens_re = None
+        siw_dens_im = None
+        siw_magn_re = None
+        siw_magn_im = None
 
     siw = siw_dens + siw_magn
 
@@ -83,4 +100,11 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
         'magn': chi_magn_urange_loc,
     }
 
-    return dmft_sde, chi_dmft, vrg_dmft
+    sigma_components = {
+        'dens_re': siw_dens_re,
+        'dens_im': siw_dens_im,
+        'magn_re': siw_magn_re,
+        'magn_im': siw_magn_im
+    }
+
+    return dmft_sde, chi_dmft, vrg_dmft, sigma_components

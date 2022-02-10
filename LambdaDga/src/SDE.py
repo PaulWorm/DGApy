@@ -20,11 +20,12 @@ def wn_slices(mat=None, n_cut=None, iw=None):
     return mat_grid
 
 
-def local_dmft_sde(vrg: fp.LocalThreePoint = None, chir: fp.LocalSusceptibility = None, u=None):
-    assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
-    u_r = fp.get_ur(u=u, channel=vrg.channel)
-    giw_grid = wn_slices(mat=chir.giw, n_cut=vrg.niv, iw=chir.iw)
-    return -u_r / 2. * np.sum((vrg.mat * (1. - u_r * chir.mat[:, None]) - 1. / chir.beta) * giw_grid,
+def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None, u=None, scal_const=1.0):
+    #assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
+    u_r = fp.get_ur(u=u, channel=chir.channel)
+    niv = vrg.shape[-1] // 2
+    giw_grid = wn_slices(mat=chir.giw, n_cut=niv, iw=chir.iw)
+    return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat[:, None]) - scal_const / chir.beta) * giw_grid,
                               axis=0)  # The -1./chir.beta is is canceled in the sum. This is only relevant for Fluctuation diagnostics.
 
 
@@ -173,22 +174,23 @@ def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=N
     sigma_dmft_clip = dmft1p['sloc'][
                       dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
     sigma_dga['sigma'] = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde[
-        'magn'] + 2 * \
-                         dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
+        'magn'] + 2 * dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
     sigma_dga['sigma_nc'] = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
                             dmft_sde['siw'] + sigma_dmft_clip
     return sigma_dga
 
 
-def buid_dga_sigma_vrg_re(dga_conf: conf.DgaConfig = None, sigma_dga_components=None, sigma_rpa=None, dmft_sde=None,
+def buid_dga_sigma_vrg_re(dga_conf: conf.DgaConfig = None, sigma_dga_components=None, sigma_rpa=None, dmft_sde_comp=None,
                           dmft1p=None):
     sigma_dmft_clip = dmft1p['sloc'][
                       dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
 
     sigma_dens = sigma_dga_components['dens_re'] + sigma_dga_components['dens_im'] + sigma_rpa['dens']
     sigma_magn = sigma_dga_components['magn_re'] + sigma_rpa['magn']
-    sigma_vrg_re = -1 * (sigma_dens) + 3 * (sigma_magn) + dmft_sde['hartree'] - 2 * \
-                   dmft_sde['magn'] + 2 * dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
+    dmft_sde_sigma = dmft_sde_comp['dens_re'] + dmft_sde_comp['dens_im'] + dmft_sde_comp['magn_re']
+    dmft_dens = dmft_sde_comp['dens_re'] + dmft_sde_comp['dens_im']
+    sigma_vrg_re = -1 * (sigma_dens) + 3 * (sigma_magn) + dmft1p['hartree'] - 2 * \
+                   dmft_sde_comp['magn_re'] + 2 * dmft_dens - dmft_sde_sigma + sigma_dmft_clip
     return sigma_vrg_re
 
 
