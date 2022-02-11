@@ -35,7 +35,7 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
     u = dga_conf.sys.u
     n = dga_conf.sys.n
 
-    iw = dga_conf.wn_core
+    iw = dga_conf.box.wn_core
 
     niv_core = dga_conf.box.niv_core
     niv_urange = dga_conf.box.niv_urange

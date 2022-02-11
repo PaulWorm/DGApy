@@ -1,0 +1,49 @@
+/.idea/
+/LambdaDga/.idea/
+*.suo
+*.user
+.vs/
+[Bb]in/
+[Oo]bj/
+_UpgradeReport_Files/
+[Pp]ackages/
+
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Sphinx documentation
+docs/_build/

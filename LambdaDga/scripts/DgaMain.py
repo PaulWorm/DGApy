@@ -76,9 +76,9 @@ sym_trip = True
 # Define frequency box-sizes:
 box_sizes.niw_core = 10
 box_sizes.niw_urange = 10  # This seems not to save enough to be used.
-box_sizes.niv_core = 10
-box_sizes.niv_invbse = 10
-box_sizes.niv_urange = 20  # Must be larger than niv_invbse
+box_sizes.niv_core = 20
+box_sizes.niv_invbse = 20
+box_sizes.niv_urange = 80  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -317,27 +317,28 @@ logger.log_cpu_time(task=' Poly-fits ')
 
 if dga_conf.opt.do_max_ent_loc:
     if comm.rank == 0:
-        bw_range_loc = np.array([0, 0.5, 1, 2]) * bw
+        bw_range_loc = np.array([0.05,0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]) * bw
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=dmft1p['sloc'],
                                     n_fit=n_fit, adjust_mu=True, name='dmft')
-        output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_dga['sigma'],
+        bw_opt_dga = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_dga['sigma'],
                                     n_fit=n_fit, adjust_mu=True, name='dga')
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
                                     sigma=sigma_dga['sigma_nc'], n_fit=n_fit, adjust_mu=True, name='dga_nc')
         if dga_conf.opt.analyse_spin_fermion_contributions:
-            output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_vrg_re,
+            bw_opt_vrg_re = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_vrg_re,
                                         n_fit=n_fit, adjust_mu=True, name='dga_vrg_re')
     logger.log_cpu_time(task=' MaxEnt local ')
 
+#%%
 if dga_conf.opt.do_max_ent_irrk:
     # Do analytic continuation within the irreducible Brillouin Zone:
-    output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw * 0.5,
+    output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_dga,
                                  sigma=sigma_dga['sigma'], n_fit=n_fit, name='dga')
     logger.log_cpu_time(task=' MaxEnt irrk ')
 
     if dga_conf.opt.analyse_spin_fermion_contributions:
         # Do analytic continuation within the irreducible Brillouin Zone:
-        output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw * 0.5,
+        output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_vrg_re,
                                      sigma=sigma_vrg_re, n_fit=n_fit, name='dga_vrg_re')
         logger.log_cpu_time(task=' MaxEnt irrk vrg_re ')
 

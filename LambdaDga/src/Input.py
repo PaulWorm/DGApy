@@ -34,9 +34,9 @@ def extract_gamma_w2dyn(dga_conf: conf.DgaConfig = None, giw_dmft=None, channel=
     g2_file = w2dyn_aux.g4iw_file(fname=dga_conf.nam.input_path + dga_conf.nam.fname_g2)
 
     # Load Green's function
-    g2 = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel=channel, iw=dga_conf.wn_core), giw=giw_dmft,
+    g2 = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel=channel, iw=dga_conf.box.wn_core), giw=giw_dmft,
                                     channel=channel,
-                                    beta=dga_conf.sys.beta, iw=dga_conf.wn_core)
+                                    beta=dga_conf.sys.beta, iw=dga_conf.box.wn_core)
     g2_file.close()
 
     # Clip them to the size needed:
@@ -46,7 +46,7 @@ def extract_gamma_w2dyn(dga_conf: conf.DgaConfig = None, giw_dmft=None, channel=
     gchi = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2), giw=g2.giw,channel=g2.channel,beta=g2.beta, iw=g2.iw)
 
     # Extract gamma:
-    chi0_urange = fp.LocalBubble(giw=g2.giw, beta=g2.beta, niv_sum=dga_conf.box.niv_urange, iw=dga_conf.wn_core)
+    chi0_urange = fp.LocalBubble(giw=g2.giw, beta=g2.beta, niv_sum=dga_conf.box.niv_urange, iw=dga_conf.box.wn_core)
     gamma = fp.gammar_from_gchir(gchir=gchi, gchi0_urange=chi0_urange, u=dga_conf.sys.u)
 
     return gamma

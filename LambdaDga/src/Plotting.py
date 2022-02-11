@@ -62,6 +62,21 @@ def insert_colorbar(ax=None, im=None):
     plt.colorbar(im, cax=cax, orientation='vertical')
 
 
+def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fit=None, output_path=None, name=None):
+    plt.figure()
+    plt.loglog(bw,chi2, '-o',label='$\chi^2(bw)$')
+    plt.loglog(bw,np.exp(np.polyval(fit[0],np.log10(bw))), label='lin-fit(1)')
+    plt.loglog(bw,np.exp(np.polyval(fit[1],np.log10(bw))), label='lin-fit(2)')
+    plt.vlines(bw_opt,np.min(chi2), np.max(chi2), 'k',label='$bw_{opt}$')
+    plt.legend()
+    plt.xlabel('bw')
+    plt.ylabel('$\chi^2$')
+    plt.tight_layout()
+    plt.savefig(output_path + '{}.png'.format(name))
+    plt.show()
+    plt.close()
+
+
 def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None):
 
 

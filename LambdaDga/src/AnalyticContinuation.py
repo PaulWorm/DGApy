@@ -17,6 +17,70 @@ def v_real_tan(wmax=15, nw=501):
     return np.tan(np.linspace(-np.pi/2.5,np.pi/2.5,num=nw,endpoint=True))*wmax/np.tan(np.pi/2.5)
 
 
+# --------------------------------------- Fit piecewise linear function ------------------------------------------------
+def fit_piecewise(logx, logy, p2_deg=0):
+    """ piecewise linear fit (e.g. for chi2)
+
+    The curve is fitted by two linear curves; for the first few indices,
+    the fit is done by choosing both the slope and the y-axis intercept.
+    If ``p2_deg`` is ``0``, a constant curve is fitted (i.e., the only
+    fit parameter is the y-axis intercept) for the last few indices,
+    if it is ``1`` also the slope is fitted.
+
+    The point (i.e., data point index) up to where the first linear curve
+    is used (and from where the second linear curve is used) is also determined
+    by minimizing the misfit. I.e., we search the minimum misfit with
+    respect to the fit parameters of the linear curve and with respect
+    to the index up to where the first curve is used.
+
+    Parameters
+    ----------
+    logx : array
+        the x-coordinates of the curve that should be fitted piecewise
+    logy : array
+        the y-corrdinates of the curve that should be fitted piecewise
+    p2_deg : int
+        ``0`` or ``1``, giving the polynomial degree of the second curve
+    """
+    chi2 = np.full(len(logx), np.nan)
+    p1 = [0] * len(logx)
+    p2 = [0] * len(logx)
+
+    def denan(what, check=None):
+        if check is None:
+            check = what
+        return what[np.logical_not(np.isnan(check))]
+    for i in range(2, len(logx) - 2):
+        chi2[i] = 0.0
+        try:
+            p1[i], residuals, rank, singular_values, rcond = np.polyfit(
+                denan(logx[:i], logy[:i]), denan(logy[:i]), deg=1, full=True)
+            if len(residuals) > 0:
+                chi2[i] += residuals[0]
+            p2[i], residuals, rank, singular_values, rcond = np.polyfit(
+                denan(logx[i:], logy[i:]), denan(logy[i:]),
+                deg=p2_deg, full=True)
+            if len(residuals) > 0:
+                chi2[i] += residuals[0]
+        except TypeError:
+            p1[i] = np.nan
+            p2[i] = np.nan
+            chi2[i] = np.nan
+    i = np.nanargmin(chi2)
+    if np.isnan(i):
+        raise ValueError('chi2 is all NaN')
+
+    X_x = ((p2[i][1] if p2_deg == 1 else p2[i][0]) - p1[i][1]) / \
+        (p1[i][0] - (p2[i][0] if p2_deg == 1 else 0.0))
+    idx = np.nanargmin(np.abs(logx - X_x))
+
+    if np.isnan(idx):
+        raise ValueError('abs(logx - X_x) is all NaN')
+
+    return idx, (p1[i], p2[i])
+
+
+
 # -------------------------------------------- Pade Approximation ------------------------------------------------------
 
 def pade_kauf(mat=None,v_real=None, beta =None, n_fit =20):
@@ -61,7 +125,7 @@ def check_filling(v_real=None, gloc_cont=None):
     n = np.trapz(-1. / np.pi * gloc_cont[ind_w].imag, v_real[ind_w]) * 2
     return n
 
-def max_ent_loc(me_conf = None, v_real=None, sigma=None,dga_conf=None,niv_cut=None, bw=0.0, nfit=60, adjust_mu=True):
+def max_ent_loc(me_conf = None, v_real=None, sigma=None,dga_conf=None,niv_cut=None, bw=0.0, nfit=60, adjust_mu=True, return_chi2=False):
     # Create Green's function:
     gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dga_conf.sys.mu_dmft, adjust_mu=adjust_mu, niv_cut=niv_cut)
 
@@ -71,9 +135,12 @@ def max_ent_loc(me_conf = None, v_real=None, sigma=None,dga_conf=None,niv_cut=No
         use_preblur = False
     else:
         use_preblur = me_conf.use_preblur
-    gloc_cont = max_ent(mat=gloc, v_real=v_real, beta=me_conf.beta, n_fit=nfit,
-                                    alpha_det_method=me_conf.alpha_det_method, err=me_conf.err, use_preblur=use_preblur, bw=bw)
-    return gloc_cont, gk
+    gloc_cont, chi2 = max_ent(mat=gloc, v_real=v_real, beta=me_conf.beta, n_fit=nfit,
+                                    alpha_det_method=me_conf.alpha_det_method, err=me_conf.err, use_preblur=use_preblur, bw=bw, return_chi2=return_chi2)
+    if(return_chi2):
+        return gloc_cont, gk, chi2
+    else:
+        return gloc_cont, gk
 
 def max_ent_on_fs(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, use_preblur=False, bw=0.0, err=1e-3, nfit=60, adjust_mu=True):
     dmft1p = config['dmft1p']
@@ -136,7 +203,7 @@ def do_max_ent_on_ind_T(mat=None, ind_list=None, v_real=None, beta=None, n_fit=6
 
     return mat_cont
 
-def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6, use_preblur = False, bw=None, optimizer='newton'):
+def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6, use_preblur = False, bw=None, optimizer='newton', return_chi2=False):
     niv_mat = np.size(mat) // 2
     mat_plus = mat[niv_mat:niv_mat + n_fit]
     iv_plus = mf.iv_plus(beta=beta, n=n_fit)
@@ -148,12 +215,16 @@ def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='histor
     error_s = np.ones((n_fit,), dtype=np.float64) * err
     sol, _ = problem.solve(method='maxent_svd', model=model, stdev=error_s, alpha_determination=alpha_det_method,
                                    optimizer=optimizer, preblur=use_preblur, blur_width=bw, verbose=False)
+    chi2 = sol.chi2
     cont_mat = cont.GreensFunction(spectrum=sol.A_opt, wgrid=v_real, kind='fermionic').kkt()
     del problem
     del sol
     del _
     gc.collect()
-    return cont_mat
+    if(return_chi2):
+        return cont_mat, chi2
+    else:
+        return cont_mat
 
 # -------------------------------------------- Matsubara Fit ----------------------------------------------------------
 def extract_coeff_on_ind(siwk=None,indizes=None, v=None, N=4, order=3):

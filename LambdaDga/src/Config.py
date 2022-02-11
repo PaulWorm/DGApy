@@ -304,15 +304,15 @@ class DgaConfig(ConfigBase):
         self.opf = 3  # order of the polynom used for the fit
 
     # Forwarding attributes (kinda polluted the name space, but there should be no reason that it creates errors):
-    def __getattr__(self, attr):
-        if hasattr(self.box, attr):
-            return getattr(self.box, attr)
-        elif (hasattr(self.nam, attr)):
-            return getattr(self.nam, attr)
-        elif (hasattr(self.opt, attr)):
-            return getattr(self.opt, attr)
-        else:
-            return getattr(self.sys, attr)
+    # def __getattr__(self, attr):
+    #     if hasattr(self.box, attr):
+    #         return getattr(self.box, attr)
+    #     elif (hasattr(self.nam, attr)):
+    #         return getattr(self.nam, attr)
+    #     elif (hasattr(self.opt, attr)):
+    #         return getattr(self.opt, attr)
+    #     else:
+    #         return getattr(self.sys, attr)
 
     def set_kgrid(self):
         k_grid = bz.KGrid(nk=self.box.nk)

@@ -107,16 +107,24 @@ def poly_fit(dga_conf: conf.DgaConfig = None, mat_data=None, name='poly_cont'):
 def max_ent_loc_bw_range(dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntConfig = None, bw_range=None, sigma=None,
                          n_fit=None, adjust_mu=True, name=''):
     v_real = me_conf.mesh
+    chi2 = []
     for bw in bw_range:
         # mu-adjusted DGA Green's function:
-        g_cont, gk_dga = a_cont.max_ent_loc(me_conf=me_conf, v_real=v_real, sigma=sigma, dga_conf=dga_conf,
-                                            niv_cut=dga_conf.box.niv_urange, bw=bw, nfit=n_fit, adjust_mu=adjust_mu)
+        g_cont, gk_dga, chi2_tmp = a_cont.max_ent_loc(me_conf=me_conf, v_real=v_real, sigma=sigma, dga_conf=dga_conf,
+                                            niv_cut=dga_conf.box.niv_urange, bw=bw, nfit=n_fit, adjust_mu=adjust_mu, return_chi2=True)
+        chi2.append(chi2_tmp)
         plotting.plot_aw_loc(output_path=dga_conf.nam.output_path_ac, v_real=v_real, gloc=g_cont,
                              name=name + '-bw{}'.format(bw))
         n_int = a_cont.check_filling(v_real=v_real, gloc_cont=g_cont)
         np.savetxt(dga_conf.nam.output_path_ac + 'n_' + name + '_bw{}.txt'.format(bw), [n_int, gk_dga['n']],
                    delimiter=',', fmt='%.9f')
         np.save(dga_conf.nam.output_path_ac + 'gloc_cont_' + name + '_bw{}.npy'.format(bw), g_cont, allow_pickle=True)
+
+    bw_opt_ind,fit = a_cont.fit_piecewise(np.log10(np.flip(bw_range)), np.log10(np.flip(chi2)), p2_deg=1)
+    bw_opt = np.flip(bw_range)[bw_opt_ind]
+    plotting.plot_bw_fit(bw_opt=bw_opt, bw=np.flip(bw_range), chi2=np.flip(chi2), fit=fit, output_path=dga_conf.nam.output_path_ac, name='chi2_bw_{}'.format(name))
+    return bw_opt
+
 
 
 def max_ent_irrk_bw_range(comm=None, dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntConfig = None, bw_range=None,

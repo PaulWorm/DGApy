@@ -66,7 +66,7 @@ def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_gri
     g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
                                                sigma=dmft_input['sloc'])
 
-    if (dga_conf.analyse_spin_fermion_contributions):
+    if (dga_conf.opt.analyse_spin_fermion_contributions):
         sigma_dens_re = sde_dga(dga_conf=dga_conf, vrg=vrg['dens'].mat.real, chir=chi['dens'], g_generator=g_generator,
                                 mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
 
