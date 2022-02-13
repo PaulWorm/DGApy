@@ -843,7 +843,7 @@ def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_ind
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
 def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_dmft=None, qiw_grid=None,
-                       file=None):
+                       file=None, k_grid = None, q_grid = None, hr = None):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
@@ -875,7 +875,7 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     vrg_dens = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=siw)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=k_grid.grid, hr=hr, sigma=siw)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
@@ -891,7 +891,7 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
-        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
+        q = q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(-q, wn)  # WARNING: Here I am not sure if it should be +q or -q.
         wn_lin = np.array(mf.cen2lin(wn, -niw), dtype=int)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)

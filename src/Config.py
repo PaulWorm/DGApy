@@ -317,10 +317,10 @@ class DgaConfig(ConfigBase):
     def set_kgrid(self):
         k_grid = bz.KGrid(nk=self.box.nk)
         if (self.opt.use_fbz):
+            k_grid.set_irrk2fbz()
+        else:
             ek = self.ek_func(kgrid=k_grid.grid, hr=self.sys.hr)
             k_grid.get_irrk_from_ek(ek=ek, dec=self.dec)
-        else:
-            k_grid.set_irrk2fbz()
         return k_grid
 
         # self.vn_dmft = None # Fermionic Matsubara frequencies for DMFT input

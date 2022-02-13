@@ -3,9 +3,8 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import sys, os
-
 sys.path.append('../src/')
-sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
+sys.path.append(os.environ['HOME'] + "/Programs/dga/src")
 import numpy as np
 import Hr as hr_mod
 import Hk as hamk
@@ -45,8 +44,8 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = True
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
@@ -63,8 +62,8 @@ no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
 t = 1.0
-sys_param.hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
-
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+sys_param.hr = hr
 # Eliashberg config object:
 el_conf = conf.EliashbergConfig(k_sym='d-wave')
 
@@ -76,9 +75,9 @@ sym_trip = True
 # Define frequency box-sizes:
 box_sizes.niw_core = 10
 box_sizes.niw_urange = 10  # This seems not to save enough to be used.
-box_sizes.niv_core = 20
-box_sizes.niv_invbse = 20
-box_sizes.niv_urange = 80  # Must be larger than niv_invbse
+box_sizes.niv_core = 10
+box_sizes.niv_invbse = 10
+box_sizes.niv_urange = 20  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -86,9 +85,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 8
+nkx = 24
 nky = nkx
-nqx = 8
+nqx = 24
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -112,6 +111,23 @@ names.output_path_el = output.uniquify(names.output_path + 'Eliashberg') + '/'
 # Create the DGA Config object:
 dga_conf = conf.DgaConfig(BoxSizes=box_sizes, Options=options, SystemParameter=sys_param, Names=names,
                           ek_funk=hamk.ek_3d)
+
+# Create the grids:
+# import BrillouinZone as bz
+# k_grid = bz.KGrid(nk=box_sizes.nk)
+# if (options.use_fbz):
+#     ek = dga_conf.ek_func(kgrid=k_grid.grid, hr=hr)
+#     k_grid.get_irrk_from_ek(ek=ek, dec=11)
+# else:
+#     k_grid.set_irrk2fbz()
+#
+# q_grid = bz.KGrid(nk=box_sizes.nq)
+# if (options.use_fbz):
+#     ek = dga_conf.ek_func(kgrid=q_grid.grid, hr=hr)
+#     q_grid.get_irrk_from_ek(ek=ek, dec=11)
+# else:
+#     q_grid.set_irrk2fbz()
+
 # Parameter for the polynomial extrapolation to the Fermi-level:
 dga_conf.npf = 4
 dga_conf.opf = 3
@@ -195,7 +211,7 @@ logger.log_cpu_time(task=' RPA susceptibility ')
 # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
 qiw_distributor.open_file()
 chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, qiw_grid=qiw_grid.my_mesh,
-                                         file=qiw_distributor.file, gamma_dmft=gamma_dmft)
+                                         file=qiw_distributor.file, gamma_dmft=gamma_dmft, k_grid=dga_conf.k_grid, q_grid=dga_conf.q_grid, hr = dga_conf.sys.hr)
 qiw_distributor.close_file()
 
 logger.log_cpu_time(task=' ladder susceptibility ')
