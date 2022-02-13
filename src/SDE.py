@@ -35,12 +35,19 @@ def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, u=None):
     return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat[:, None] * giw_grid, axis=0)
 
 
-def sde_dga(dga_conf: conf.DgaConfig = None, vrg=None, chir: fp.LadderSusceptibility = None,
+def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSusceptibility = None,
             g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, analyse_spin_fermion=False):
     # assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv_urange = dga_conf.box.niv_urange
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
     sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+
+    if(analyse_spin_fermion):
+        vrg_im = vrg_in.imag
+        vrg = vrg_in.real
+    else:
+        vrg = vrg_in
+
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
@@ -51,7 +58,7 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg=None, chir: fp.LadderSusceptibi
                 1. - chir.u_r * chir.mat[iqw]) - 1.0 / chir.beta) * gkpq.gk * \
                  dga_conf.q_grid.irrk_count[q_ind]
         if(analyse_spin_fermion):
-            sigma_spim += (1j * vrg[iqw, niv_urange:][None, None, None, :].imag * (
+            sigma_spim += (1j * vrg_im[iqw, niv_urange:][None, None, None, :] * (
                         1. - chir.u_r * chir.mat[iqw])) * gkpq.gk * \
                           dga_conf.q_grid.irrk_count[q_ind]
 
@@ -62,12 +69,12 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg=None, chir: fp.LadderSusceptibi
                     1. - chir.u_r * np.conj(chir.mat[iqw])) - 1.0 / chir.beta) * gkpq * \
                      dga_conf.q_grid.irrk_count[q_ind]
             if (analyse_spin_fermion):
-                sigma_spim += (-1j * np.flip(vrg[iqw, :], axis=-1)[None, None, None, niv_urange:].imag * (
+                sigma_spim += (-1j * np.flip(vrg_im[iqw, :], axis=-1)[None, None, None, niv_urange:] * (
                             1. - chir.u_r * np.conj(chir.mat[iqw]))) * gkpq * \
                               dga_conf.q_grid.irrk_count[q_ind]
 
     sigma = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma
-    sigma_spim = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma
+    sigma_spim = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma_spim
     if(analyse_spin_fermion):
         return sigma, sigma_spim
     else:
@@ -80,10 +87,10 @@ def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_gri
                                                sigma=dmft_input['sloc'])
 
     if (dga_conf.opt.analyse_spin_fermion_contributions):
-        sigma_dens_re, sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg=vrg['dens'].mat.real, chir=chi['dens'], g_generator=g_generator,
+        sigma_dens_re, sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
                                 mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh, analyse_spin_fermion=True)
 
-        sigma_magn_re, sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg=vrg['magn'].mat.real, chir=chi['magn'], g_generator=g_generator,
+        sigma_magn_re, sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
                                 mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh, analyse_spin_fermion=True)
 
         sigma_dens_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_re, distributor=distributor)
@@ -97,9 +104,9 @@ def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_gri
 
 
     else:
-        sigma_dens = sde_dga(dga_conf=dga_conf, vrg=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
+        sigma_dens = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
                              mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
-        sigma_magn = sde_dga(dga_conf=dga_conf, vrg=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
+        sigma_magn = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
                              mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
 
         sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
