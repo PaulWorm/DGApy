@@ -22,7 +22,7 @@ def add_rpa_correction(dmft_sde=None,rpa_sde_loc=None,wn_rpa = None, sigma_comp=
         dmft_sde['siw'] = dmft_sde['siw'] + dmft_sde['hartree']
     return dmft_sde
 
-def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmft=None):
+def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmft=None, ana_w0=False):
     '''
 
     :param dga_conf: DGA config object
@@ -64,6 +64,13 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
     vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
                                                            niv_urange=niv_urange,
                                                            u=u)
+
+    if(ana_w0):
+        w0_ind = iw == 0
+        vrg_dens_loc._mat = np.atleast_2d(vrg_dens_loc.mat[w0_ind,:])
+        vrg_magn_loc._mat = np.atleast_2d(vrg_magn_loc.mat[w0_ind,:])
+        chi_dens_urange_loc._mat = np.atleast_1d(chi_dens_urange_loc.mat[w0_ind])
+        chi_magn_urange_loc._mat = np.atleast_1d(chi_magn_urange_loc.mat[w0_ind])
 
     if(dga_conf.opt.analyse_spin_fermion_contributions):
         siw_dens_re = sde.local_dmft_sde(vrg=vrg_dens_loc.mat.real, chir=chi_dens_urange_loc, u=u)

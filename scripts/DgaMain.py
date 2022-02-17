@@ -35,7 +35,9 @@ box_sizes = conf.BoxSizes()
 
 # Define paths of datasets:
 names.input_path = './'
-names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
+names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 names.output_path = names.input_path
 
 # Define names of input/output files:
@@ -44,14 +46,15 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = True
 options.keep_ladder_vertex = False
-options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
+options.lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
+options.analyse_w0_contribution = True # Analyse the w0 contribution to the self-energy
 options.use_fbz = False  # Perform the calculation in the full BZ
 
 # Analytic continuation flags:
@@ -62,7 +65,8 @@ no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
 t = 1.0
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+#hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:
 el_conf = conf.EliashbergConfig(k_sym='d-wave')
@@ -73,11 +77,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 10
-box_sizes.niw_urange = 10  # This seems not to save enough to be used.
-box_sizes.niv_core = 10
-box_sizes.niv_invbse = 10
-box_sizes.niv_urange = 20  # Must be larger than niv_invbse
+box_sizes.niw_core = 20
+box_sizes.niw_urange = 20  # This seems not to save enough to be used.
+box_sizes.niv_core = 20
+box_sizes.niv_invbse = 20
+box_sizes.niv_urange = 40  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -85,9 +89,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 24
+nkx = 16
 nky = nkx
-nqx = 24
+nqx = 16
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -134,6 +138,7 @@ dga_conf.opf = 3
 
 # --------------------------------------------- CREATE THE OUTPUT PATHS -------------------------------------------------
 comm.Barrier()
+print(f'{comm.rank=}')
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path)
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_sp)
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_pf)
@@ -172,11 +177,12 @@ if (comm.rank == 0): plotting.plot_gamma_dmft(gamma_dmft=gamma_dmft, output_path
 logger.log_cpu_time(task=' DMFT gamma extraction ')
 # -------------------------------------- LOCAL SCHWINGER DYSON EQUATION ------------------------------------------------
 dmft_sde, chi_dmft, vrg_dmft, sigma_com_loc = lr.local_dmft_sde_from_gamma(dga_conf=dga_conf, giw=dmft1p['gloc'],
-                                                                           gamma_dmft=gamma_dmft)
+                                                                           gamma_dmft=gamma_dmft, ana_w0=False)
 rpa_sde_loc, chi_rpa_loc = sde.local_rpa_sde_correction(dmft_input=dmft1p, box_sizes=dga_conf.box,
                                                         iw=dga_conf.box.wn_rpa)
 dmft_sde = lr.add_rpa_correction(dmft_sde=dmft_sde, rpa_sde_loc=rpa_sde_loc, wn_rpa=dga_conf.box.wn_rpa,
                                  sigma_comp=sigma_com_loc)
+
 
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'dmft_sde.npy', dmft_sde, allow_pickle=True)
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'rpa_sde_loc.npy', rpa_sde_loc, allow_pickle=True)
@@ -187,6 +193,12 @@ if (comm.rank == 0): plotting.plot_vrg_dmft(vrg_dmft=vrg_dmft, beta=dga_conf.sys
                                             output_path=dga_conf.nam.output_path)
 
 logger.log_cpu_time(task=' DMFT SDE ')
+# ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
+if(dga_conf.opt.analyse_w0_contribution):
+    dmft_sde_w0, _, _, sigma_com_loc_w0 = lr.local_dmft_sde_from_gamma(dga_conf=dga_conf, giw=dmft1p['gloc'],
+                                                                           gamma_dmft=gamma_dmft, ana_w0=True)
+
+
 # ----------------------------------------- CREATE MPI DISTRIBUTORS ----------------------------------------------------
 qiw_distributor = mpiaux.MpiDistributor(ntasks=dga_conf.box.wn_core_plus.size * dga_conf.q_grid.nk_irr, comm=comm,
                                         output_path=dga_conf.nam.output_path,
@@ -218,32 +230,31 @@ logger.log_cpu_time(task=' ladder susceptibility ')
 # ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
 
 
-chi_dens_rpa = fp.ladder_susc_gather_qiw_and_build_fbziw(distributor=qiw_distributor_rpa, mat=chi_rpa['dens'].mat,
-                                                         qiw_grid=qiw_grid_rpa, qiw_grid_fbz=qiw_grid_fbz,
-                                                         dga_conf=dga_conf,
-                                                         channel='dens')
-chi_magn_rpa = fp.ladder_susc_gather_qiw_and_build_fbziw(distributor=qiw_distributor_rpa, mat=chi_rpa['magn'].mat,
-                                                         qiw_grid=qiw_grid_rpa, qiw_grid_fbz=qiw_grid_fbz,
-                                                         dga_conf=dga_conf,
-                                                         channel='magn')
+chi_dens_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
+                                                            mat=chi_rpa['dens'].mat, qiw_grid=qiw_grid_rpa,
+                                                            qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+chi_magn_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
+                                                            mat=chi_rpa['magn'].mat, qiw_grid=qiw_grid_rpa,
+                                                            qiw_grid_fbz=qiw_grid_fbz, channel='magn')
 
 chi_rpa = {
     'dens': chi_dens_rpa,
     'magn': chi_magn_rpa,
 }
+logger.log_cpu_time(task=' gather rpa ladder chi ')
 
-chi_dens_ladder = fp.ladder_susc_gather_qiw_and_build_fbziw(distributor=qiw_distributor, mat=chi_dga['dens'].mat,
-                                                            qiw_grid=qiw_grid,
-                                                            qiw_grid_fbz=qiw_grid_fbz, dga_conf=dga_conf,
-                                                            channel='dens')
-chi_magn_ladder = fp.ladder_susc_gather_qiw_and_build_fbziw(distributor=qiw_distributor, mat=chi_dga['magn'].mat,
-                                                            qiw_grid=qiw_grid,
-                                                            qiw_grid_fbz=qiw_grid_fbz, dga_conf=dga_conf,
-                                                            channel='magn')
+chi_dens_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                               mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
+                                                               qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+chi_magn_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                               mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
+                                                               qiw_grid_fbz=qiw_grid_fbz, channel='magn')
 chi_ladder = {
     'dens': chi_dens_ladder,
     'magn': chi_magn_ladder,
 }
+
+logger.log_cpu_time(task=' gather ladder chi ')
 
 if (comm.rank == 0):
     np.save(dga_conf.nam.output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
@@ -253,6 +264,8 @@ if (comm.rank == 0):
 
 lambda_, n_lambda = lc.lambda_correction(dga_conf=dga_conf, chi_ladder=chi_ladder, chi_rpa=chi_rpa, chi_dmft=chi_dmft,
                                          chi_rpa_loc=chi_rpa_loc)
+
+logger.log_cpu_time(task=' Lambda correction ')
 
 if (comm.rank == 0):
     string_temp = 'Number of positive frequencies used for {}: {}'
@@ -264,15 +277,32 @@ if (comm.rank == 0):
                [string_temp.format('magn', lambda_['magn']), string_temp.format('dens', lambda_['dens'])],
                delimiter=' ', fmt='%s')
 
+logger.log_cpu_time(task=' save lambda correction output ')
+
 lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lambda_=lambda_)
 
-if (comm.rank == 0): fp.gather_save_and_plot_chi_lambda(dga_conf=dga_conf, chi_dga=chi_dga, distributor=qiw_distributor,
-                                                        qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
+logger.log_cpu_time(task=' build chi lambda')
+
+chi_dens_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                               mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
+                                                               qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+chi_dens_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                               mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
+                                                               qiw_grid_fbz=qiw_grid_fbz, channel='magn')
+chi_lambda = {
+    'dens': chi_dens_ladder,
+    'magn': chi_magn_ladder,
+}
+
+
+
+if (comm.rank == 0): fp.save_and_plot_chi_lambda(dga_conf=dga_conf, chi_lambda=chi_lambda, distributor=qiw_distributor,
+                                                 qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
 
 logger.log_cpu_time(task=' lambda correction ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
-sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga, qiw_grid=qiw_grid,
+sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga, qiw_mesh=qiw_grid.my_mesh,
                                                       dmft_input=dmft1p, distributor=qiw_distributor)
 
 sigma_rpa = sde.rpa_sde_wrapper(dga_conf=dga_conf, dmft_input=dmft1p, chi=chi_rpa, qiw_grid=qiw_grid_rpa,
@@ -281,11 +311,23 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_r
 
 sigma_dga = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
                                 dmft1p=dmft1p)
-
 logger.log_cpu_time(task=' DGA SDE ')
+# ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
+
+if(options.analyse_w0_contribution):
+    ind_w0 = qiw_grid.my_mesh[:,1] == 0
+    sigma_dga_w0, sigma_dga_components_w0 = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga, qiw_mesh=qiw_grid.my_mesh[ind_w0,:],
+                                                      dmft_input=dmft1p, distributor=qiw_distributor)
+    sigma_dga_w0 = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde_w0,
+                                    dmft1p=dmft1p)
+    if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga_w0.npy', sigma_dga_w0, allow_pickle=True)
+
+logger.log_cpu_time(task=' DGA SDE (w=0) ')
 # --------------------------------------------------- PLOTTING ---------------------------------------------------------
 if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
 if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p)
+if(dga_conf.opt.analyse_w0_contribution):
+    if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, dmft_sde=dmft_sde_w0, dmft1p=dmft1p,name='_w0')
 if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_dga['sigma'], dmft1p=dmft1p,
                                        output_path=dga_conf.nam.output_path)
 if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_dga['sigma_nc'], dmft1p=dmft1p, name='_nc',
@@ -332,7 +374,6 @@ logger.log_cpu_time(task=' Poly-fits ')
 
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
 # %%
-
 
 if dga_conf.opt.do_max_ent_loc:
     if comm.rank == 0:

@@ -1,4 +1,5 @@
 ###### Requirements without Version Specifiers ######
+mpich
 mpi4py
 scipy
 matplotlib

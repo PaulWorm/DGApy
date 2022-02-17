@@ -61,7 +61,6 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
             sigma_spim += (1j * vrg_im[iqw, niv_urange:][None, None, None, :] * (
                         1. - chir.u_r * chir.mat[iqw])) * gkpq.gk * \
                           dga_conf.q_grid.irrk_count[q_ind]
-
         if (wn != 0):
             qiw = np.append(q, -wn)
             gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
@@ -81,17 +80,17 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
         return sigma
 
 
-def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_grid=None, dmft_input=None,
+def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mesh=None, dmft_input=None,
                     distributor=None):
     g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
                                                sigma=dmft_input['sloc'])
 
     if (dga_conf.opt.analyse_spin_fermion_contributions):
         sigma_dens_re, sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh, analyse_spin_fermion=True)
+                                mu=dmft_input['mu'], qiw_grid=qiw_mesh, analyse_spin_fermion=True)
 
         sigma_magn_re, sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                                mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh, analyse_spin_fermion=True)
+                                mu=dmft_input['mu'], qiw_grid=qiw_mesh, analyse_spin_fermion=True)
 
         sigma_dens_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_re, distributor=distributor)
         sigma_dens_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_im, distributor=distributor)
@@ -105,9 +104,9 @@ def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_gri
 
     else:
         sigma_dens = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                             mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+                             mu=dmft_input['mu'], qiw_grid=qiw_mesh)
         sigma_magn = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                             mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+                             mu=dmft_input['mu'], qiw_grid=qiw_mesh)
 
         sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
         sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)

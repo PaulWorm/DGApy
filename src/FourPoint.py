@@ -996,36 +996,28 @@ def load_spin_fermion(output_path=None, name='Qiw', mpi_size=None, nq=None, niv=
     return vrg_dens, vrg_magn
 
 
-def gather_qiw_and_build_fbziw(dga_conf=None, mat=None,distributor=None, qiw_grid=None):
+def allgather_qiw_and_build_fbziw(dga_conf=None, mat=None,distributor=None, qiw_grid=None):
     ''' Gather a {q,iw} object and rebuild the full q, iw structure'''
     mat = distributor.allgather(rank_result=mat)
     mat = dga_conf.q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(mat))
     mat = mf.wplus2wfull(mat=mat)
     return mat
 
-def ladder_susc_gather_qiw_and_build_fbziw(dga_conf=None, distributor=None, mat=None, qiw_grid=None, qiw_grid_fbz=None, channel=None):
+def ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=None, distributor=None, mat=None, qiw_grid=None, qiw_grid_fbz=None, channel=None):
     ''' Gather a Ladder suszeptibility object and rebuild the full q, iw structure'''
     gathered_qiw = LadderSusceptibility(qiw=qiw_grid_fbz.meshgrid, channel=channel, u=dga_conf.sys.u,
                                         beta=dga_conf.sys.beta)
-    gathered_qiw.mat = gather_qiw_and_build_fbziw(dga_conf=dga_conf, mat=mat,distributor=distributor,qiw_grid=qiw_grid)
+    gathered_qiw.mat = allgather_qiw_and_build_fbziw(dga_conf=dga_conf, mat=mat, distributor=distributor,
+                                                     qiw_grid=qiw_grid)
     return gathered_qiw
 
-def gather_save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_dga=None, distributor=None, qiw_grid=None, qiw_grid_fbz=None):
-    chi_dens_lambda = ladder_susc_gather_qiw_and_build_fbziw(distributor=distributor, mat=chi_dga['dens'].mat,
-                                                    qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz,
-                                                    dga_conf=dga_conf, channel='dens')
-    chi_magn_lambda = ladder_susc_gather_qiw_and_build_fbziw(distributor=distributor, mat=chi_dga['magn'].mat,
-                                                    qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz,
-                                                    dga_conf=dga_conf, channel='magn')
-    chi_lambda = {
-        'dens': chi_dens_lambda,
-        'magn': chi_magn_lambda,
-    }
+def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None, distributor=None, qiw_grid=None, qiw_grid_fbz=None):
+
     np.save(dga_conf.nam.output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
     string_temp = 'Chi[q=(0,0),iw=0,{}]: {}'
     np.savetxt(dga_conf.nam.output_path + 'Knight_shift.txt',
-               [string_temp.format('magn', chi_magn_lambda.mat[0, 0, 0, dga_conf.box.niw_core]),
-                string_temp.format('dens', chi_dens_lambda.mat[0, 0, 0, dga_conf.box.niw_core])], delimiter=' ',fmt='%s')
+               [string_temp.format('magn', chi_lambda['magn'].mat[0, 0, 0, dga_conf.box.niw_core]),
+                string_temp.format('dens', chi_lambda['dens'].mat[0, 0, 0, dga_conf.box.niw_core])], delimiter=' ',fmt='%s')
     import Plotting as plotting
     plotting.plot_chi_fs(chi=chi_lambda['magn'].mat.real, output_path=dga_conf.nam.output_path, kgrid=dga_conf.q_grid,
                          name='magn_w0')

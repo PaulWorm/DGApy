@@ -161,6 +161,7 @@ class Options(ConfigBase):
         self.sym_sing = True  # symmetrize the singlet vertex
         self.sym_trip = True  # symmetrize the triplet vertex
         self.analyse_spin_fermion_contributions = False  # Compute the contributions from Re(vrg) and Im(vrg) seperately
+        self.analyse_w0_contribution = False # Analyze how much stems from the w0 component.
         self.use_fbz = False  # Use the full Brillouin zone instead of the irreduzible one
         self.g2_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
         self.g1_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
