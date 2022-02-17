@@ -388,7 +388,6 @@ logger.log_cpu_time(task=' Poly-fits ')
 
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
 # %%
-
 # Broadcast bw_opt_dga
 comm.Barrier()
 if comm.rank == 0:
