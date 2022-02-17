@@ -128,7 +128,7 @@ def max_ent_loc_bw_range(dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntCo
 
 
 def max_ent_irrk_bw_range(comm=None, dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntConfig = None, bw_range=None,
-                          sigma=None, n_fit=None, adjust_mu=True, name=''):
+                          sigma=None, n_fit=None, adjust_mu=True, name='', logger = None):
     bw_range = np.atleast_1d(bw_range)
     v_real = me_conf.mesh
     irrk_distributor = mpiaux.MpiDistributor(ntasks=dga_conf.k_grid.nk_irr, comm=comm)
@@ -147,6 +147,7 @@ def max_ent_irrk_bw_range(comm=None, dga_conf: conf.DgaConfig = None, me_conf: c
             use_preblur = False
         else:
             use_preblur = me_conf.use_preblur
+
         # mu-adjust DGA Green's function:
         gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dga_conf.sys.mu_dmft, adjust_mu=adjust_mu,
                                  niv_cut=dga_conf.box.niv_urange)
@@ -154,10 +155,11 @@ def max_ent_irrk_bw_range(comm=None, dga_conf: conf.DgaConfig = None, me_conf: c
                                                 beta=me_conf.beta,
                                                 n_fit=n_fit, err=me_conf.err, alpha_det_method=me_conf.alpha_det_method,
                                                 use_preblur=use_preblur, bw=bw, optimizer=me_conf.optimizer)
-
+        if(logger is not None): logger.log_cpu_time(task=' for {} MaxEnt done left are plots and gather '.format(name))
         comm.Barrier()
         gk_cont = irrk_distributor.allgather(rank_result=gk_my_cont)
         comm.Barrier()
+        if(logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
         if (comm.rank == 0):
             gk_cont_fbz = dga_conf.k_grid.irrk2fbz(mat=gk_cont)
 

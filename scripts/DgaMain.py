@@ -47,10 +47,10 @@ names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
 options.do_max_ent_loc = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = True
 options.keep_ladder_vertex = False
-options.lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
+options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
@@ -77,10 +77,10 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 30
-box_sizes.niw_urange = 30  # This seems not to save enough to be used.
-box_sizes.niv_core = 30
-box_sizes.niv_invbse = 30
+box_sizes.niw_core = 20
+box_sizes.niw_urange = 20  # This seems not to save enough to be used.
+box_sizes.niv_core = 20
+box_sizes.niv_invbse = 20
 box_sizes.niv_urange = 80  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
@@ -89,9 +89,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 24
+nkx = 16
 nky = nkx
-nqx = 24
+nqx = 16
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -348,12 +348,12 @@ if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_dga['sigma
                                        output_path=dga_conf.nam.output_path)
 
 # Plot the contribution of the real/imaginary part of the spin-fermion vertex.
-if dga_conf.opt.analyse_spin_fermion_contributions and comm.rank == 0:
-    output.spin_fermion_contributions_output(dga_conf=dga_conf, sigma_dga_contributions=sigma_dga_components)
+if dga_conf.opt.analyse_spin_fermion_contributions:
+    if comm.rank == 0: output.spin_fermion_contributions_output(dga_conf=dga_conf, sigma_dga_contributions=sigma_dga_components)
     sigma_vrg_re = sde.buid_dga_sigma_vrg_re(dga_conf=dga_conf, sigma_dga_components=sigma_dga_components,
                                              sigma_rpa=sigma_rpa, dmft_sde_comp=sigma_com_loc,
                                              dmft1p=dmft1p)
-    plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_vrg_re, dmft1p=dmft1p, name='_vrg_re',
+    if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_vrg_re, dmft1p=dmft1p, name='_vrg_re',
                         output_path=dga_conf.nam.output_path_sp)
 
 if comm.rank == 0: output.prepare_and_plot_vrg_dga(dga_conf=dga_conf, distributor=qiw_distributor)
@@ -389,40 +389,59 @@ logger.log_cpu_time(task=' Poly-fits ')
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
 # %%
 
+# Broadcast bw_opt_dga
+comm.Barrier()
+if comm.rank == 0:
+    bw_opt_dga = np.empty((1,), dtype='i')
+    bw_opt_vrg_re = np.empty((1,), dtype='i')
+else:
+    bw_opt_dga = np.empty((1,), dtype='i')
+    bw_opt_vrg_re = np.empty((1,), dtype='i')
+
 if dga_conf.opt.do_max_ent_loc:
     if comm.rank == 0:
         bw_range_loc = np.array([0.05,0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]) * bw
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=dmft1p['sloc'],
                                     n_fit=n_fit, adjust_mu=True, name='dmft')
-        bw_opt_dga = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_dga['sigma'],
+        bw_opt_dga[0] = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_dga['sigma'],
                                     n_fit=n_fit, adjust_mu=True, name='dga')
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
                                     sigma=sigma_dga['sigma_nc'], n_fit=n_fit, adjust_mu=True, name='dga_nc')
         if dga_conf.opt.analyse_spin_fermion_contributions:
-            bw_opt_vrg_re = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_vrg_re,
+            bw_opt_vrg_re[0] = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=sigma_vrg_re,
                                         n_fit=n_fit, adjust_mu=True, name='dga_vrg_re')
+
     logger.log_cpu_time(task=' MaxEnt local ')
+
+    if dga_conf.opt.analyse_spin_fermion_contributions:
+        comm.Bcast(bw_opt_vrg_re, root=0)
+    comm.Bcast(bw_opt_dga, root=0)
 
 #%%
 if dga_conf.opt.do_max_ent_irrk:
     # Do analytic continuation within the irreducible Brillouin Zone:
     output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_dga,
-                                 sigma=sigma_dga['sigma'], n_fit=n_fit, name='dga')
+                                 sigma=sigma_dga['sigma'], n_fit=n_fit, name='dga', logger=logger)
     logger.log_cpu_time(task=' MaxEnt irrk ')
 
     if dga_conf.opt.analyse_spin_fermion_contributions:
         # Do analytic continuation within the irreducible Brillouin Zone:
+        print(f'{bw_opt_vrg_re=}')
         output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_vrg_re,
-                                     sigma=sigma_vrg_re, n_fit=n_fit, name='dga_vrg_re')
+                                     sigma=sigma_vrg_re, n_fit=n_fit, name='dga_vrg_re', logger=logger)
         logger.log_cpu_time(task=' MaxEnt irrk vrg_re ')
 
 # ------------------------------------------------ PAIRING VERTEX ------------------------------------------------------
 if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
     output.load_and_construct_pairing_vertex(dga_conf=dga_conf, comm=comm)
 
+    logger.log_cpu_time(task=' Load and construct pairing vertex ')
+
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
 if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
     output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma_dga['sigma'], el_conf=el_conf)
+
+    logger.log_cpu_time(task=' Performed eliashberg equation ')
 #
 #
 # # ---------------------------------------------- REMOVE THE RANK FILES -------------------------------------------------
