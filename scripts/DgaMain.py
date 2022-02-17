@@ -21,7 +21,7 @@ import SDE as sde
 import FourPoint as fp
 import LambdaCorrection as lc
 import Loggers as loggers
-
+import gc
 # ----------------------------------------------- PARAMETERS -----------------------------------------------------------
 
 # Define MPI communicator:
@@ -77,11 +77,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 20
-box_sizes.niw_urange = 20  # This seems not to save enough to be used.
-box_sizes.niv_core = 20
-box_sizes.niv_invbse = 20
-box_sizes.niv_urange = 40  # Must be larger than niv_invbse
+box_sizes.niw_core = 30
+box_sizes.niw_urange = 30  # This seems not to save enough to be used.
+box_sizes.niv_core = 30
+box_sizes.niv_invbse = 30
+box_sizes.niv_urange = 80  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -89,9 +89,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 16
+nkx = 24
 nky = nkx
-nqx = 16
+nqx = 24
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -192,6 +192,9 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'vrg_dmft.npy', vrg_dmft
 if (comm.rank == 0): plotting.plot_vrg_dmft(vrg_dmft=vrg_dmft, beta=dga_conf.sys.beta, niv_plot=dga_conf.box.niv_urange,
                                             output_path=dga_conf.nam.output_path)
 
+del vrg_dmft, rpa_sde_loc
+gc.collect()
+
 logger.log_cpu_time(task=' DMFT SDE ')
 # ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
 if(dga_conf.opt.analyse_w0_contribution):
@@ -225,6 +228,9 @@ qiw_distributor.open_file()
 chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, qiw_grid=qiw_grid.my_mesh,
                                          file=qiw_distributor.file, gamma_dmft=gamma_dmft, k_grid=dga_conf.k_grid, q_grid=dga_conf.q_grid, hr = dga_conf.sys.hr)
 qiw_distributor.close_file()
+
+del gamma_dmft
+gc.collect()
 
 logger.log_cpu_time(task=' ladder susceptibility ')
 # ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
@@ -265,6 +271,9 @@ if (comm.rank == 0):
 lambda_, n_lambda = lc.lambda_correction(dga_conf=dga_conf, chi_ladder=chi_ladder, chi_rpa=chi_rpa, chi_dmft=chi_dmft,
                                          chi_rpa_loc=chi_rpa_loc)
 
+del chi_dmft
+gc.collect()
+
 logger.log_cpu_time(task=' Lambda correction ')
 
 if (comm.rank == 0):
@@ -298,8 +307,10 @@ chi_lambda = {
 
 if (comm.rank == 0): fp.save_and_plot_chi_lambda(dga_conf=dga_conf, chi_lambda=chi_lambda, distributor=qiw_distributor,
                                                  qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
+del chi_lambda, chi_ladder
+gc.collect()
 
-logger.log_cpu_time(task=' lambda correction ')
+logger.log_cpu_time(task=' lambda correction plots ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
 sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga, qiw_mesh=qiw_grid.my_mesh,
@@ -321,6 +332,9 @@ if(options.analyse_w0_contribution):
     sigma_dga_w0 = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde_w0,
                                     dmft1p=dmft1p)
     if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga_w0.npy', sigma_dga_w0, allow_pickle=True)
+
+del vrg_dga, chi_dga
+gc.collect()
 
 logger.log_cpu_time(task=' DGA SDE (w=0) ')
 # --------------------------------------------------- PLOTTING ---------------------------------------------------------
