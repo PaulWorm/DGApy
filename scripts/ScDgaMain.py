@@ -37,9 +37,9 @@ box_sizes = conf.BoxSizes()
 
 # Define paths of datasets:
 names.input_path = './'
-names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+# names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
-#names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 names.output_path = names.input_path
 
 # Define names of input/output files:
@@ -50,7 +50,7 @@ names.fname_ladder_vertex = 'LadderVertex.hdf5'
 # Define options:
 options.do_max_ent_loc = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_pairing_vertex = True
+options.do_pairing_vertex = False
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -67,8 +67,8 @@ no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
 t = 1.0
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
-#hr = hr_mod.Ba2CuO4_plane()
+# hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:
 el_conf = conf.EliashbergConfig(k_sym='d-wave')
@@ -79,11 +79,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 60
-box_sizes.niw_urange = 60  # This seems not to save enough to be used.
-box_sizes.niv_core = 60
-box_sizes.niv_invbse = 60
-box_sizes.niv_urange = 500  # Must be larger than niv_invbse
+box_sizes.niw_core = 10
+box_sizes.niw_urange = 10  # This seems not to save enough to be used.
+box_sizes.niv_core = 10
+box_sizes.niv_invbse = 10
+box_sizes.niv_urange = 40  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -91,9 +91,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 100
+nkx = 16
 nky = nkx
-nqx = 100
+nqx = 16
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -218,50 +218,101 @@ qiw_grid_rpa = ind.IndexGrids(grid_arrays=(dga_conf.q_grid.irrk_ind_lin,) + (dga
                               keys=index_grid_keys,
                               my_slice=qiw_distributor_rpa.my_slice)
 
-# ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -----------------------------------------------
-chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, dga_conf=dga_conf, qiw_indizes=qiw_grid_rpa.my_mesh,
-                                sigma=dmft1p['sloc'])
+# ----------------------------------------- START OF SELF-CONSISTENCY  -------------------------------------------------
 
-logger.log_cpu_time(task=' RPA susceptibility ')
-# ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
-qiw_distributor.open_file()
-chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, qiw_grid=qiw_grid.my_mesh,
-                                         file=qiw_distributor.file, gamma_dmft=gamma_dmft, k_grid=dga_conf.k_grid,
-                                         q_grid=dga_conf.q_grid, hr=dga_conf.sys.hr, sigma=dmft1p['sloc'])
-qiw_distributor.close_file()
+converged = False
+sigma_current = dmft1p['sloc']
+lambda_current = 100
+eps = 10**(-6)
+max_iter = 10
+n_iter = 0
+while not converged:
+    n_iter += 1
+    # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -----------------------------------------------
+    chi_rpa = fp.rpa_susceptibility(dmft_input=dmft1p, dga_conf=dga_conf, qiw_indizes=qiw_grid_rpa.my_mesh,
+                                    sigma=sigma_current)
 
-del gamma_dmft
-gc.collect()
+    logger.log_cpu_time(task=' RPA susceptibility ')
+    # ----------------------------------------- NON-LOCAL LADDER SUCEPTIBILITY  --------------------------------------------
+    qiw_distributor.open_file()
+    chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, qiw_grid=qiw_grid.my_mesh,
+                                             file=qiw_distributor.file, gamma_dmft=gamma_dmft, k_grid=dga_conf.k_grid,
+                                             q_grid=dga_conf.q_grid, hr=dga_conf.sys.hr, sigma=sigma_current, save_vrg=False)
+    qiw_distributor.close_file()
 
-logger.log_cpu_time(task=' ladder susceptibility ')
-# ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
+    logger.log_cpu_time(task=' ladder susceptibility ')
+    # ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
 
 
-chi_dens_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
-                                                            mat=chi_rpa['dens'].mat, qiw_grid=qiw_grid_rpa,
-                                                            qiw_grid_fbz=qiw_grid_fbz, channel='dens')
-chi_magn_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
-                                                            mat=chi_rpa['magn'].mat, qiw_grid=qiw_grid_rpa,
-                                                            qiw_grid_fbz=qiw_grid_fbz, channel='magn')
+    chi_dens_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
+                                                                mat=chi_rpa['dens'].mat, qiw_grid=qiw_grid_rpa,
+                                                                qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+    chi_magn_rpa = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor_rpa,
+                                                                mat=chi_rpa['magn'].mat, qiw_grid=qiw_grid_rpa,
+                                                                qiw_grid_fbz=qiw_grid_fbz, channel='magn')
 
-chi_rpa = {
-    'dens': chi_dens_rpa,
-    'magn': chi_magn_rpa,
-}
-logger.log_cpu_time(task=' gather rpa ladder chi ')
+    chi_rpa = {
+        'dens': chi_dens_rpa,
+        'magn': chi_magn_rpa,
+    }
+    logger.log_cpu_time(task=' gather rpa ladder chi ')
 
-chi_dens_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
-                                                               mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
-                                                               qiw_grid_fbz=qiw_grid_fbz, channel='dens')
-chi_magn_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
-                                                               mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
-                                                               qiw_grid_fbz=qiw_grid_fbz, channel='magn')
-chi_ladder = {
-    'dens': chi_dens_ladder,
-    'magn': chi_magn_ladder,
-}
+    chi_dens_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                                   mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
+                                                                   qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+    chi_magn_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                                   mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
+                                                                   qiw_grid_fbz=qiw_grid_fbz, channel='magn')
+    chi_ladder = {
+        'dens': chi_dens_ladder,
+        'magn': chi_magn_ladder,
+    }
 
-logger.log_cpu_time(task=' gather ladder chi ')
+
+    logger.log_cpu_time(task=' gather ladder chi ')
+
+    lambda_, n_lambda = lc.lambda_correction(dga_conf=dga_conf, chi_ladder=chi_ladder, chi_rpa=chi_rpa,
+                                             chi_dmft=chi_dmft,
+                                             chi_rpa_loc=chi_rpa_loc)
+    print(f'{lambda_=}')
+    logger.log_cpu_time(task=' save lambda correction output ')
+
+    lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lambda_=lambda_)
+
+    logger.log_cpu_time(task=' build chi lambda')
+
+    chi_dens_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                                   mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
+                                                                   qiw_grid_fbz=qiw_grid_fbz, channel='dens')
+    chi_magn_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
+                                                                   mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
+                                                                   qiw_grid_fbz=qiw_grid_fbz, channel='magn')
+    chi_lambda = {
+        'dens': chi_dens_ladder,
+        'magn': chi_magn_ladder,
+    }
+
+    # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
+
+    sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga,
+                                                          qiw_mesh=qiw_grid.my_mesh,
+                                                          dmft_input=dmft1p, distributor=qiw_distributor)
+
+    sigma_rpa = sde.rpa_sde_wrapper(dga_conf=dga_conf, dmft_input=dmft1p, chi=chi_rpa, qiw_grid=qiw_grid_rpa,
+                                    distributor=qiw_distributor_rpa)
+
+
+    sigma_dga = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
+                                    dmft1p=dmft1p)
+    logger.log_cpu_time(task=' DGA SDE ')
+
+    sigma_current = sigma_dga['sigma']
+    if(np.abs(lambda_current - lambda_['magn']) < eps or n_iter > max_iter):
+        converged = True
+    lambda_current = lambda_['magn']
+
+
+if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_rpa, allow_pickle=True)
 
 if (comm.rank == 0):
     np.save(dga_conf.nam.output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
@@ -269,13 +320,6 @@ if (comm.rank == 0):
                          kgrid=dga_conf.q_grid,
                          name='magn_ladder_w0')
 
-lambda_, n_lambda = lc.lambda_correction(dga_conf=dga_conf, chi_ladder=chi_ladder, chi_rpa=chi_rpa, chi_dmft=chi_dmft,
-                                         chi_rpa_loc=chi_rpa_loc)
-
-del chi_dmft
-gc.collect()
-
-logger.log_cpu_time(task=' Lambda correction ')
 
 if (comm.rank == 0):
     string_temp = 'Number of positive frequencies used for {}: {}'
@@ -287,22 +331,6 @@ if (comm.rank == 0):
                [string_temp.format('magn', lambda_['magn']), string_temp.format('dens', lambda_['dens'])],
                delimiter=' ', fmt='%s')
 
-logger.log_cpu_time(task=' save lambda correction output ')
-
-lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lambda_=lambda_)
-
-logger.log_cpu_time(task=' build chi lambda')
-
-chi_dens_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
-                                                               mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
-                                                               qiw_grid_fbz=qiw_grid_fbz, channel='dens')
-chi_magn_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
-                                                               mat=chi_dga['magn'].mat, qiw_grid=qiw_grid,
-                                                               qiw_grid_fbz=qiw_grid_fbz, channel='magn')
-chi_lambda = {
-    'dens': chi_dens_lambda,
-    'magn': chi_magn_lambda,
-}
 
 if (comm.rank == 0): fp.save_and_plot_chi_lambda(dga_conf=dga_conf, chi_lambda=chi_lambda, distributor=qiw_distributor,
                                                  qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
@@ -310,19 +338,7 @@ del chi_lambda, chi_ladder
 gc.collect()
 
 logger.log_cpu_time(task=' lambda correction plots ')
-# ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
-sigma_dga, sigma_dga_components = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga,
-                                                      qiw_mesh=qiw_grid.my_mesh,
-                                                      dmft_input=dmft1p, distributor=qiw_distributor)
-
-sigma_rpa = sde.rpa_sde_wrapper(dga_conf=dga_conf, dmft_input=dmft1p, chi=chi_rpa, qiw_grid=qiw_grid_rpa,
-                                distributor=qiw_distributor_rpa)
-if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_rpa, allow_pickle=True)
-
-sigma_dga = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
-                                dmft1p=dmft1p)
-logger.log_cpu_time(task=' DGA SDE ')
 # ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
 
 if (options.analyse_w0_contribution):

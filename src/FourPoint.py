@@ -800,15 +800,14 @@ def susceptibility_from_four_point(four_point: FourPoint = None):
 # ======================================================================================================================
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
-def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_indizes=None):
+def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_indizes=None, sigma=None):
     beta = dga_conf.sys.beta
     u = dga_conf.sys.u
     mu = dmft_input['mu']
     niv_urange = dga_conf.box.niv_urange
     niv_asympt = dga_conf.box.niv_asympt
-    siw = dmft_input['sloc']
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=siw)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=sigma)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
 
@@ -843,12 +842,13 @@ def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_ind
 
 # -------------------------------------------- DGA SUSCEPTIBILITY ------------------------------------------------------
 def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_dmft=None, qiw_grid=None,
-                       file=None, k_grid = None, q_grid = None, hr = None):
+                       file=None, k_grid = None, q_grid = None, hr = None, sigma = None, save_vrg=True):
     '''
 
     :param dmft_input: Dictionary containing input from DMFT.
     :param local_sde:
     :param hr:
+    :param sigma: input self-energy
     :param kgrid:
     :param box_sizes:
     :param qiw_grid: [nqx*nqy*nqz*2*niw,4] flattened meshgrid. Layout: {qx,qy,qz,iw}
@@ -865,7 +865,6 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     niv_urange = dga_conf.box.niv_urange
     niw_vrg_save = dga_conf.box.niw_vrg_save
     niv_vrg_save = dga_conf.box.niv_vrg_save
-    siw = dmft_input['sloc']
     gamma_dens_loc = gamma_dmft['dens']
     gamma_magn_loc = gamma_dmft['magn']
 
@@ -875,7 +874,7 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     vrg_dens = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=k_grid.grid, hr=hr, sigma=siw)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=k_grid.grid, hr=hr, sigma=sigma)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
@@ -948,7 +947,7 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
                 file[group + 'condition/'] = condition
 
         # Save the lowest 5 frequencies for the spin-fermion vertex::
-        if (np.abs(wn) < niw_vrg_save):
+        if (np.abs(wn) < niw_vrg_save and save_vrg == True):
             group = '/irrq{:03d}wn{:04d}/'.format(*qiw_grid[iqw])
             file[group + 'vrg_magn/'] = beta * vrgq_magn.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
             file[group + 'vrg_dens/'] = beta * vrgq_dens.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
