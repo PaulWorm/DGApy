@@ -79,11 +79,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 60
-box_sizes.niw_urange = 60  # This seems not to save enough to be used.
-box_sizes.niv_core = 60
-box_sizes.niv_invbse = 60
-box_sizes.niv_urange = 500  # Must be larger than niv_invbse
+box_sizes.niw_core = 10
+box_sizes.niw_urange = 10  # This seems not to save enough to be used.
+box_sizes.niv_core = 20
+box_sizes.niv_invbse = 20
+box_sizes.niv_urange = 80  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:
@@ -91,9 +91,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 100
+nkx = 16
 nky = nkx
-nqx = 100
+nqx = 16
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -450,8 +450,8 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 #
 #
 # # ---------------------------------------------- REMOVE THE RANK FILES -------------------------------------------------
-# comm.Barrier()
-# qiw = mpiaux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm,
-#                                             output_path=output_path,
-#                                             name='Qiw')
-# qiw.delete_file()
+comm.Barrier()
+qiw = mpiaux.MpiDistributor(ntasks=dga_conf.k_grid.nk_irr, comm=comm,
+                                            output_path=dga_conf.nam.output_path,
+                                            name='Qiw')
+qiw.delete_file()
