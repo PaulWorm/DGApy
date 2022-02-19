@@ -184,11 +184,11 @@ def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=N
 
     sigma_dmft_clip = dmft1p['sloc'][
                       dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
-    sigma_dga['sigma'] = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde[
+    sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde[
         'magn'] + 2 * dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
-    sigma_dga['sigma_nc'] = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
+    sigma_nc = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
                             dmft_sde['siw'] + sigma_dmft_clip
-    return sigma_dga
+    return sigma, sigma_nc
 
 
 def buid_dga_sigma_vrg_re(dga_conf: conf.DgaConfig = None, sigma_dga_components=None, sigma_rpa=None, dmft_sde_comp=None,

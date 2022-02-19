@@ -77,12 +77,12 @@ def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fit=None, output_path=None, nam
     plt.close()
 
 
-def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None, name=''):
+def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None, name='', sigma=None, sigma_nc = None):
 
 
     # Plot Siw-check:
     vn_list = [dga_conf.box.vn_dmft, dga_conf.box.vn_urange, dga_conf.box.vn_urange, dga_conf.box.vn_urange]
-    siw_list = [dmft1p['sloc'], dmft_sde['siw'], sigma_dga['sigma'].mean(axis=(0, 1, 2)), sigma_dga['sigma_nc'].mean(axis=(0, 1, 2))]
+    siw_list = [dmft1p['sloc'], dmft_sde['siw'], sigma.mean(axis=(0, 1, 2)), sigma_nc.mean(axis=(0, 1, 2))]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
     plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100, name='siw_check'+name)
 
@@ -95,10 +95,10 @@ def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, 
     plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100,name='siw_channel_contribution'+name)
 
     # Plot self-energy at the Fermi-surface:
-    plot_siwk_fs(siwk=sigma_dga['sigma'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True,name=name)
+    plot_siwk_fs(siwk=sigma, plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True,name=name)
     plot_siwk_fs(siwk=3*sigma_dga['magn']- 3 * dmft_sde['magn'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='magn'+name)
     plot_siwk_fs(siwk=-sigma_dga['dens'] + dmft_sde['dens'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dens'+name)
-    plot_siwk_fs(siwk=sigma_dga['sigma_nc'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='nc'+name)
+    plot_siwk_fs(siwk=sigma_nc, plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='nc'+name)
 
 def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, dmft1p=None, name='', output_path = None):
     # Create the DGA Green's functions:

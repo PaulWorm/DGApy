@@ -1,5 +1,5 @@
 import time
-
+import datetime
 
 class real_time():
     ''' simple class to keep track of real time '''
@@ -27,11 +27,18 @@ class real_time():
 
     def print_time(self, string=''):
         self.measure_time()
-        print(string + 'took {} seconds'.format(self._tm[-1]))
+        print(string + ' took {} seconds'.format(self._tm[-1]))
 
     def string_time(self, string=''):
         self.measure_time()
-        return string + 'took {} seconds'.format(self._tm[-1])
+        return string + ' took {} seconds'.format(self._tm[-1])
+
+    def tot_time(self):
+        return str(datetime.timedelta(seconds=round(time.time() - self._ts)))
+
+    def task_time(self):
+        self.measure_time()
+        return str(datetime.timedelta(seconds=round(self._tm[-1])))
 
     def write_time_to_file(self, string='',rank=0):
         if(rank==0):

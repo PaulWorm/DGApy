@@ -22,7 +22,6 @@ import SDE as sde
 import FourPoint as fp
 import LambdaCorrection as lc
 import Loggers as loggers
-import gc
 
 # ----------------------------------------------- PARAMETERS -----------------------------------------------------------
 
@@ -118,21 +117,6 @@ names.output_path_el = output.uniquify(names.output_path + 'Eliashberg') + '/'
 dga_conf = conf.DgaConfig(BoxSizes=box_sizes, Options=options, SystemParameter=sys_param, Names=names,
                           ek_funk=hamk.ek_3d)
 
-# Create the grids:
-# import BrillouinZone as bz
-# k_grid = bz.KGrid(nk=box_sizes.nk)
-# if (options.use_fbz):
-#     ek = dga_conf.ek_func(kgrid=k_grid.grid, hr=hr)
-#     k_grid.get_irrk_from_ek(ek=ek, dec=11)
-# else:
-#     k_grid.set_irrk2fbz()
-#
-# q_grid = bz.KGrid(nk=box_sizes.nq)
-# if (options.use_fbz):
-#     ek = dga_conf.ek_func(kgrid=q_grid.grid, hr=hr)
-#     q_grid.get_irrk_from_ek(ek=ek, dec=11)
-# else:
-#     q_grid.set_irrk2fbz()
 
 # Parameter for the polynomial extrapolation to the Fermi-level:
 dga_conf.npf = 4
@@ -140,7 +124,6 @@ dga_conf.opf = 3
 
 # --------------------------------------------- CREATE THE OUTPUT PATHS -------------------------------------------------
 comm.Barrier()
-print(f'{comm.rank=}')
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path)
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_sp)
 if (comm.rank == 0): os.mkdir(dga_conf.nam.output_path_pf)
@@ -192,8 +175,6 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'vrg_dmft.npy', vrg_dmft
 if (comm.rank == 0): plotting.plot_vrg_dmft(vrg_dmft=vrg_dmft, beta=dga_conf.sys.beta, niv_plot=dga_conf.box.niv_urange,
                                             output_path=dga_conf.nam.output_path)
 
-del vrg_dmft, rpa_sde_loc
-gc.collect()
 
 logger.log_cpu_time(task=' DMFT SDE ')
 # ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
@@ -230,8 +211,6 @@ chi_dga, vrg_dga = fp.dga_susceptibility(dga_conf=dga_conf, dmft_input=dmft1p, q
                                          q_grid=dga_conf.q_grid, hr=dga_conf.sys.hr, sigma=dmft1p['sloc'])
 qiw_distributor.close_file()
 
-del gamma_dmft
-gc.collect()
 
 logger.log_cpu_time(task=' ladder susceptibility ')
 # ----------------------------------------------- LAMBDA-CORRECTION ----------------------------------------------------
@@ -248,7 +227,6 @@ chi_rpa = {
     'dens': chi_dens_rpa,
     'magn': chi_magn_rpa,
 }
-logger.log_cpu_time(task=' gather rpa ladder chi ')
 
 chi_dens_ladder = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
                                                                mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
@@ -261,8 +239,6 @@ chi_ladder = {
     'magn': chi_magn_ladder,
 }
 
-logger.log_cpu_time(task=' gather ladder chi ')
-
 if (comm.rank == 0):
     np.save(dga_conf.nam.output_path + 'chi_ladder.npy', chi_ladder, allow_pickle=True)
     plotting.plot_chi_fs(chi=chi_ladder['magn'].mat.real, output_path=dga_conf.nam.output_path,
@@ -272,10 +248,7 @@ if (comm.rank == 0):
 lambda_, n_lambda = lc.lambda_correction(dga_conf=dga_conf, chi_ladder=chi_ladder, chi_rpa=chi_rpa, chi_dmft=chi_dmft,
                                          chi_rpa_loc=chi_rpa_loc)
 
-del chi_dmft
-gc.collect()
-
-logger.log_cpu_time(task=' Lambda correction ')
+lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lambda_=lambda_)
 
 if (comm.rank == 0):
     string_temp = 'Number of positive frequencies used for {}: {}'
@@ -287,11 +260,6 @@ if (comm.rank == 0):
                [string_temp.format('magn', lambda_['magn']), string_temp.format('dens', lambda_['dens'])],
                delimiter=' ', fmt='%s')
 
-logger.log_cpu_time(task=' save lambda correction output ')
-
-lc.build_chi_lambda(dga_conf=dga_conf, chi_ladder=chi_dga, chi_rpa=chi_rpa, lambda_=lambda_)
-
-logger.log_cpu_time(task=' build chi lambda')
 
 chi_dens_lambda = fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=dga_conf, distributor=qiw_distributor,
                                                                mat=chi_dga['dens'].mat, qiw_grid=qiw_grid,
@@ -304,10 +272,9 @@ chi_lambda = {
     'magn': chi_magn_lambda,
 }
 
-if (comm.rank == 0): fp.save_and_plot_chi_lambda(dga_conf=dga_conf, chi_lambda=chi_lambda, distributor=qiw_distributor,
+if (comm.rank == 0):
+    fp.save_and_plot_chi_lambda(dga_conf=dga_conf, chi_lambda=chi_lambda, distributor=qiw_distributor,
                                                  qiw_grid=qiw_grid, qiw_grid_fbz=qiw_grid_fbz)
-del chi_lambda, chi_ladder
-gc.collect()
 
 logger.log_cpu_time(task=' lambda correction plots ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
@@ -320,7 +287,7 @@ sigma_rpa = sde.rpa_sde_wrapper(dga_conf=dga_conf, dmft_input=dmft1p, chi=chi_rp
                                 distributor=qiw_distributor_rpa)
 if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'sigma_rpa.npy', sigma_rpa, allow_pickle=True)
 
-sigma_dga = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
+sigma, sigma_nc = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa, dmft_sde=dmft_sde,
                                 dmft1p=dmft1p)
 logger.log_cpu_time(task=' DGA SDE ')
 # ------------------------------------------- ANALYZE OMEGA=0 CONTRIBUTION ---------------------------------------------
@@ -330,24 +297,24 @@ if (options.analyse_w0_contribution):
     sigma_dga_w0, sigma_dga_components_w0 = sde.sde_dga_wrapper(dga_conf=dga_conf, vrg=vrg_dga, chi=chi_dga,
                                                                 qiw_mesh=qiw_grid.my_mesh[ind_w0, :],
                                                                 dmft_input=dmft1p, distributor=qiw_distributor)
-    sigma_dga_w0 = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, sigma_rpa=sigma_rpa,
+    sigma_w0, sigma_nc_w0 = sde.build_dga_sigma(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, sigma_rpa=sigma_rpa,
                                        dmft_sde=dmft_sde_w0,
                                        dmft1p=dmft1p)
     if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga_w0.npy', sigma_dga_w0, allow_pickle=True)
 
-del vrg_dga, chi_dga
-gc.collect()
 
 logger.log_cpu_time(task=' DGA SDE (w=0) ')
 # --------------------------------------------------- PLOTTING ---------------------------------------------------------
 if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
-if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p)
+if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma.npy', sigma, allow_pickle=True)
+if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_nc.npy', sigma, allow_pickle=True)
+if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p, sigma=sigma, sigma_nc=sigma_nc)
 if (dga_conf.opt.analyse_w0_contribution):
     if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, dmft_sde=dmft_sde_w0,
-                                            dmft1p=dmft1p, name='_w0')
-if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_dga['sigma'], dmft1p=dmft1p,
+                                            dmft1p=dmft1p, name='_w0', sigma=sigma_w0, sigma_nc=sigma_nc_w0)
+if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma, dmft1p=dmft1p,
                                        output_path=dga_conf.nam.output_path)
-if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_dga['sigma_nc'], dmft1p=dmft1p, name='_nc',
+if comm.rank == 0: plotting.giwk_plots(dga_conf=dga_conf, sigma=sigma_nc, dmft1p=dmft1p, name='_nc',
                                        output_path=dga_conf.nam.output_path)
 
 # Plot the contribution of the real/imaginary part of the spin-fermion vertex.
@@ -369,19 +336,19 @@ if comm.rank == 0: output.fit_and_plot_oz(dga_conf=dga_conf)
 logger.log_cpu_time(task=' OZ-fit ')
 # ------------------------------------------------- POLYFIT ------------------------------------------------------------
 # Extrapolate the self-energy to the Fermi-level via polynomial fit:
-if comm.rank == 0: output.poly_fit(dga_conf=dga_conf, mat_data=sigma_dga['sigma'], name='sigma_extrap')
-if comm.rank == 0: output.poly_fit(dga_conf=dga_conf, mat_data=sigma_dga['sigma_nc'], name='sigma_nc_extrap')
+if comm.rank == 0: output.poly_fit(dga_conf=dga_conf, mat_data=sigma, name='sigma_extrap')
+if comm.rank == 0: output.poly_fit(dga_conf=dga_conf, mat_data=sigma_nc, name='sigma_nc_extrap')
 
 if comm.rank == 0:
     gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=dmft1p['sloc'], mu0=dmft1p['mu'], adjust_mu=True)
     output.poly_fit(dga_conf=dga_conf, mat_data=gk['gk'], name='giwk_dmft')
 
 if comm.rank == 0:
-    gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma_dga['sigma'], mu0=dmft1p['mu'], adjust_mu=True)
+    gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dmft1p['mu'], adjust_mu=True)
     output.poly_fit(dga_conf=dga_conf, mat_data=gk['gk'], name='giwk')
 
 if comm.rank == 0:
-    gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma_dga['sigma_nc'], mu0=dmft1p['mu'], adjust_mu=True)
+    gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma_nc, mu0=dmft1p['mu'], adjust_mu=True)
     output.poly_fit(dga_conf=dga_conf, mat_data=gk['gk'], name='giwk_nc')
 
 if comm.rank == 0 and dga_conf.opt.analyse_spin_fermion_contributions:
@@ -407,10 +374,10 @@ if dga_conf.opt.do_max_ent_loc:
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=dmft1p['sloc'],
                                     n_fit=n_fit, adjust_mu=True, name='dmft')
         bw_opt_dga[0] = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
-                                                    sigma=sigma_dga['sigma'],
+                                                    sigma=sigma,
                                                     n_fit=n_fit, adjust_mu=True, name='dga')
         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
-                                    sigma=sigma_dga['sigma_nc'], n_fit=n_fit, adjust_mu=True, name='dga_nc')
+                                    sigma=sigma_nc, n_fit=n_fit, adjust_mu=True, name='dga_nc')
         if dga_conf.opt.analyse_spin_fermion_contributions:
             bw_opt_vrg_re[0] = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
                                                            sigma=sigma_vrg_re,
@@ -426,14 +393,13 @@ if dga_conf.opt.do_max_ent_loc:
 if dga_conf.opt.do_max_ent_irrk:
     # Do analytic continuation within the irreducible Brillouin Zone:
     output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_dga,
-                                 sigma=sigma_dga['sigma'], n_fit=n_fit, name='dga', logger=logger)
+                                 sigma=sigma, n_fit=n_fit, name='dga')
     logger.log_cpu_time(task=' MaxEnt irrk ')
 
     if dga_conf.opt.analyse_spin_fermion_contributions:
         # Do analytic continuation within the irreducible Brillouin Zone:
-        print(f'{bw_opt_vrg_re=}')
         output.max_ent_irrk_bw_range(comm=comm, dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_opt_vrg_re,
-                                     sigma=sigma_vrg_re, n_fit=n_fit, name='dga_vrg_re', logger=logger)
+                                     sigma=sigma_vrg_re, n_fit=n_fit, name='dga_vrg_re')
         logger.log_cpu_time(task=' MaxEnt irrk vrg_re ')
 
 # ------------------------------------------------ PAIRING VERTEX ------------------------------------------------------
@@ -444,7 +410,7 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
 if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
-    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma_dga['sigma'], el_conf=el_conf)
+    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma, el_conf=el_conf)
 
     logger.log_cpu_time(task=' Performed eliashberg equation ')
 #
