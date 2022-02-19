@@ -40,7 +40,8 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
     # assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv_urange = dga_conf.box.niv_urange
     sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
-    sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+    if (analyse_spin_fermion):
+        sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
 
     if(analyse_spin_fermion):
         vrg_im = vrg_in.imag
@@ -73,7 +74,8 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
                               dga_conf.q_grid.irrk_count[q_ind]
 
     sigma = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma
-    sigma_spim = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma_spim
+    if (analyse_spin_fermion):
+        sigma_spim = - chir.u_r / (2.0) * 1. / (dga_conf.q_grid.nk_tot) * sigma_spim
     if(analyse_spin_fermion):
         return sigma, sigma_spim
     else:
