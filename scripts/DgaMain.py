@@ -150,7 +150,7 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'config.npy', dga_conf)
 
 # ------------------------------------------ ANALYTIC CONTINUATION SET-UP ----------------------------------------------
 me_conf = conf.MaxEntConfig(t=t, beta=dga_conf.sys.beta, mesh_type='lorentzian')
-mw_conf.nwr = nwr
+me_conf.nwr = nwr
 n_fit = me_conf.get_n_fit_opt(n_fit_min=dga_conf.box.niv_core, n_fit_max=dga_conf.box.niv_urange)
 bw = me_conf.get_bw_opt()
 
