@@ -120,6 +120,7 @@ def max_ent_loc_bw_range(dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntCo
                    delimiter=',', fmt='%.9f')
         np.save(dga_conf.nam.output_path_ac + 'gloc_cont_' + name + '_bw{}.npy'.format(bw), g_cont, allow_pickle=True)
 
+    chi2 = np.array(chi2)
     bw_opt_ind,fit = a_cont.fit_piecewise(np.log10(np.flip(bw_range)), np.log10(np.flip(chi2)), p2_deg=1)
     bw_opt = np.flip(bw_range)[bw_opt_ind]
     plotting.plot_bw_fit(bw_opt=bw_opt, bw=np.flip(bw_range), chi2=np.flip(chi2), fit=fit, output_path=dga_conf.nam.output_path_ac, name='chi2_bw_{}'.format(name))

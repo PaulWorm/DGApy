@@ -100,14 +100,13 @@ def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, 
     plot_siwk_fs(siwk=-sigma_dga['dens'] + dmft_sde['dens'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dens'+name)
     plot_siwk_fs(siwk=sigma_nc, plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='nc'+name)
 
-def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, dmft1p=None, name='', output_path = None):
+def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, dmft1p=None, name='', output_path = None, niv_plot=10):
     # Create the DGA Green's functions:
     gf_dict = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dmft1p['mu'], adjust_mu=True)
     ind_gf0 = bz.find_qpd_zeros(qpd=(1. / gf_dict['gk'][:, :, :, gf_dict['niv']]).real, kgrid=dga_conf.k_grid)
     plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga'+name,
                           ind_fs=ind_gf0)
     plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga'+name)
-    niv_plot = 100 # np.min(100,dga_conf.box.niv_urange)
     plot_siw_along_fs(vn=dga_conf.box.vn_urange, siwk=sigma, ind_fs=ind_gf0, output_path=output_path, niv_plot=niv_plot,name='sigma_along_fs'+name)
 
 def plot_siw_along_fs(siwk=None,ind_fs=None,vn=None, niv_plot = 10,niv_plot_min=-1, output_path=None, name='sigma_along_fs'):

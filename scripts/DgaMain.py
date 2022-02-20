@@ -55,7 +55,7 @@ options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
-options.analyse_w0_contribution = True  # Analyse the w0 contribution to the self-energy
+options.analyse_w0_contribution = False  # Analyse the w0 contribution to the self-energy
 options.use_fbz = False  # Perform the calculation in the full BZ
 
 # Analytic continuation flags:
@@ -71,6 +71,9 @@ hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
 sys_param.hr = hr
 # Eliashberg config object:
 el_conf = conf.EliashbergConfig(k_sym='d-wave')
+
+# Anacont parameters:
+nwr = 401
 
 # Pairing vertex symmetries:
 n_eig = 2
@@ -147,6 +150,7 @@ if (comm.rank == 0): np.save(dga_conf.nam.output_path + 'config.npy', dga_conf)
 
 # ------------------------------------------ ANALYTIC CONTINUATION SET-UP ----------------------------------------------
 me_conf = conf.MaxEntConfig(t=t, beta=dga_conf.sys.beta, mesh_type='lorentzian')
+mw_conf.nwr = nwr
 n_fit = me_conf.get_n_fit_opt(n_fit_min=dga_conf.box.niv_core, n_fit_max=dga_conf.box.niv_urange)
 bw = me_conf.get_bw_opt()
 
@@ -362,11 +366,11 @@ logger.log_cpu_time(task=' Poly-fits ')
 # Broadcast bw_opt_dga
 comm.Barrier()
 if comm.rank == 0:
-    bw_opt_dga = np.empty((1,), dtype='i')
-    bw_opt_vrg_re = np.empty((1,), dtype='i')
+    bw_opt_dga = np.empty((1,))
+    bw_opt_vrg_re = np.empty((1,))
 else:
-    bw_opt_dga = np.empty((1,), dtype='i')
-    bw_opt_vrg_re = np.empty((1,), dtype='i')
+    bw_opt_dga = np.empty((1,))
+    bw_opt_vrg_re = np.empty((1,))
 
 if dga_conf.opt.do_max_ent_loc:
     if comm.rank == 0:
