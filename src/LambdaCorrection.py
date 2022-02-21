@@ -83,7 +83,7 @@ def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None, chi_rpa=
     nq = dga_conf.q_grid.nk_tot
     chi_dens_loc_sum = 1. / beta * np.sum(chi_dmft['dens'].mat[mask_dens_loc])
     chi_magn_loc_sum = 1. / beta * np.sum(chi_dmft['magn'].mat[mask_magn_loc])
-    chi_dens_ladder_sum = 1. / (beta * dga_conf.q_grid.nk_tot) * np.sum(chi_ladder['dens'].mat)
+    chi_dens_ladder_sum = 1. / (beta * dga_conf.q_grid.nk_tot) * np.sum(chi_ladder['dens'].mat[...,mask_dens_loc])
 
     if (dga_conf.opt.use_urange_for_lc):
         chi_dens_loc_sum = chi_dens_loc_sum + 1. / beta * np.sum(chi_rpa_loc['dens'].mat)

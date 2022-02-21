@@ -43,8 +43,11 @@ def load_ldga_n_an(path=None):
     w = (config['grids']['vn_urange'][niv_urange:] * 2+1) * np.pi/config['dmft1p']['beta']
     return w, sigma_node, sigma_anti_node
 
+def load_ldga_n_an_v2(path=None):
+
+
 # ----------------------------------------------- LOAD DATA ------------------------------------------------------------
-input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/'
+input_path = '/mnt/d/Research/U2BenchmarkData/'
 bm_path = input_path + 'DgaTsSpinOnly/'
 
 # There has been a mistake when extracting the data. It has hence to be scaled by:

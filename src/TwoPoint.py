@@ -149,8 +149,10 @@ class GreensFunctionGenerator():
         # Add k-dimensions for local self-energy
         if (len(sigma.shape) == 1):
             self._sigma = sigma[None, None, None, :]
+            self._sigma_type = 'loc'
         else:
             self._sigma = sigma
+            self._sigma_type = 'nloc'
 
         self.set_smom()
 
