@@ -1,5 +1,7 @@
+'''
+ Module to handle operations within the (irreduzible) Brilloun zone.
+'''
 import numpy as np
-import Hk as hk
 
 def get_extent(kgrid=None):
     return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
@@ -81,12 +83,21 @@ def find_qpd_zeros(qpd=None,kgrid=None):
 class KGrid():
     ''' Class to build the k-grid for the Brillouin zone.'''
 
+    # Attributes:
+    kx = None  # kx-grid
+    ky = None  # ky-grid
+    kz = None  # kz-grid
+    irrk_ind = None # Index of the irreducible BZ points
+    irrk_inv = None # Index map back to the full BZ from the irreducible one
+    irrk_count = None # duplicity of each k-points in the irreducible BZ
+    irr_kmesh = None # k-meshgrid of the irreduzible BZ
+    fbz2irrk = None # index map from the full BZ to the irreduzible one
+
     def __init__(self, nk=None, ek=None):
+
         #self.dec = 10
         self.nk = nk
         self.set_k_axes()
-        self.set_kmesh()
-        self.set_ind_lin()
         self.set_ind_tuple()
 
         if(ek is not None):
@@ -108,11 +119,18 @@ class KGrid():
     def irr_kgrid(self):
         return tuple([self.irr_kmesh[ax] for ax in range(len(self.nk))])
 
-    def set_kmesh(self):
-        self.kmesh = np.array(np.meshgrid(self.kx, self.ky, self.kz))
+    @property
+    def ind_lin(self):
+        return np.arange(0,self.nk_tot)
 
-    def set_ind_lin(self):
-        self.ind_lin = np.arange(0,self.nk_tot)
+    @property
+    def irrk_ind_lin(self):
+        return np.arange(0, self.nk_irr)
+
+    @property
+    def kmesh(self):
+        ''' meshgrid of {kx,ky,kz}'''
+        return np.array(np.meshgrid(self.kx, self.ky, self.kz))
 
     def set_ind_tuple(self):
         self.ind = np.squeeze(np.array(np.unravel_index(self.ind_lin,self.nk))).T
@@ -123,7 +141,6 @@ class KGrid():
                                                                              return_index=True, return_inverse=True,
                                                                              return_counts=True)
         self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
-        self.irrk_ind_lin = np.arange(0,self.nk_irr)
         self.fbz2irrk = self.irrk_ind[self.irrk_inv]
 
     def set_irrk2fbz(self):
@@ -132,7 +149,6 @@ class KGrid():
                                                                              return_index=True, return_inverse=True,
                                                                              return_counts=True)
         self.irr_kmesh  = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
-        self.irrk_ind_lin = np.arange(0,self.nk_irr)
         self.fbz2irrk = self.irrk_ind[self.irrk_inv]
 
     def set_k_axes(self):
@@ -153,14 +169,24 @@ class KGrid():
         reduced = np.zeros((self.nk_irr,)+shp[1:], dtype=mat_reshape.dtype)
         for i in range(self.nk_irr):
             reduced[i,...] = np.mean(mat_reshape[self.fbz2irrk == self.irrk_ind[i],...], axis=0)
-        symmetrized = self.irrk2fbz(mat=reduced)
-        return symmetrized
+        return self.irrk2fbz(mat=reduced)
 
     def shift_mat_by_pi(self,mat):
         mat_shift = np.roll(mat,self.nk[0]//2,0)
         mat_shift = np.roll(mat_shift,self.nk[1]//2,1)
         return mat_shift
 
+    def shift_mat_by_q(self, mat, q = (0,0,0)):
+        ''' Structure of mat has to be {kx,ky,kz,...} '''
+        ind = self.find_q_ind(q=q)
+        return np.roll(mat,ind,axis=(0,1,2))
+
+    def find_q_ind(self,q=(0,0,0)):
+        ind = []
+        ind.append(np.argmin(np.abs(self.kx - q[0])))
+        ind.append(np.argmin(np.abs(self.ky - q[1])))
+        ind.append(np.argmin(np.abs(self.kz - q[2])))
+        return ind
 
 
 
@@ -175,91 +201,11 @@ def grid_2d(nk=16, name='k'):
     }
     return grid
 
-
-def named_grid(nk=None, name='k'):
-    kx = np.linspace(0, 2 * np.pi, nk[0], endpoint=False)
-    ky = np.linspace(0, 2 * np.pi, nk[1], endpoint=False)
-    kz = np.linspace(0, 2 * np.pi, nk[2], endpoint=False)
-    grid = {
-        '{}x'.format(name): kx,
-        '{}y'.format(name): ky,
-        '{}z'.format(name): kz
-    }
-    return grid
-
-
 def grid(nk=None):
     kx = np.linspace(0, 2 * np.pi, nk[0], endpoint=False)
     ky = np.linspace(0, 2 * np.pi, nk[1], endpoint=False)
     kz = np.linspace(0, 2 * np.pi, nk[2], endpoint=False)
     return kx, ky, kz
-
-
-class NamedKGrid():
-    ''' Class that contains information about the k-grid'''
-
-    def __init__(self, nk=None, name='k', type='fbz'):
-        self.nk = nk
-        self.name = name
-        self.type = type
-        if (type == 'fbz'):
-            self.grid = named_grid(nk=self.nk, name=self.name)
-        else:
-            raise NotImplementedError
-
-        self.axes = ('x', 'y', 'z')
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-
-    @property
-    def type(self):
-        return self._type
-
-    @type.setter
-    def type(self, value):
-        self._type = value
-
-    @property
-    def nk(self):
-        return self._nk
-
-    @nk.setter
-    def nk(self, value):
-        self._nk = value
-
-    @property
-    def grid(self):
-        return self._grid
-
-    @grid.setter
-    def grid(self, value):
-        self._grid = value
-
-    def axis_float_to_string(self, ax=0):
-        if (ax == 0):
-            return self.axes[0]
-        if (ax == 1):
-            return self.axes[1]
-        if (ax == 2):
-            return self.axes[2]
-
-    def nk_tot(self):
-        return np.prod(self.nk)
-
-    def get_k(self, ax='x'):
-        if (type(ax) is not str):
-            ax = self.axis_float_to_string(ax=ax)
-        return self.grid['{}{}'.format(self.name, ax)]
-
-    def get_grid_as_tuple(self):
-        grid = tuple([self.get_k(ax=ax) for ax in self.axes])
-        return grid
 
 
 def get_irr_grid(ek=None, dec=15):
@@ -271,36 +217,19 @@ def get_irr_grid(ek=None, dec=15):
 
 if __name__ == '__main__':
     nk = 8
-    grid_k = grid_2d(nk=nk)
-    grid_q = grid_2d(nk=nk, name='q')
+    k_grid = KGrid(nk=(nk,nk,1))
 
-    qgrid = NamedKGrid(nk=(nk, nk, 1), name='q')
-    qx = qgrid.get_k(ax=0.)
-    print(f'{qx=}')
+    ek = np.cos(k_grid.kx[:,None,None]) + np.cos(k_grid.ky[None,:,None])
 
-    nk_tot = qgrid.nk_tot()
+    import matplotlib.pyplot as plt
+    plt.imshow(ek[:,:,0], cmap='RdBu', origin='lower')
+    plt.show()
 
-    Grid = NamedKGrid(nk=(nk, nk, 1), name='k')
-    kgrid = Grid.get_grid_as_tuple()
+    ek_shift = k_grid.shift_mat_by_q(mat=ek,q=(np.pi,np.pi,0))
+    ek_shift_2 = k_grid.shift_mat_by_pi(mat=ek)
 
-    t = 1.0
-    tp = -0.2
-    tpp = 0.1
-    hr = np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
-    ek = hk.ek_3d(Grid.get_grid_as_tuple(), hr)
+    plt.imshow(ek_shift[:,:,0], cmap='RdBu', origin='lower')
+    plt.show()
 
-    k_grid = KGrid(nk=(nk, nk, 1),ek=ek)
-    mask = k_grid.irrk_ind[k_grid.irrk_inv]
-
-
-
-    ind_equal = np.equal(k_grid.irrk_inv[:,None],k_grid.irrk_ind_lin[None,:])
-    n_equal_max = np.max(k_grid.irrk_count)
-
-    mat = ek
-    mat_reshape = np.reshape(mat, (k_grid.nk_tot, -1))
-    shp = np.shape(mat_reshape)
-    reduced = np.zeros((k_grid.nk_irr,) + shp[1:], dtype=mat_reshape.dtype)
-    for i in range(k_grid.nk_irr):
-        reduced[i, ...] = np.mean(mat_reshape[k_grid.fbz2irrk == k_grid.irrk_ind[i], ...], axis=0)
-    symmetrized = k_grid.irrk2fbz(mat=reduced)
+    plt.imshow(ek_shift_2[:,:,0], cmap='RdBu', origin='lower')
+    plt.show()
