@@ -84,11 +84,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 59
-box_sizes.niw_urange = 59  # This seems not to save enough to be used.
-box_sizes.niv_core = 60
-box_sizes.niv_invbse = 60
-box_sizes.niv_urange = 500  # Must be larger than niv_invbse
+box_sizes.niw_core = 20
+box_sizes.niw_urange = 20  # This seems not to save enough to be used.
+box_sizes.niv_core = 20
+box_sizes.niv_invbse = 20
+box_sizes.niv_urange = 80  # Must be larger than niv_invbse
 box_sizes.niv_asympt = 0  # Don't use this for now.
 
 # Box size for saving the spin-fermion vertex:

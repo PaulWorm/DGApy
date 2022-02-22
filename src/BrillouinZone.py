@@ -188,6 +188,13 @@ class KGrid():
         ind.append(np.argmin(np.abs(self.kz - q[2])))
         return ind
 
+    def add_q_to_kgrid(self,q=(0,0,0)):
+        assert (np.size(self.grid) == np.size(q)), 'Kgrid and q have different dimensions.'
+        kgrid = []
+        for i in range(np.size(q)):
+            kgrid.append(self.grid[i] + q[i])
+        return kgrid
+
 
 
 def grid_2d(nk=16, name='k'):

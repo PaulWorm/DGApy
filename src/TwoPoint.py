@@ -2,10 +2,11 @@
 
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
+
 import numpy as np
 import Hk as hk
 import ChemicalPotential as chempot
-
+import BrillouinZone as bz
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
@@ -75,12 +76,12 @@ class GreensFunction(object):
     ''' Contains routines for the Matsubara one-particle Green's function'''
 
     def __init__(self, iv=None, beta=1.0, mu=0, ek=None, sigma=None):
-        self._iv = iv
-        self._beta = beta
-        self._mu = mu
+        self.iv = iv
+        self.beta = beta
+        self.mu = mu
         self._ek = ek
-        self._sigma = sigma
-        self._gk = self.get_gk()
+        self.sigma = sigma
+        self.gk = self.get_gk()
 
     @property
     def iv(self):
@@ -91,16 +92,20 @@ class GreensFunction(object):
         self._iv = iv
 
     @property
-    def niv(self):
-        return self.iv.size // 2
-
-    @property
     def beta(self):
         return self._beta
+
+    @beta.setter
+    def beta(self, value):
+        self._beta = value
 
     @property
     def mu(self):
         return self._mu
+
+    @mu.setter
+    def mu(self,value):
+        self._mu = value
 
     @property
     def sigma(self):
@@ -119,8 +124,8 @@ class GreensFunction(object):
         return self._gk
 
     @gk.setter
-    def gk(self, gk):
-        self._gk = gk
+    def gk(self, value):
+        self._gk = value
 
     def get_gk(self):
         return 1. / (self._iv + self._mu - self._ek - self._sigma)
@@ -141,9 +146,9 @@ class GreensFunction(object):
 class GreensFunctionGenerator():
     '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
 
-    def __init__(self, beta=1.0, kgrid=None, hr=None, sigma=None):
+    def __init__(self, beta=1.0, kgrid: bz.KGrid =None, hr=None, sigma=None):
         self._beta = beta
-        self._kgrid = kgrid
+        self.k_grid = kgrid
         self._hr = hr
 
         # Add k-dimensions for local self-energy
@@ -161,8 +166,12 @@ class GreensFunctionGenerator():
         return self._beta
 
     @property
-    def kgrid(self):
-        return self._kgrid
+    def k_grid(self):
+        return self._k_grid
+
+    @k_grid.setter
+    def k_grid(self, value):
+        self._k_grid = value
 
     @property
     def hr(self):
@@ -180,41 +189,43 @@ class GreensFunctionGenerator():
     def niv_sigma(self):
         return self._sigma.shape[-1] // 2
 
+    @property
     def nkx(self):
-        return self.kgrid[0].size
+        return self.k_grid.nk[0]
 
+    @property
     def nky(self):
-        return self.kgrid[1].size
+        return self.k_grid.nk[1]
 
+    @property
     def nkz(self):
-        return self.kgrid[2].size
+        return self.k_grid.nk[2]
 
-    def generate_gk(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
+    def generate_gk(self, mu=0, qiw=[0, 0, 0, 0], niv=-1, v_range='full'):
         q = qiw[:3]
         wn = int(qiw[-1])
+        v_slice = self.get_v_slice(niv=niv, v_range=v_range)
+        iv = self.get_iv(niv=niv, wn=wn)[v_slice]
         kgrid = self.add_q_to_kgrid(q=q)
         ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)
-        iv = self.get_iv(niv=niv, wn=wn)
+        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[...,v_slice]
+        if(self._sigma_type == 'nloc'):
+            sigma = self.shift_mat_by_q(mat=sigma,q=q)
         return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
+
+    def get_v_slice(self,niv=None,v_range='full'):
+        if v_range in {'+','p','plus'}:
+            return slice(0,niv)
+        elif v_range in {'-','m','minus'}:
+            return slice(niv,None)
+        else:
+            return slice(0,None)
 
     def generate_gk_plus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        q = qiw[:3]
-        wn = int(qiw[-1])
-        kgrid = self.add_q_to_kgrid(q=q)
-        ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[..., niv:]
-        iv = self.get_iv(niv=niv, wn=wn)[niv:]
-        return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
+        return self.generate_gk(self, mu=mu, qiw=qiw, niv=niv, v_range='+')
 
     def generate_gk_minus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        q = qiw[:3]
-        wn = int(qiw[-1])
-        kgrid = self.add_q_to_kgrid(q=q)
-        ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[..., :niv]
-        iv = self.get_iv(niv=niv, wn=wn)[:niv]
-        return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
+        return self.generate_gk(self, mu=mu, qiw=qiw, niv=niv, v_range='-')
 
     def get_iv(self, niv=0, wn=0):
         if (niv == -1):
@@ -227,12 +238,11 @@ class GreensFunctionGenerator():
             niv_cut = niv - int(np.abs(wn))
         return self.sigma[..., niv - niv_cut - wn:niv + niv_cut - wn]
 
-    def add_q_to_kgrid(self, q=None):
-        assert (np.size(self.kgrid) == np.size(q)), 'Kgrid and q have different dimensions.'
-        kgrid = []
-        for i in range(np.size(q)):
-            kgrid.append(self.kgrid[i] + q[i])
-        return kgrid
+    def add_q_to_kgrid(self, q=(0,0,0)):
+        return self.k_grid.add_q_to_kgrid(q=q)
+
+    def shift_mat_by_q(self,mat=None,q=(0,0,0)):
+        return self.k_grid.shift_mat_by_q(mat=mat,q=q)
 
     def set_smom(self):
         iv = self.get_iv(niv=-1, wn=0)
@@ -241,14 +251,14 @@ class GreensFunctionGenerator():
 
     def adjust_mu(self, n=None, mu0=0, verbose=False):
         iv = self.get_iv(niv=-1, wn=0)
-        ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
+        ek = hk.ek_3d(kgrid=self.k_grid.grid, hr=self.hr)
         mu = chempot.update_mu(mu0=mu0, target_filling=n, iv=iv, hk=ek, siwk=self.sigma,
                                beta=self.beta, smom0=self.smom[0], verbose=verbose)
         return mu
 
     def get_fill(self, mu=None, verbose=False):
         iv = self.get_iv(niv=-1, wn=0)
-        ek = hk.ek_3d(kgrid=self.kgrid, hr=self.hr)
+        ek = hk.ek_3d(kgrid=self.k_grid.grid, hr=self.hr)
         hloc = np.mean(ek)
         n, _ = chempot.get_fill(iv=iv, hk=ek, siwk=self.sigma, beta=self.beta, smom0=self.smom[0], hloc=hloc, mu=mu,
                                 verbose=verbose)
@@ -268,7 +278,9 @@ class GreensFunctionGenerator():
 
 
 if __name__ == '__main__':
-    input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+    #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+    input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+    path_dga = input_path + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange80_wurange27/'
     fname_dmft = '1p-data.hdf5'
 
     import w2dyn_aux
@@ -281,44 +293,53 @@ if __name__ == '__main__':
     # Set up real-space Wannier Hamiltonian:
     import Hr as hr
 
-    t = 1.00
-    tp = -0.20 * t * 0
-    tpp = 0.10 * t * 0
+    t = 1.0
+    tp = -0.20 * t
+    tpp = 0.10 * t
     hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
 
     # Define k-grid
-    nkf = 200
-    nqf = 200
+    nkf = 32
+    nqf = 32
     nk = (nkf, nkf, 1)
     nq = (nqf, nqf, 1)
 
     # Generate k-meshes:
     import BrillouinZone as bz
 
-    k_grid = bz.NamedKGrid(nk=nk, name='k')
-    q_grid = bz.NamedKGrid(nk=nq, name='q')
+    k_grid = bz.KGrid(nk=nk)
+    q_grid = bz.KGrid(nk=nq)
 
-    g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.get_grid_as_tuple(), hr=hr,
+    g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid, hr=hr,
                                           sigma=dmft1p['sloc'])
-    niv_urange = 100
-    gk = g_generator.generate_gk(mu=dmft1p['mu'], qiw=[0, 0, 0, 0], niv=niv_urange)
 
-    import Indizes as ind
+    mu = g_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
+    gk = g_generator.generate_gk(mu=mu)
 
-    index_grid_keys = ('qx', 'qy', 'qz', 'iw')
-    qiw_grid = ind.IndexGrids(grid_arrays=q_grid.get_grid_as_tuple() + (0,), keys=index_grid_keys)
-    qx = q_grid.grid['qx'][0]
-    qy = q_grid.grid['qy'][nqf // 2]
-    qz = q_grid.grid['qz'][0]
-    q = [qx, qy, qz, 0]
-    gkpq = g_generator.generate_gk(mu=dmft1p['mu'], qiw=q + [0, ], niv=niv_urange)
+    import matplotlib.pyplot as plt
 
-    # Plot the Fermi-surface:
-    import Plotting as plotting
+    ek = hk.ek_3d(kgrid=g_generator.k_grid.grid, hr=g_generator.hr)
 
-    plotting.plot_giwk_fs(giwk=gk.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange,
-                          name='gk')
-    plotting.plot_giwk_fs(giwk=gkpq.gk, plot_dir=input_path, kgrid=k_grid, do_shift=False, kz=0, niv_plot=niv_urange,
-                          name='gkpq')
+    plt.imshow(ek[:,:,0], cmap='RdBu', origin='lower')
+    plt.colorbar()
+    plt.show()
 
-#
+    plt.imshow(-gk.gk.imag[:,:,0,gk.niv], cmap='RdBu', origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    sigma_nl = np.load(path_dga + 'sigma.npy', allow_pickle=True)
+
+    g_generator_nl = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid, hr=hr,
+                                          sigma=sigma_nl)
+    mu_snl = g_generator_nl.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
+    gk_snl = g_generator_nl.generate_gk(mu=mu_snl)
+    gk_snl_pi = g_generator_nl.generate_gk(mu=mu_snl,qiw=[np.pi,np.pi,0,0])
+
+    plt.imshow(-gk_snl.gk.imag[:,:,0,gk_snl.niv], cmap='RdBu', origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    plt.imshow(-gk_snl_pi.gk.imag[:,:,0,gk_snl_pi.niv], cmap='RdBu', origin='lower')
+    plt.colorbar()
+    plt.show()
