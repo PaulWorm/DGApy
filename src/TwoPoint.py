@@ -204,7 +204,7 @@ class GreensFunctionGenerator():
     def nkz(self):
         return self.k_grid.nk[2]
 
-    def generate_gk(self, mu=0, qiw=[0, 0, 0, 0], niv=-1, v_range='full'):
+    def generate_gk(self, mu=0, qiw=(0, 0, 0, 0), niv=-1, v_range='full'):
         q = qiw[:3]
         wn = int(qiw[-1])
         niv = self.check_niv(niv=niv,wn=wn)
@@ -320,9 +320,11 @@ if __name__ == '__main__':
 
     g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid, hr=hr,
                                           sigma=dmft1p['sloc'])
-
+    print('check')
     mu = g_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
+    print('check')
     gk = g_generator.generate_gk(mu=mu)
+    print('check')
 
     import matplotlib.pyplot as plt
 

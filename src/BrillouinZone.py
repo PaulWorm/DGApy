@@ -189,7 +189,7 @@ class KGrid():
         return ind
 
     def add_q_to_kgrid(self,q=(0,0,0)):
-        assert (np.size(self.grid) == np.size(q)), 'Kgrid and q have different dimensions.'
+        assert (len(self.grid) == np.size(q)), 'Kgrid and q have different dimensions.'
         kgrid = []
         for i in range(np.size(q)):
             kgrid.append(self.grid[i] + q[i])
@@ -240,3 +240,4 @@ if __name__ == '__main__':
 
     plt.imshow(ek_shift_2[:,:,0], cmap='RdBu', origin='lower')
     plt.show()
+    mat = k_grid.add_q_to_kgrid(q=(0,0,0))

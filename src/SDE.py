@@ -32,7 +32,7 @@ def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None,giw=None, u=N
 def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, giw=None, u=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
     giw_grid = wn_slices(mat=giw, n_cut=niv_giw, iw=chir.iw)
-    return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat_asympt[:, None]*(1 - u * chir.mat[:, None]) / (1 - u * chir.mat_asympt[:, None]) * giw_grid, axis=0)
+    return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat_asympt[:, None]*(1 - u_r * chir.mat[:, None]) / (1 - u_r * chir.mat_asympt[:, None]) * giw_grid, axis=0)
 
 
 def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSusceptibility = None,

@@ -36,12 +36,12 @@ box_sizes = conf.BoxSizes()
 
 # Define paths of datasets:
 names.input_path = './'
-names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
 #names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
 #names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 #names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
-#names.input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.875/LambdaDgaPython/'
+names.input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.875/LambdaDgaPython/'
 names.output_path = names.input_path
 
 # Define names of input/output files:
@@ -50,11 +50,11 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = True # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = True
 options.keep_ladder_vertex = False
-options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
+options.lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 options.analyse_spin_fermion_contributions = False  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
@@ -68,8 +68,8 @@ no_mu_adjust_fs_cont = False
 no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
-t = 1.00
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+t = 0.25
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.25 * t, tpp=0.12 * t)
 #hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:
@@ -84,20 +84,20 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 10
-box_sizes.niw_urange = 10  # This seems not to save enough to be used.
-box_sizes.niv_core = 10
-box_sizes.niv_invbse = 20
-box_sizes.niv_urange = 80  # Must be larger than niv_invbse
+box_sizes.niw_core = 59
+box_sizes.niw_urange = 59  # This seems not to save enough to be used.
+box_sizes.niv_core = 60
+box_sizes.niv_invbse = 60
+box_sizes.niv_urange = 500  # Must be larger than niv_invbse
 
 # Box size for saving the spin-fermion vertex:
 box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 16
+nkx = 24
 nky = nkx
-nqx = 16
+nqx = 24
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -416,7 +416,7 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
 if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
-    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma, el_conf=el_conf)
+    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma_nc, el_conf=el_conf)
 
     logger.log_cpu_time(task=' Performed eliashberg equation ')
 #
