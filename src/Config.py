@@ -64,7 +64,7 @@ class BoxSizes(ConfigBase):
     def niv_core(self):
         return self._niw_core
 
-    @niw_core.setter
+    @niv_core.setter
     def niv_core(self, value):
         self._niv_core = value
         self.vn_core = mf.vn(n=self.niv_core)

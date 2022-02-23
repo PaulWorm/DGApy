@@ -63,6 +63,8 @@ def get_ur(u=1.0, channel='dens'):
 class LocalBubble():
     ''' Computes the local Bubble suszeptibility \chi_0 = - beta GG '''
 
+    asympt = None # Asymptotic correction with G = 1/iv
+
     def __init__(self, giw=None, beta=1.0, niv_sum=-1, iw=None):
         self._giw = giw
         self._beta = beta
@@ -72,6 +74,9 @@ class LocalBubble():
         self._iw = iw
         self.set_chi0()
         self.set_gchi0()
+
+        self.set_asympt()
+
 
     @property
     def giw(self):
@@ -102,8 +107,8 @@ class LocalBubble():
         return self._giw.shape[0] // 2
 
     @property
-    def niv_asympt(self) -> int:
-        return self._niv_asympt
+    def chi0_asympt(self):
+        return self.chi0 + self.asympt
 
     @property
     def beta(self) -> float:
@@ -129,20 +134,16 @@ class LocalBubble():
     def vec_get_chi0(self):
         return np.array([self.get_chi0(wn=wn) for wn in self._iw])
 
-    def add_asymptotic(self, niv_asympt=1000):
-        self._niv_asympt = niv_asympt
-        self._chi0 = self._chi0 + self.vec_get_asympt_correction()
+    def set_asympt(self):
+        self.asympt = self.vec_get_asympt_correction()
 
     def get_asympt_correction(self, wn=0):
-        niv_inner = self.niv_sum
-        niv_outer = self.niv_asympt
-        niv_full = niv_outer + niv_inner
-        v_asympt = 1j * (np.arange(-niv_full, niv_full) * 2. + 1.) * np.pi / self._beta
-        vpw_asympt = 1j * (np.arange(-niv_full - wn, niv_full - wn) * 2. + 1.) * np.pi / self._beta
-        asympt = np.sum(1. / vpw_asympt * 1. / v_asympt) \
-                 - np.sum(1. / vpw_asympt[niv_full - niv_inner:niv_full + niv_inner] *
-                          1. / v_asympt[niv_full - niv_inner:niv_full + niv_inner])
-        return - 1. / self._beta * asympt
+        vn = (2*mf.vn(n=self.niv_sum) + 1)
+        vpwn = (2*mf.vn(n=self.niv_sum) + 1) - 2*wn
+        if(wn==0):
+            return self.beta/np.pi**2 * (np.pi**2/8 - 0.5*np.sum(1./vn * 1./vpwn))
+        else:
+            return self.beta/np.pi**2 * (- 0.5*np.sum(1./vn * 1./vpwn))
 
     def vec_get_asympt_correction(self):
         return np.array([self.get_asympt_correction(wn=wn) for wn in self._iw])
@@ -155,7 +156,6 @@ class LocalBubble():
         niv_giw = self.niv_giw
         return - self.beta * self.giw[niv_giw - niv:niv_giw + niv] * self.giw[
                                                                      niv_giw - niv - wn:niv_giw + niv - wn]
-
     def vec_get_gchi0(self):
         return np.array([self.get_gchi0(wn=wn) for wn in self.iw])
 
@@ -166,7 +166,7 @@ class LocalBubble():
 class LocalFourPoint():
     ''' Parent class for local four-point correlation '''
 
-    def __init__(self, matrix=None, giw=None, channel=None, beta=None, iw=None):
+    def __init__(self, matrix=None, channel=None, beta=None, iw=None):
         assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
 
         self._channel = channel
@@ -174,7 +174,6 @@ class LocalFourPoint():
         self._beta = beta
         self._iw = iw
         self._niw = np.size(self._iw)
-        self._giw = giw
 
     @property
     def mat(self):
@@ -197,20 +196,12 @@ class LocalFourPoint():
         return self._beta
 
     @property
-    def giw(self):
-        return self._giw
-
-    @property
     def niv(self) -> int:
         return self._mat.shape[-1] // 2
 
     @property
     def niw(self) -> int:
         return self._iw.size
-
-    @property
-    def niv_giw(self) -> int:
-        return self._giw.shape[0] // 2
 
     def cut_iv(self, niv_cut=None):
         niv = self.niv
@@ -220,9 +211,9 @@ class LocalFourPoint():
         return 1. / self.beta ** 2 * np.sum(self._mat, axis=(-2, -1))
 
 
-def vec_chir_from_g2(g2: LocalFourPoint = None):
+def vec_chir_from_g2(g2: LocalFourPoint = None, giw=None):
     if (g2.channel == 'dens'):
-        ggv = get_ggv(giw=g2.giw, niv_ggv=g2.niv)
+        ggv = get_ggv(giw=giw, niv_ggv=g2.niv)
     else:
         ggv = None
     return np.array([chir_from_g2(g2=g2._mat[wn], ggv=ggv, beta=g2.beta, wn=g2.iw[wn]) for wn in g2.iw_ind])
@@ -242,7 +233,9 @@ class LocalThreePoint(LocalFourPoint):
 class LocalSusceptibility():
     ''' Parent class for local susceptibilities'''
 
-    def __init__(self, matrix=None, giw=None, channel='dens', beta=1.0, iw=None):
+    asympt = None # asymptotic correction from Chi = Chi0
+
+    def __init__(self, matrix=None, channel='dens', beta=1.0, iw=None, chi0_urange: LocalBubble = None):
         assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
 
         self._channel = channel
@@ -250,8 +243,8 @@ class LocalSusceptibility():
         self._beta = beta
         self._iw = iw
         self._niw = np.size(self._iw)
-        self._giw = giw
 
+        self.set_asympt(chi0_urange = chi0_urange)
     @property
     def mat(self):
         return self._mat
@@ -269,10 +262,6 @@ class LocalSusceptibility():
         return self._beta
 
     @property
-    def giw(self):
-        return self._giw
-
-    @property
     def niv(self) -> int:
         return self._niv
 
@@ -280,30 +269,28 @@ class LocalSusceptibility():
     def niw(self) -> int:
         return self._iw.size
 
+    def set_asympt(self, chi0_urange: LocalBubble = None):
+        self.asympt = chi0_urange.chi0_asympt - chi0_urange.chi0
+
     @property
-    def niv_giw(self) -> int:
-        return self._giw.shape[0] // 2
-
-    def add_asymptotic(self, chi0_asympt: LocalBubble = None, chi0_urange: LocalBubble = None):
-        self._mat = self._mat + chi0_asympt.chi0 - chi0_urange.chi0
-
+    def mat_asympt(self):
+        return self.mat + self.asympt
 
 def local_chi_phys_from_chi_aux(chi_aux=None, chi0_urange: LocalBubble = None, chi0_core: LocalBubble = None, u=None):
     u_r = get_ur(u=u, channel=chi_aux.channel)
     chi = 1. / (1. / (chi_aux.mat + chi0_urange.chi0 - chi0_core.chi0) + u_r)
-    return LocalSusceptibility(matrix=chi, giw=chi_aux.giw, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.iw)
+    return LocalSusceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.iw, chi0_urange=chi0_urange)
 
 
-def local_susceptibility_from_four_point(four_point: LocalFourPoint = None):
-    return LocalSusceptibility(matrix=four_point.contract_legs(), giw=four_point.giw, channel=four_point.channel
-                               , beta=four_point.beta, iw=four_point.iw)
+def local_susceptibility_from_four_point(four_point: LocalFourPoint = None, chi0_urange=None):
+    return LocalSusceptibility(matrix=four_point.contract_legs(), channel=four_point.channel
+                               , beta=four_point.beta, iw=four_point.iw,chi0_urange = chi0_urange)
 
 
-def local_rpa_susceptibility(chi0_asympt: LocalBubble = None, chi0_urange: LocalBubble = None, channel=None, u=None):
+def local_rpa_susceptibility(chi0_urange: LocalBubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
-    chir = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)  # + chi0_asympt.chi0 - chi0_urange.chi0
-    return LocalSusceptibility(matrix=chir, giw=chi0_asympt.giw, channel=channel
-                               , beta=chi0_asympt.beta, iw=chi0_asympt.iw)
+    chir = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)
+    return LocalSusceptibility(matrix=chir, channel=channel, beta=chi0_urange.beta, iw=chi0_urange.iw, chi0_urange=chi0_urange)
 
 
 # ======================================================================================================================
@@ -316,7 +303,7 @@ def gammar_from_gchir(gchir: LocalFourPoint = None, gchi0_urange: LocalBubble = 
     gammar = np.array(
         [gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0_urange=gchi0_urange.gchi0[wn], niv_core=gchir.niv,
                               beta=gchir.beta, u=u_r) for wn in gchir.iw_ind])
-    return LocalFourPoint(matrix=gammar, giw=gchir.giw, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
+    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
 
 
 def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
@@ -335,7 +322,7 @@ def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalB
     u_r = get_ur(u=u, channel=gammar.channel)
     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
                                                        beta=gammar.beta, u=u_r) for wn in gammar.iw_ind])
-    return LocalFourPoint(matrix=gchi_aux, giw=gammar.giw, channel=gammar.channel, beta=gammar.beta, iw=gammar.iw)
+    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, iw=gammar.iw)
 
 
 def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
@@ -350,7 +337,7 @@ def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
 # ==================================================================================================================
 def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None):
     vrg = 1. / gchi0.gchi0 * 1. / gchi0.beta * np.sum(gchi_aux.mat, axis=-1)
-    return LocalThreePoint(matrix=vrg, giw=gchi_aux.giw, channel=gchi_aux.channel, beta=gchi_aux.beta, iw=gchi_aux.iw)
+    return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, iw=gchi_aux.iw)
 
 
 def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
@@ -358,33 +345,20 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
         niv_urange = vrg.niv
     vrg_urange = 1. / vrg.beta * np.ones((vrg.niw, 2 * niv_urange), dtype=complex)
     vrg_urange[:, niv_urange - vrg.niv:niv_urange + vrg.niv] = vrg.mat
-    return LocalThreePoint(matrix=vrg_urange, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
+    return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
-def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_asympt: LocalSusceptibility = None,
-                            chi_urange: LocalSusceptibility = None,
-                            u=None):
-    vrg_asympt = vrg.mat * (1 - u * chi_urange.mat[:, None]) / (1 - u * chi_asympt.mat[:, None])
-    return LocalThreePoint(matrix=vrg_asympt, giw=vrg.giw, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
+def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None):
+    u_r = get_ur(u=u, channel=vrg.channel)
+    vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
+    #vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
+    return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
-def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None, niv_urange=-1,
-                                         u=None):
+def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None, niv_urange=-1):
     vrg = local_fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
     vrg = local_fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
     return vrg
-
-
-def local_fermi_bose_from_chi_aux_asympt(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None,
-                                         chi_asympt: LocalSusceptibility = None, chi_urange: LocalSusceptibility = None,
-                                         niv_urange=-1,
-                                         u=None):
-    u_r = get_ur(u=u, channel=gchi_aux.channel)
-    vrg = local_fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
-    vrg = local_fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
-    vrg = local_fermi_bose_asympt(vrg=vrg, chi_asympt=chi_asympt, chi_urange=chi_urange, u=u_r)
-    return vrg
-
 
 # ==================================================================================================================
 
@@ -397,12 +371,17 @@ class Bubble():
         Layout of gkiw dimensions is: [Nkx,Nky,Nkz,Niv]
     '''
 
-    def __init__(self, gk=None, gkpq=None, beta=1.0):
+    asympt = None # Asymptotic correction from G = 1/iv
+
+    def __init__(self, gk=None, gkpq=None, beta=None, wn=None):
         self._gk = gk
         self._gkpq = gkpq
         self._beta = beta
         self.set_chi0()
         self.set_gchi0()
+        self.wn = wn
+        self.set_asympt()
+
 
     @property
     def gk(self):
@@ -417,10 +396,6 @@ class Bubble():
         return self._gk.shape[-1] // 2
 
     @property
-    def niv_asympt(self) -> int:
-        return self._niv_asympt
-
-    @property
     def beta(self) -> float:
         return self._beta
 
@@ -432,26 +407,30 @@ class Bubble():
     def gchi0(self):
         return self._gchi0
 
+    @property
+    def chi0_asympt(self):
+        return self.chi0 + self.asympt
+
+
     def set_chi0(self):
         self._chi0 = self.get_chi0()
 
     def get_chi0(self):
         return - 1. / self._beta * np.sum(np.mean(self.gk * self.gkpq, axis=(0, 1, 2)))
 
-    def add_asymptotic(self, niv_asympt=1000, wn=0):
-        self._niv_asympt = niv_asympt
-        self._chi0 = self._chi0 + self.get_asympt_correction(wn=wn)
+    def vec_get_chi0(self):
+        return np.array([self.get_chi0(wn=wn) for wn in self._iw])
+
+    def set_asympt(self):
+        self.asympt = self.get_asympt_correction(wn=self.wn)
 
     def get_asympt_correction(self, wn=0):
-        niv_inner = self.niv
-        niv_outer = self.niv_asympt
-        niv_full = niv_outer + niv_inner
-        v_asympt = 1j * (np.arange(-niv_full, niv_full) * 2. + 1.) * np.pi / self._beta
-        vpw_asympt = 1j * (np.arange(-niv_full - wn, niv_full - wn) * 2. + 1.) * np.pi / self._beta
-        asympt = np.sum(1. / vpw_asympt * 1. / v_asympt) \
-                 - np.sum(1. / vpw_asympt[niv_full - niv_inner:niv_full + niv_inner] *
-                          1. / v_asympt[niv_full - niv_inner:niv_full + niv_inner])
-        return - 1. / self._beta * asympt
+        vn = (2*mf.vn(n=self.niv) + 1)
+        vpwn = (2*mf.vn(n=self.niv) + 1) - 2*wn
+        if(wn==0):
+            return self.beta/np.pi**2 * (np.pi**2/8 - 0.5*np.sum(1./vn * 1./vpwn))
+        else:
+            return self.beta/np.pi**2 * (- 0.5*np.sum(1./vn * 1./vpwn))
 
     def set_gchi0(self):
         self._gchi0 = self.get_gchi0()
@@ -467,11 +446,16 @@ class Bubble():
 class Susceptibility():
     ''' Class for the non-local susceptibility '''
 
-    def __init__(self, matrix=None, channel='dens', beta=None, u=None):
+    asympt = None  # asymptotic correction from Chi = Chi0
+
+    def __init__(self, matrix=None, channel='dens', beta=None, u=None, chi0_urange=None):
         self._u = u
         self._channel = channel
         self._mat = matrix
         self._beta = beta
+
+        if(chi0_urange is not None):
+            self.set_asympt(chi0_urange=chi0_urange)
 
     @property
     def channel(self):
@@ -497,8 +481,13 @@ class Susceptibility():
     def u_r(self):
         return get_ur(self.u, self.channel)
 
-    def add_asymptotic(self, chi0_asympt: Bubble = None, chi0_urange: Bubble = None):
-        self._mat = self._mat + chi0_asympt.chi0 - chi0_urange.chi0
+    @property
+    def mat_asympt(self):
+        return self.mat + self.asympt
+
+    def set_asympt(self, chi0_urange: Bubble = None):
+        self.asympt = chi0_urange.chi0_asympt - chi0_urange.chi0
+
 
 
 class FullQ():
@@ -755,22 +744,14 @@ def fermi_bose_urange(vrg: ThreePoint = None, niv_urange=-1):
     return ThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, u=vrg.u)
 
 
-def fermi_bose_asympt(vrg: ThreePoint = None, chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None):
-    vrg_asympt = vrg.mat * (1 - vrg.u_r * chi_urange.mat) / (1 - vrg.u_r * chi_asympt.mat)
+def fermi_bose_asympt(vrg: ThreePoint = None, chi_urange: Susceptibility = None):
+    vrg_asympt = vrg.mat * (1 - vrg.u_r * chi_urange.mat) / (1 - vrg.u_r * chi_urange.mat_asympt)
     return ThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, u=vrg.u)
 
 
 def fermi_bose_from_chi_aux_urange(gchi_aux: FourPoint = None, gchi0: Bubble = None, niv_urange=-1):
     vrg_core = fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
     vrg = fermi_bose_urange(vrg=vrg_core, niv_urange=niv_urange)
-    return vrg, vrg_core
-
-
-def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = None,
-                                   chi_asympt: Susceptibility = None, chi_urange: Susceptibility = None, niv_urange=-1):
-    vrg_core = fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
-    vrg = fermi_bose_urange(vrg=vrg_core, niv_urange=niv_urange)
-    vrg = fermi_bose_asympt(vrg=vrg, chi_asympt=chi_asympt, chi_urange=chi_urange)
     return vrg, vrg_core
 
 
@@ -783,12 +764,12 @@ def fermi_bose_from_chi_aux_asympt(gchi_aux: FourPoint = None, gchi0: Bubble = N
 def chi_rpa(chi0_urange: Bubble = None, channel=None, u=None):
     u_r = get_ur(u=u, channel=channel)
     chi = chi0_urange.chi0 / (1 + u_r * chi0_urange.chi0)
-    return Susceptibility(matrix=chi, channel=channel, beta=chi0_urange.beta, u=u)
+    return Susceptibility(matrix=chi, channel=channel, beta=chi0_urange.beta, u=u, chi0_urange=chi0_urange)
 
 
 def chi_phys_from_chi_aux(chi_aux: Susceptibility = None, chi0_urange: Bubble = None, chi0_core: Bubble = None):
     chi = 1. / (1. / (chi_aux.mat + chi0_urange.chi0 - chi0_core.chi0) + chi_aux.u_r)
-    return Susceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, u=chi_aux.u)
+    return Susceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, u=chi_aux.u, chi0_urange=chi0_urange)
 
 
 def susceptibility_from_four_point(four_point: FourPoint = None):
@@ -805,9 +786,8 @@ def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_ind
     u = dga_conf.sys.u
     mu = dmft_input['mu']
     niv_urange = dga_conf.box.niv_urange
-    niv_asympt = dga_conf.box.niv_asympt
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr, sigma=sigma)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr, sigma=sigma)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
 
@@ -821,13 +801,13 @@ def rpa_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, qiw_ind
         qiw = np.append(q, wn)
         gkpq_urange = g_generator.generate_gk(mu=mu, qiw=qiw, niv=niv_urange)
 
-        chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
+        chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta, wn=wn)
 
         chiq_dens = chi_rpa(chi0_urange=chi0q_urange, channel='dens', u=u)
         chiq_magn = chi_rpa(chi0_urange=chi0q_urange, channel='magn', u=u)
 
-        chi_rpa_dens.mat[iqw] = chiq_dens.mat
-        chi_rpa_magn.mat[iqw] = chiq_magn.mat
+        chi_rpa_dens.mat[iqw] = chiq_dens.mat_asympt
+        chi_rpa_magn.mat[iqw] = chiq_magn.mat_asympt
 
     chi_rpa_dens.mat_to_array()
     chi_rpa_magn.mat_to_array()
@@ -868,13 +848,13 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     gamma_dens_loc = gamma_dmft['dens']
     gamma_magn_loc = gamma_dmft['magn']
 
-    chi_dens_asympt = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
-    chi_magn_asympt = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
+    chi_dens = LadderSusceptibility(channel='dens', beta=beta, u=u, qiw=qiw_grid)
+    chi_magn = LadderSusceptibility(channel='magn', beta=beta, u=u, qiw=qiw_grid)
 
     vrg_dens = LadderObject(qiw=qiw_grid, channel='dens', beta=beta, u=u)
     vrg_magn = LadderObject(qiw=qiw_grid, channel='magn', beta=beta, u=u)
 
-    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=k_grid.grid, hr=hr, sigma=sigma)
+    g_generator = tp.GreensFunctionGenerator(beta=beta, kgrid=k_grid, hr=hr, sigma=sigma)
 
     gk_urange = g_generator.generate_gk(mu=mu, qiw=[0, 0, 0, 0], niv=niv_urange)
     gk_core = copy.deepcopy(gk_urange)
@@ -898,8 +878,8 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
         gkpq_core = copy.deepcopy(gkpq_urange)
         gkpq_core.cut_self_iv(niv_cut=niv_core)
 
-        chi0q_core = Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta)
-        chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta)
+        chi0q_core = Bubble(gk=gk_core.gk, gkpq=gkpq_core.gk, beta=gk_core.beta, wn=wn)
+        chi0q_urange = Bubble(gk=gk_urange.gk, gkpq=gkpq_urange.gk, beta=gk_urange.beta, wn=wn)
 
         gchi_aux_dens = construct_gchi_aux(gammar=gamma_dens_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
         gchi_aux_magn = construct_gchi_aux(gammar=gamma_magn_loc, gchi0=chi0q_core, u=u, wn_lin=wn_lin)
@@ -907,19 +887,21 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
         chi_aux_dens = susceptibility_from_four_point(four_point=gchi_aux_dens)
         chi_aux_magn = susceptibility_from_four_point(four_point=gchi_aux_magn)
 
-        chiq_dens_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_dens, chi0_urange=chi0q_urange,
+        chiq_dens = chi_phys_from_chi_aux(chi_aux=chi_aux_dens, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
 
-        chiq_magn_urange = chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
+        chiq_magn = chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
                                                  chi0_core=chi0q_core)
 
         vrgq_dens, vrgq_dens_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
                                                                    niv_urange=niv_urange)
+        vrgq_dens = fermi_bose_asympt(vrg=vrgq_dens,chi_urange=chiq_dens)
         vrgq_magn, vrgq_magn_core = fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
                                                                    niv_urange=niv_urange)
+        vrgq_magn = fermi_bose_asympt(vrg=vrgq_magn, chi_urange=chiq_magn)
 
-        chi_dens_asympt.mat[iqw] = chiq_dens_urange.mat
-        chi_magn_asympt.mat[iqw] = chiq_magn_urange.mat
+        chi_dens.mat[iqw] = chiq_dens.mat_asympt
+        chi_magn.mat[iqw] = chiq_magn.mat_asympt
 
         vrg_dens.ladder[iqw] = vrgq_dens
         vrg_magn.ladder[iqw] = vrgq_magn
@@ -952,15 +934,15 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
             file[group + 'vrg_magn/'] = beta * vrgq_magn.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
             file[group + 'vrg_dens/'] = beta * vrgq_dens.mat[niv_urange - niv_vrg_save:niv_urange + niv_vrg_save]
 
-    chi_dens_asympt.mat_to_array()
-    chi_magn_asympt.mat_to_array()
+    chi_dens.mat_to_array()
+    chi_magn.mat_to_array()
 
     vrg_dens.set_qiw_mat()
     vrg_magn.set_qiw_mat()
 
     dga_chi = {
-        'dens': chi_dens_asympt,
-        'magn': chi_magn_asympt
+        'dens': chi_dens,
+        'magn': chi_magn
     }
     dga_vrg = {
         'dens': vrg_dens,
@@ -1025,4 +1007,45 @@ def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None, d
 
 
 if __name__ == "__main__":
-    pass
+    import matplotlib.pyplot as plt
+    import TwoPoint as twop
+    import Hr as hr_mod
+    import BrillouinZone as bz
+
+    hr = hr_mod.one_band_2d_t_tp_tpp(t=1.0,tp=-0.2,tpp=0.1)
+    nk = (32,32,1)
+    k_grid = bz.KGrid(nk=nk)
+    beta = 10
+    sigma = np.zeros((5000,), dtype=complex)
+    g_gen = twop.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
+
+    mu = g_gen.adjust_mu(n=0.85,mu0=1)
+    giwk = g_gen.generate_gk(mu=mu)
+    giw = giwk.k_mean()
+    niv_core = 20
+    niv_urange = 100
+    niv_urange2 = 500
+    niv_urange3 = 1000
+    niv_urange4 = 2000
+    wn = 1
+    chi0_core = LocalBubble(giw=giw,beta=beta,niv_sum=niv_core,iw=[wn])
+    chi0_urange = LocalBubble(giw=giw,beta=beta,niv_sum=niv_urange,iw=[wn])
+    chi0_urange2 = LocalBubble(giw=giw,beta=beta,niv_sum=niv_urange2,iw=[wn])
+    chi0_urange3 = LocalBubble(giw=giw,beta=beta,niv_sum=niv_urange3,iw=[wn])
+    chi0_urange4 = LocalBubble(giw=giw,beta=beta,niv_sum=niv_urange4,iw=[wn])
+
+    plt.plot([chi0_core.chi0,chi0_urange.chi0,chi0_urange2.chi0,chi0_urange3.chi0,chi0_urange4.chi0])
+    plt.plot([chi0_core.chi0_asympt,chi0_urange.chi0_asympt,chi0_urange2.chi0_asympt,chi0_urange3.chi0_asympt,chi0_urange4.chi0_asympt])
+    plt.show()
+
+    print(f'{chi0_core.chi0=}')
+    print(f'{chi0_urange.chi0=}')
+    print(f'{chi0_urange2.chi0=}')
+    print(f'{chi0_urange3.chi0=}')
+    print(f'{chi0_urange4.chi0=}')
+
+    print(f'{chi0_core.chi0_asympt=}')
+    print(f'{chi0_urange.chi0_asympt=}')
+    print(f'{chi0_urange2.chi0_asympt=}')
+    print(f'{chi0_urange3.chi0_asympt=}')
+    print(f'{chi0_urange4.chi0_asympt=}')

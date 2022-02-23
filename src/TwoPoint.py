@@ -48,7 +48,7 @@ def create_gk_dict(dga_conf=None, sigma=None, mu0=None, adjust_mu=True, niv_cut=
         niv = sigma.shape[-1] // 2
         sigma = sigma[..., niv - niv_cut:niv + niv_cut]
 
-    gk_dga_generator = GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+    gk_dga_generator = GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
                                                sigma=sigma)
     if (adjust_mu):
         mu_dga = gk_dga_generator.adjust_mu(n=dga_conf.sys.n, mu0=mu0)
@@ -142,6 +142,9 @@ class GreensFunction(object):
         niv = arr.shape[-1] // 2
         return arr[..., niv - niv_cut:niv + niv_cut]
 
+    def k_mean(self):
+        return self.gk.mean(axis=(0,1,2))
+
 
 class GreensFunctionGenerator():
     '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
@@ -204,6 +207,7 @@ class GreensFunctionGenerator():
     def generate_gk(self, mu=0, qiw=[0, 0, 0, 0], niv=-1, v_range='full'):
         q = qiw[:3]
         wn = int(qiw[-1])
+        niv = self.check_niv(niv=niv,wn=wn)
         v_slice = self.get_v_slice(niv=niv, v_range=v_range)
         iv = self.get_iv(niv=niv, wn=wn)[v_slice]
         kgrid = self.add_q_to_kgrid(q=q)
@@ -215,21 +219,25 @@ class GreensFunctionGenerator():
 
     def get_v_slice(self,niv=None,v_range='full'):
         if v_range in {'+','p','plus'}:
-            return slice(0,niv)
+            return slice(niv, None)
         elif v_range in {'-','m','minus'}:
-            return slice(niv,None)
+            return slice(0,niv)
         else:
             return slice(0,None)
 
-    def generate_gk_plus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        return self.generate_gk(self, mu=mu, qiw=qiw, niv=niv, v_range='+')
-
-    def generate_gk_minus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        return self.generate_gk(self, mu=mu, qiw=qiw, niv=niv, v_range='-')
-
-    def get_iv(self, niv=0, wn=0):
+    def check_niv(self, niv=None, wn=None):
         if (niv == -1):
             niv = self.niv_sigma - int(np.abs(wn))
+        return niv
+
+    def generate_gk_plus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
+        return self.generate_gk(mu=mu, qiw=qiw, niv=niv, v_range='+')
+
+    def generate_gk_minus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
+        return self.generate_gk(mu=mu, qiw=qiw, niv=niv, v_range='-')
+
+    def get_iv(self, niv=0, wn=0):
+        niv = self.check_niv(niv=niv,wn=wn)
         return 1j * ((np.arange(-niv, niv) - wn) * 2 + 1) * np.pi / self.beta
 
     def cut_sigma(self, niv_cut=-1, wn=0):
@@ -335,6 +343,8 @@ if __name__ == '__main__':
     mu_snl = g_generator_nl.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
     gk_snl = g_generator_nl.generate_gk(mu=mu_snl)
     gk_snl_pi = g_generator_nl.generate_gk(mu=mu_snl,qiw=[np.pi,np.pi,0,0])
+    gk_p = g_generator_nl.generate_gk_plus(mu=mu_snl,qiw=[0,0,0,0])
+    gk_p_loc = gk_p.k_mean()
 
     plt.imshow(-gk_snl.gk.imag[:,:,0,gk_snl.niv], cmap='RdBu', origin='lower')
     plt.colorbar()
@@ -342,4 +352,7 @@ if __name__ == '__main__':
 
     plt.imshow(-gk_snl_pi.gk.imag[:,:,0,gk_snl_pi.niv], cmap='RdBu', origin='lower')
     plt.colorbar()
+    plt.show()
+
+    plt.plot(gk_p_loc)
     plt.show()

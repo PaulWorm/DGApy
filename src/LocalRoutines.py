@@ -8,9 +8,10 @@ import FourPoint as fp
 import SDE as sde
 import numpy as np
 
+
 # ---------------------------------------------- FUNCTIONS -------------------------------------------------------------
 
-def add_rpa_correction(dmft_sde=None,rpa_sde_loc=None,wn_rpa = None, sigma_comp=None):
+def add_rpa_correction(dmft_sde=None, rpa_sde_loc=None, wn_rpa=None, sigma_comp=None):
     if (np.size(wn_rpa) > 0):
         dmft_sde['dens'] = dmft_sde['dens'] + rpa_sde_loc['dens']
         dmft_sde['magn'] = dmft_sde['magn'] + rpa_sde_loc['magn']
@@ -22,7 +23,8 @@ def add_rpa_correction(dmft_sde=None,rpa_sde_loc=None,wn_rpa = None, sigma_comp=
         dmft_sde['siw'] = dmft_sde['siw'] + dmft_sde['hartree']
     return dmft_sde
 
-def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmft=None, ana_w0=False):
+
+def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig = None, giw=None, gamma_dmft=None, ana_w0=False):
     '''
 
     :param dga_conf: DGA config object
@@ -46,8 +48,8 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
     gchi_aux_dens_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_dmft['dens'], gchi0_core=chi0_core, u=u)
     gchi_aux_magn_loc = fp.local_gchi_aux_from_gammar(gammar=gamma_dmft['magn'], gchi0_core=chi0_core, u=u)
 
-    chi_aux_dens_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_dens_loc)
-    chi_aux_magn_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_magn_loc)
+    chi_aux_dens_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_dens_loc, chi0_urange=chi0_urange)
+    chi_aux_magn_loc = fp.local_susceptibility_from_four_point(four_point=gchi_aux_magn_loc, chi0_urange=chi0_urange)
 
     chi_dens_urange_loc = fp.local_chi_phys_from_chi_aux(chi_aux=chi_aux_dens_loc, chi0_urange=chi0_urange,
                                                          chi0_core=chi0_core,
@@ -58,32 +60,36 @@ def local_dmft_sde_from_gamma(dga_conf: conf.DgaConfig=None, giw=None, gamma_dmf
                                                          u=u)
 
     vrg_dens_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens_loc, gchi0=chi0_core,
-                                                           niv_urange=niv_urange,
-                                                           u=u)
+                                                           niv_urange=niv_urange)
+    vrg_dens_loc = fp.local_fermi_bose_asympt(vrg=vrg_dens_loc, chi_urange=chi_dens_urange_loc,
+                                              u=u)
 
     vrg_magn_loc = fp.local_fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn_loc, gchi0=chi0_core,
-                                                           niv_urange=niv_urange,
-                                                           u=u)
+                                                           niv_urange=niv_urange)
+    vrg_magn_loc = fp.local_fermi_bose_asympt(vrg=vrg_magn_loc, chi_urange=chi_magn_urange_loc,
+                                              u=u)
 
-    if(ana_w0):
+    if (ana_w0):
         w0_ind = iw == 0
-        vrg_dens_loc._mat = np.atleast_2d(vrg_dens_loc.mat[w0_ind,:])
-        vrg_magn_loc._mat = np.atleast_2d(vrg_magn_loc.mat[w0_ind,:])
+        vrg_dens_loc._mat = np.atleast_2d(vrg_dens_loc.mat[w0_ind, :])
+        vrg_magn_loc._mat = np.atleast_2d(vrg_magn_loc.mat[w0_ind, :])
         chi_dens_urange_loc._mat = np.atleast_1d(chi_dens_urange_loc.mat[w0_ind])
         chi_magn_urange_loc._mat = np.atleast_1d(chi_magn_urange_loc.mat[w0_ind])
 
-    if(dga_conf.opt.analyse_spin_fermion_contributions):
-        siw_dens_re = sde.local_dmft_sde(vrg=vrg_dens_loc.mat.real, chir=chi_dens_urange_loc, u=u)
-        siw_dens_im = sde.local_dmft_sde(vrg=1j*vrg_dens_loc.mat.imag, chir=chi_dens_urange_loc, u=u,scal_const=0.0)
-        siw_magn_re = sde.local_dmft_sde(vrg=vrg_magn_loc.mat.real, chir=chi_magn_urange_loc, u=u)
-        siw_magn_im = sde.local_dmft_sde(vrg=1j*vrg_magn_loc.mat.imag, chir=chi_magn_urange_loc, u=u,scal_const=0.0)
+    if (dga_conf.opt.analyse_spin_fermion_contributions):
+        siw_dens_re = sde.local_dmft_sde(vrg=vrg_dens_loc.mat.real, chir=chi_dens_urange_loc, giw=giw, u=u)
+        siw_dens_im = sde.local_dmft_sde(vrg=1j * vrg_dens_loc.mat.imag, chir=chi_dens_urange_loc, giw=giw, u=u,
+                                         scal_const=0.0)
+        siw_magn_re = sde.local_dmft_sde(vrg=vrg_magn_loc.mat.real, chir=chi_magn_urange_loc, giw=giw, u=u)
+        siw_magn_im = sde.local_dmft_sde(vrg=1j * vrg_magn_loc.mat.imag, chir=chi_magn_urange_loc, giw=giw, u=u,
+                                         scal_const=0.0)
 
         siw_dens = siw_dens_re + siw_dens_im
         siw_magn = siw_magn_re + siw_magn_im
 
     else:
-        siw_dens = sde.local_dmft_sde(vrg=vrg_dens_loc.mat, chir=chi_dens_urange_loc, u=u)
-        siw_magn = sde.local_dmft_sde(vrg=vrg_magn_loc.mat, chir=chi_magn_urange_loc, u=u)
+        siw_dens = sde.local_dmft_sde(vrg=vrg_dens_loc.mat, chir=chi_dens_urange_loc, giw=giw, u=u)
+        siw_magn = sde.local_dmft_sde(vrg=vrg_magn_loc.mat, chir=chi_magn_urange_loc, giw=giw, u=u)
 
         siw_dens_re = None
         siw_dens_im = None

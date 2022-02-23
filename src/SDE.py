@@ -20,28 +20,28 @@ def wn_slices(mat=None, n_cut=None, iw=None):
     return mat_grid
 
 
-def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None, u=None, scal_const=1.0):
+def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None,giw=None, u=None, scal_const=1.0):
     #assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     u_r = fp.get_ur(u=u, channel=chir.channel)
     niv = vrg.shape[-1] // 2
-    giw_grid = wn_slices(mat=chir.giw, n_cut=niv, iw=chir.iw)
-    return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat[:, None]) - scal_const / chir.beta) * giw_grid,
+    giw_grid = wn_slices(mat=giw, n_cut=niv, iw=chir.iw)
+    return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat_asympt[:, None]) - scal_const / chir.beta) * giw_grid,
                               axis=0)  # The -1./chir.beta is is canceled in the sum. This is only relevant for Fluctuation diagnostics.
 
 
-def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, u=None):
+def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, giw=None, u=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
-    giw_grid = wn_slices(mat=chir.giw, n_cut=niv_giw, iw=chir.iw)
-    return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat[:, None] * giw_grid, axis=0)
+    giw_grid = wn_slices(mat=giw, n_cut=niv_giw, iw=chir.iw)
+    return u_r ** 2 / (2. * chir.beta) * np.sum(chir.mat_asympt[:, None]*(1 - u * chir.mat[:, None]) / (1 - u * chir.mat_asympt[:, None]) * giw_grid, axis=0)
 
 
 def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSusceptibility = None,
             g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None, analyse_spin_fermion=False):
     # assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     niv_urange = dga_conf.box.niv_urange
-    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+    sigma = np.zeros((g_generator.nkx, g_generator.nky, g_generator.nkz, niv_urange), dtype=complex)
     if (analyse_spin_fermion):
-        sigma_spim = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_urange), dtype=complex)
+        sigma_spim = np.zeros((g_generator.nkx, g_generator.nky, g_generator.nkz, niv_urange), dtype=complex)
 
     if(analyse_spin_fermion):
         vrg_im = vrg_in.imag
@@ -84,7 +84,7 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
 
 def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mesh=None, dmft_input=None,
                     distributor=None):
-    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
                                                sigma=dmft_input['sloc'])
 
     if (dga_conf.opt.analyse_spin_fermion_contributions):
@@ -144,7 +144,7 @@ def reduce_and_symmetrize_fbz(dga_conf: conf.DgaConfig = None, mat=None, distrib
 def rpa_sde(dga_conf=None, chir: fp.LocalSusceptibility = None, g_generator: twop.GreensFunctionGenerator = None,
             niv_giw=None, mu=0, qiw_grid=None):
     u_r = fp.get_ur(u=dga_conf.sys.u, channel=chir.channel)
-    sigma = np.zeros((g_generator.nkx(), g_generator.nky(), g_generator.nkz(), niv_giw), dtype=complex)
+    sigma = np.zeros((g_generator.nkx, g_generator.nky, g_generator.nkz, niv_giw), dtype=complex)
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
@@ -162,7 +162,7 @@ def rpa_sde(dga_conf=None, chir: fp.LocalSusceptibility = None, g_generator: two
 
 
 def rpa_sde_wrapper(dga_conf: conf.DgaConfig = None, dmft_input=None, chi=None, qiw_grid=None, distributor=None):
-    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid.grid, hr=dga_conf.sys.hr,
+    g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
                                                sigma=dmft_input['sloc'])
     sigma_dens = rpa_sde(dga_conf=dga_conf, chir=chi['dens'], g_generator=g_generator, niv_giw=dga_conf.box.niv_urange,
                          mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
@@ -218,17 +218,14 @@ def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
     u = dmft_input['u']
 
     niv_urange = box_sizes.niv_urange
-    niv_asympt = box_sizes.niv_asympt
 
     chi0_urange = fp.LocalBubble(giw=giw, beta=beta, niv_sum=niv_urange, iw=iw)
-    chi0_asympt = copy.deepcopy(chi0_urange)
-    chi0_asympt.add_asymptotic(niv_asympt=niv_asympt)
 
-    chi_rpa_dens = fp.local_rpa_susceptibility(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange, channel='dens', u=u)
-    chi_rpa_magn = fp.local_rpa_susceptibility(chi0_asympt=chi0_asympt, chi0_urange=chi0_urange, channel='magn', u=u)
+    chi_rpa_dens = fp.local_rpa_susceptibility(chi0_urange=chi0_urange, channel='dens', u=u)
+    chi_rpa_magn = fp.local_rpa_susceptibility(chi0_urange=chi0_urange, channel='magn', u=u)
 
-    siw_rpa_dens = local_rpa_sde(chir=chi_rpa_dens, niv_giw=niv_urange, u=u)
-    siw_rpa_magn = local_rpa_sde(chir=chi_rpa_magn, niv_giw=niv_urange, u=u)
+    siw_rpa_dens = local_rpa_sde(chir=chi_rpa_dens, niv_giw=niv_urange, giw=giw, u=u)
+    siw_rpa_magn = local_rpa_sde(chir=chi_rpa_magn, niv_giw=niv_urange, giw=giw, u=u)
 
     rpa_sde = {
         'dens': siw_rpa_dens,

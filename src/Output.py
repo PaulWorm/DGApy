@@ -234,7 +234,7 @@ def perform_eliashberg_routine(dga_conf:conf.DgaConfig = None, sigma=None, el_co
 
         plotting.plot_vertex_vvp(vertex=gamma_trip.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='gamma_trip_loc')
 
-        g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.q_grid.grid, hr=dga_conf.sys.hr,
+        g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.q_grid, hr=dga_conf.sys.hr,
                                                    sigma=sigma)
         mu_dga = g_generator.adjust_mu(n=dga_conf.sys.n, mu0=dga_conf.sys.mu_dmft)
         gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=dga_conf.box.niv_pp).gk
