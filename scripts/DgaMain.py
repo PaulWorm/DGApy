@@ -55,7 +55,7 @@ options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt fr
 options.do_pairing_vertex = True
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'spch'  # Available: ['spch','sp','none','sp_only']
-options.use_urange_for_lc = True  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
+options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
 options.analyse_spin_fermion_contributions = False  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
 options.analyse_w0_contribution = False  # Analyse the w0 contribution to the self-energy
@@ -88,7 +88,7 @@ box_sizes.niw_core = 59
 box_sizes.niw_urange = 59  # This seems not to save enough to be used.
 box_sizes.niv_core = 60
 box_sizes.niv_invbse = 60
-box_sizes.niv_urange = 500  # Must be larger than niv_invbse
+box_sizes.niv_urange = 60  # Must be larger than niv_invbse
 
 # Box size for saving the spin-fermion vertex:
 box_sizes.niw_vrg_save = 5
@@ -313,7 +313,8 @@ logger.log_cpu_time(task=' DGA SDE (w=0) ')
 # --------------------------------------------------- PLOTTING ---------------------------------------------------------
 if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
 if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma.npy', sigma, allow_pickle=True)
-if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_nc.npy', sigma, allow_pickle=True)
+if comm.rank == 0: np.save(dga_conf.nam.output_path + 'sigma_nc.npy', sigma_nc, allow_pickle=True)
+if comm.rank == 0: np.save(dga_conf.nam.output_path + 'dmft1p.npy', dmft1p, allow_pickle=True)
 if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga, dmft_sde=dmft_sde, dmft1p=dmft1p, sigma=sigma, sigma_nc=sigma_nc)
 if (dga_conf.opt.analyse_w0_contribution):
     if comm.rank == 0: plotting.sigma_plots(dga_conf=dga_conf, sigma_dga=sigma_dga_w0, dmft_sde=dmft_sde_w0,
@@ -416,7 +417,7 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 
 # ----------------------------------------------- Eliashberg Equation --------------------------------------------------
 if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
-    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma_nc, el_conf=el_conf)
+    output.perform_eliashberg_routine(dga_conf=dga_conf, sigma=sigma, el_conf=el_conf)
 
     logger.log_cpu_time(task=' Performed eliashberg equation ')
 #
