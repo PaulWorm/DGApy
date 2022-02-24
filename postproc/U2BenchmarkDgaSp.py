@@ -57,10 +57,11 @@ def load_ldga_n_an_v2(path=None, sloc= None):
     niv = sloc.size // 2
     niv_urange = dmft_sde['siw'].size // 2
     dmft_sigma = sloc[niv - niv_urange:niv + niv_urange]
-    sigma = sigma_dga['dens'] + 3*sigma_dga['magn'] - 2*dmft_sde['magn'] - 0*dmft_sde['dens'] - dmft_sde['siw']+dmft_sigma
-    sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + 2 * dmft_sde[
-        'dens'] - dmft_sde['siw'] + dmft_sigma
+    #sigma = sigma_dga['dens'] + 3*sigma_dga['magn'] - 2*dmft_sde['magn'] - 0*dmft_sde['dens'] - dmft_sde['siw']+dmft_sigma
+    # sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + 2 * dmft_sde[
+    #     'dens'] - dmft_sde['siw'] + dmft_sigma
 
+    sigma = np.load(path + 'sigma.npy', allow_pickle=True)
     sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
     sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
     w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
@@ -130,7 +131,7 @@ ldga_bm_ts, config_bm_ts = load_ldga_data(path_bm_ts)
 wbm_ts, sldga_n_bm_ts, sldga_an_bm_ts = load_ldga_n_an(path_bm_ts)
 
 dmft_sloc = np.load(path_bm_ts + 'config.npy', allow_pickle=True).item()['dmft1p']['sloc']
-path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk6400_Nq6400_core79_invbse80_vurange80_wurange79/'
+path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk10000_Nq10000_core79_invbse80_vurange80_wurange79/'
 wbm_ts, sldga_n_bm_ts, sldga_an_bm_ts = load_ldga_n_an_v2(path_bm_ts, sloc=dmft_sloc)
 
 # ------------------------------------------------- PLOTS --------------------------------------------------------------

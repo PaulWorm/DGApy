@@ -10,7 +10,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import MatsubaraFrequencies as mf
 import h5py
-import pandas as pd
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def load_ldga_data(path=None):
@@ -41,6 +40,25 @@ def load_ldga_n_an(path=None):
     sigma_node = sigma[nk[0]//4,nk[1]//4,0,niv_urange:]
     sigma_anti_node = sigma[nk[0]//2,0,0,niv_urange:]
     w = (config['grids']['vn_urange'][niv_urange:] * 2+1) * np.pi/config['dmft1p']['beta']
+    return w, sigma_node, sigma_anti_node
+
+def load_ldga_n_an_v2(path=None, sloc= None):
+    dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
+    config = np.load(path + 'config.npy', allow_pickle=True).item()
+    nk = config.k_grid.nk
+    niv_urange = config.box.niv_urange
+    sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
+    niv = sloc.size // 2
+    niv_urange = dmft_sde['siw'].size // 2
+    dmft_sigma = sloc[niv - niv_urange:niv + niv_urange]
+    #sigma = sigma_dga['dens'] + 3*sigma_dga['magn'] - 2*dmft_sde['magn'] - 0*dmft_sde['dens'] - dmft_sde['siw']+dmft_sigma
+    # sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + 2 * dmft_sde[
+    #     'dens'] - dmft_sde['siw'] + dmft_sigma
+
+    sigma = np.load(path + 'sigma.npy', allow_pickle=True)
+    sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
+    sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
+    w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
     return w, sigma_node, sigma_anti_node
 
 # ----------------------------------------------- LOAD DATA ------------------------------------------------------------
@@ -101,6 +119,11 @@ path_063 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta17_mu1/' + 'LambdaDga_Nk1
 ldga_063, config_0v = load_ldga_data(path_063)
 w063, sldga_n_063, sldga_an_063= load_ldga_n_an(path_063)
 
+# path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange27_wurange27/'
+# dmft_sloc = np.load(path_bm_ts + 'config.npy', allow_pickle=True).item()['dmft1p']['sloc']
+# path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk6400_Nq6400_core79_invbse80_vurange80_wurange79/'
+# wbm_ts, sldga_n_bm_ts, sldga_an_bm_ts = load_ldga_n_an_v2(path_bm_ts, sloc=dmft_sloc)
+
 # ------------------------------------------------- PLOTS --------------------------------------------------------------
 
 shade_colors = ['blueviolet', 'firebrick', 'palegreen', 'dimgray', 'dimgray','cornflowerblue']
@@ -126,6 +149,7 @@ ax0.plot(w03,sldga_an_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax0.plot(w01,sldga_an_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
 ax0.plot(w066,sldga_an_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
 ax0.plot(w063,sldga_an_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+#ax0.plot(wbm_ts,sldga_an_bm_ts.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax0.set_xlim(0,5)
 
 # Node:
@@ -140,6 +164,7 @@ ax1.plot(w03,sldga_n_03.imag,'-s', color=colors[1], ms=2, markeredgecolor='k')
 ax1.plot(w01,sldga_n_01.imag,'-s', color=colors[2], ms=2, markeredgecolor='k')
 ax1.plot(w066,sldga_n_066.imag,'-s', color=colors[3], ms=2, markeredgecolor='k')
 ax1.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+#ax0.plot(wbm_ts,sldga_n_bm_ts.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
 ax1.set_xlim(0,5)
 
 ax0.set_xlabel(r'$\omega_n$')
