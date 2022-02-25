@@ -109,6 +109,14 @@ def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=Non
 
     return f1_magn, f2_magn, f1_dens, f2_dens
 
+def get_omega_condition(niv_pp=None):
+    ivn = np.arange(-niv_pp, niv_pp)
+    omega = np.zeros((2 * niv_pp, 2 * niv_pp))
+    for i, vi in enumerate(ivn):
+        for j, vip in enumerate(ivn):
+            omega[i, j] = vi - vip
+    return omega
+
 # def get_chi_aux_asympt(chi_aux: fp.FourPoint = None, chi_r_urange: , chi_r_asympt=None, u=1):
 #     niv = np.shape(chi_aux)[-1] // 2
 #     u_mat = u * np.ones((2 * niv, 2 * niv), dtype=complex)

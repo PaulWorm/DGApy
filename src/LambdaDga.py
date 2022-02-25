@@ -15,6 +15,360 @@ import Indizes as ind
 import LambdaCorrection as lc
 import MatsubaraFrequencies as mf
 import Plotting as plotting
+import Config as configs
+import LocalRoutines as lr
+import PairingVertex as pv
+
+
+# --------------------------------------------- LAMBDA DGA CLASS -------------------------------------------------------
+
+
+class LambdaDga():
+    ''' Class to handle one step of lambda corrected DGA.'''
+
+    sde_loc = None  # Output from the local Schwinger dyson equation
+    chi_loc = None  # Local physical susceptibility
+    chi_rpa_loc = None  # Local rpa physical susceptibility
+    vrg = None # non-local spin-fermion vertex
+    chi = None # non-local susceptibility
+    chi_rpa = None # non-local rpa susceptibility
+    lambda_ = None # Lambda for lambda-correction
+
+    sigma_dga = None # Self-energy from dga schwinger dyson equation
+    sigma = None # Self-energy as obtained by DGA with RPA and box-size corrections
+    sigma_nc = None # Self-energy as obtained by DGA, but slightly different (yeah I know that comment is kinda useless)
+
+    sigma_com = None
+    sigma_com_loc = None # Components of the self-energy originating from different scattering channels
+
+    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_start=None, gamma_magn=None, gamma_dens=None):
+        self.comm = comm  # MPI communicator
+        self.sigma_start = sigma_start  # Input self-energy
+        self.conf = config  # Config parameter settings. At a later stage this will possibly be integrated directly here.
+        self.gamma_magn = gamma_magn  # DMFT local irreducible ph vertex in the magnetic channel
+        self.gamma_dens = gamma_dens  # DMFT local irreducible ph vertex in the density channel
+
+        # Set up the Green's function generator:
+        self.g_gen = twop.GreensFunctionGenerator(beta=self.beta, kgrid=self.k_grid, hr=self.hr, sigma=sigma_start)
+
+        # I am not yet sure if they should be set at the start, or rather computed on demand. But time will tell.
+        self.mu = self.g_gen.adjust_mu(n=self.n, mu0=self.mu_dmft)
+        self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_core)
+        self.g_loc = self.gk.k_mean()
+
+        # ----------------------------------------- CREATE MPI DISTRIBUTORS ----------------------------------------------------
+        self.qiw_distributor = mpiaux.MpiDistributor(ntasks=self.conf.box.wn_core_plus.size * self.conf.q_grid.nk_irr,
+                                                     comm=self.comm,
+                                                     output_path=self.conf.nam.output_path,
+                                                     name='Qiw')
+        index_grid_keys = ('irrq', 'iw')
+        self.qiw_grid = ind.IndexGrids(grid_arrays=(self.conf.q_grid.irrk_ind_lin,) + (self.conf.box.wn_core_plus,),
+                                       keys=index_grid_keys,
+                                       my_slice=self.qiw_distributor.my_slice)
+
+        index_grid_keys_fbz = ('qx', 'qy', 'qz', 'iw')
+        self.qiw_grid_fbz = ind.IndexGrids(grid_arrays=self.conf.q_grid.grid + (self.conf.box.wn_core,),
+                                           keys=index_grid_keys_fbz)
+
+        self.qiw_distributor_rpa = mpiaux.MpiDistributor(
+            ntasks=self.conf.box.wn_rpa_plus.size * self.conf.q_grid.nk_irr,
+            comm=self.comm)
+        self.qiw_grid_rpa = ind.IndexGrids(grid_arrays=(self.conf.q_grid.irrk_ind_lin,) + (self.conf.box.wn_rpa_plus,),
+                                           keys=index_grid_keys,
+                                           my_slice=self.qiw_distributor_rpa.my_slice)
+
+
+        index_grid_keys_fbz = ('qx', 'qy', 'qz', 'iw')
+        self.qiw_grid_rpa_fbz = ind.IndexGrids(grid_arrays=self.conf.q_grid.grid + (self.conf.box.wn_rpa_plus,),
+                                           keys=index_grid_keys_fbz)
+
+    @property
+    def is_root(self):
+        return self.comm.rank == 0
+
+    @property
+    def beta(self):
+        return self.conf.sys.beta
+
+    @property
+    def niv_urange(self):
+        return self.conf.box.niv_urange
+
+    @property
+    def niw_core(self):
+        return self.conf.box.niw_core
+
+    @property
+    def niv_core(self):
+        return self.conf.box.niv_core
+
+    @property
+    def niv_pp(self):
+        return self.conf.box.niv_pp
+
+    @property
+    def k_grid(self):
+        return self.conf.k_grid
+
+    @property
+    def q_grid(self):
+        return self.conf.q_grid
+
+    @property
+    def hr(self):
+        return self.conf.sys.hr
+
+    @property
+    def mu_dmft(self):
+        return self.conf.sys.mu_dmft
+
+    @property
+    def mu(self):
+        return self._mu
+
+    @mu.setter
+    def mu(self, value):
+        self._mu = value
+
+    @property
+    def n(self):
+        return self.conf.sys.n
+
+    @property
+    def u(self):
+        return self.conf.sys.u
+
+    @property
+    def gamma_dmft(self):
+        return {'dens': self.gamma_dens,
+                'magn': self.gamma_magn}
+
+    @property
+    def my_qiw_mesh(self):
+        return self.qiw_grid.my_mesh
+
+    @property
+    def my_rpa_qiw_mesh(self):
+        return self.qiw_grid_rpa.my_mesh
+
+    @property
+    def my_n_qiw_tasks(self):
+        return self.qiw_grid.my_n_tasks
+
+    @property
+    def my_n_rpa_qiw_tasks(self):
+        return self.qiw_grid_rpa.my_n_tasks
+
+    def local_sde(self, safe_output=False, use_rpa_correction=True, interactive=False, ana_w0=False):
+        self.sde_loc, self.chi_loc, vrg_loc, self.sigma_com_loc = lr.local_dmft_sde_from_gamma(dga_conf=self.conf,
+                                                                                          giw=self.g_loc,
+                                                                                          gamma_dmft=self.gamma_dmft,
+                                                                                          ana_w0=ana_w0)
+
+        if (use_rpa_correction):
+            rpa_sde_loc, self.chi_rpa_loc = sde.local_rpa_sde_correction(dga_conf=self.conf, giw=self.g_loc,
+                                                                    box_sizes=self.conf.box,
+                                                                    iw=self.conf.box.wn_rpa)
+            self.sde_loc = lr.add_rpa_correction(dmft_sde=self.sde_loc, rpa_sde_loc=rpa_sde_loc,
+                                                 wn_rpa=self.conf.box.wn_rpa,
+                                                 sigma_comp=self.sigma_com_loc)
+
+        if (safe_output and self.is_root):
+            np.save(self.conf.nam.output_path + 'dmft_sde.npy', self.sde_loc, allow_pickle=True)
+            np.save(self.conf.nam.output_path + 'chi_dmft.npy', self.chi_loc, allow_pickle=True)
+            np.save(self.conf.nam.output_path + 'vrg_dmft.npy', vrg_loc, allow_pickle=True)
+
+        if (interactive):
+            if (self.is_root): plotting.plot_vrg_dmft(vrg_dmft=vrg_loc, beta=self.beta,
+                                                      niv_plot=self.niv_urange,
+                                                      output_path=self.conf.nam.output_path)
+
+    def dga_bse_susceptibility(self, save_vrg=False):
+        self.qiw_distributor.open_file()
+        chi_dens = fp.LadderSusceptibility(channel='dens', beta=self.beta, u=self.u, qiw=self.my_qiw_mesh)
+        chi_magn = fp.LadderSusceptibility(channel='magn', beta=self.beta, u=self.u, qiw=self.my_qiw_mesh)
+
+        vrg_dens = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='dens', beta=self.beta, u=self.u)
+        vrg_magn = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='magn', beta=self.beta, u=self.u)
+
+        for iqw in range(self.my_n_qiw_tasks):
+            qiw, wn = self.get_qiw(iqw=iqw)
+            wn_lin = np.array(mf.cen2lin(wn, -self.conf.box.niw_core), dtype=int)
+
+            gkpq_urange = self.g_gen.generate_gk(mu=self.mu, qiw=qiw, niv=self.niv_urange)
+
+            chi0q_core = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_core),
+                                   gkpq=gkpq_urange.get_gk_cut_iv(niv_cut=self.niv_core), beta=self.beta, wn=wn)
+            chi0q_urange = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_urange), gkpq=gkpq_urange.gk, beta=self.beta, wn=wn)
+
+            gchi_aux_dens = fp.construct_gchi_aux(gammar=self.gamma_dens, gchi0=chi0q_core, u=self.u, wn_lin=wn_lin)
+            gchi_aux_magn = fp.construct_gchi_aux(gammar=self.gamma_magn, gchi0=chi0q_core, u=self.u, wn_lin=wn_lin)
+
+            chi_aux_dens = fp.susceptibility_from_four_point(four_point=gchi_aux_dens)
+            chi_aux_magn = fp.susceptibility_from_four_point(four_point=gchi_aux_magn)
+
+            chiq_dens = fp.chi_phys_from_chi_aux(chi_aux=chi_aux_dens, chi0_urange=chi0q_urange,
+                                                 chi0_core=chi0q_core)
+
+            chiq_magn = fp.chi_phys_from_chi_aux(chi_aux=chi_aux_magn, chi0_urange=chi0q_urange,
+                                                 chi0_core=chi0q_core)
+
+            vrgq_dens, vrgq_dens_core = fp.fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_dens, gchi0=chi0q_core,
+                                                                          niv_urange=self.niv_urange)
+            vrgq_dens = fp.fermi_bose_asympt(vrg=vrgq_dens, chi_urange=chiq_dens)
+            vrgq_magn, vrgq_magn_core = fp.fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
+                                                                          niv_urange=self.niv_urange)
+            vrgq_magn = fp.fermi_bose_asympt(vrg=vrgq_magn, chi_urange=chiq_magn)
+
+            chi_dens.mat[iqw] = chiq_dens.mat_asympt
+            chi_magn.mat[iqw] = chiq_magn.mat_asympt
+
+            vrg_dens.ladder[iqw] = vrgq_dens
+            vrg_magn.ladder[iqw] = vrgq_magn
+
+            if (self.conf.opt.do_pairing_vertex):
+                self.save_ladder_vertex(file=self.qiw_distributor.file, iqw=iqw, wn=wn, gchi=gchi_aux_magn.mat,
+                                        vrg=vrgq_magn_core.mat, gchi0=chi0q_core.gchi0, channel=vrgq_magn_core.channel,
+                                        save_condition=True)
+                self.save_ladder_vertex(file=self.qiw_distributor.file, iqw=iqw, wn=wn, gchi=gchi_aux_dens.mat,
+                                        vrg=vrgq_dens_core.mat, gchi0=chi0q_core.gchi0,
+                                        channel=vrgq_dens_core.channel,
+                                        save_condition=False)
+
+            # Save the lowest 5 frequencies for the spin-fermion vertex::
+            if (np.abs(wn) < self.conf.box.niw_vrg_save and save_vrg == True):
+                group = '/irrq{:03d}wn{:04d}/'.format(*self.my_qiw_mesh[iqw])
+                self.qiw_distributor.file[group + 'vrg_magn/'] = self.beta * vrgq_magn.mat[self.niv_urange - self.conf.box.niv_vrg_save:self.niv_urange + self.conf.box.niv_vrg_save]
+                self.qiw_distributor.file[group + 'vrg_dens/'] = self.beta * vrgq_dens.mat[self.niv_urange - self.conf.box.niv_vrg_save:self.niv_urange + self.conf.box.niv_vrg_save]
+
+        chi_dens.mat_to_array()
+        chi_magn.mat_to_array()
+
+        vrg_dens.set_qiw_mat()
+        vrg_magn.set_qiw_mat()
+
+        self.chi = {
+            'dens': chi_dens,
+            'magn': chi_magn
+        }
+        self.vrg = {
+            'dens': vrg_dens,
+            'magn': vrg_magn
+        }
+        self.qiw_distributor.close_file()
+
+    def rpa_susceptibility(self):
+        chi_rpa_dens = fp.LadderSusceptibility(channel='dens', beta=self.beta, u=self.u, qiw=self.my_rpa_qiw_mesh)
+        chi_rpa_magn = fp.LadderSusceptibility(channel='magn', beta=self.beta, u=self.u, qiw=self.my_rpa_qiw_mesh)
+
+        for iqw in range(self.my_n_rpa_qiw_tasks):
+            qiw, wn = self.get_qiw(iqw=iqw)
+            gkpq_urange = self.g_gen.generate_gk(mu=self.mu, qiw=qiw, niv=self.niv_urange)
+
+            chi0q_urange = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_urange), gkpq=gkpq_urange.gk, beta=self.beta, wn=wn)
+
+            chiq_dens = fp.chi_rpa(chi0_urange=chi0q_urange, channel='dens', u=self.u)
+            chiq_magn = fp.chi_rpa(chi0_urange=chi0q_urange, channel='magn', u=self.u)
+
+            chi_rpa_dens.mat[iqw] = chiq_dens.mat_asympt
+            chi_rpa_magn.mat[iqw] = chiq_magn.mat_asympt
+
+        chi_rpa_dens.mat_to_array()
+        chi_rpa_magn.mat_to_array()
+
+        self.chi_rpa = {
+            'dens': chi_rpa_dens,
+            'magn': chi_rpa_magn
+        }
+
+    def dga_ladder_susc_allgather_qiw_and_build_fbziw(self,channel=None):
+        return fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=self.conf, distributor=self.qiw_distributor,
+                                                            mat=self.chi[channel].mat, qiw_grid=self.qiw_grid,
+                                                            qiw_grid_fbz=self.qiw_grid_fbz, channel=channel)
+
+    def rpa_ladder_susc_allgather_qiw_and_build_fbziw(self,channel=None):
+        return fp.ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=self.conf, distributor=self.qiw_distributor_rpa,
+                                                            mat=self.chi_rpa[channel].mat, qiw_grid=self.qiw_grid_rpa,
+                                                            qiw_grid_fbz=self.qiw_grid_rpa_fbz, channel=channel)
+
+    def lambda_correction(self, save_output=False):
+        chi_dens = self.dga_ladder_susc_allgather_qiw_and_build_fbziw(channel='dens')
+        chi_magn = self.dga_ladder_susc_allgather_qiw_and_build_fbziw(channel='magn')
+        chi = {'dens':chi_dens,
+               'magn':chi_magn}
+        chi_rpa_dens = self.dga_ladder_susc_allgather_qiw_and_build_fbziw(channel='magn')
+        chi_rpa_magn = self.rpa_ladder_susc_allgather_qiw_and_build_fbziw(channel='dens')
+        chi_rpa = {'dens': chi_rpa_dens,
+               'magn': chi_rpa_magn}
+        self.lambda_, n_lambda = lc.lambda_correction(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa,
+                                                 chi_dmft=self.chi_loc,
+                                                 chi_rpa_loc=self.chi_rpa_loc)
+
+        lc.build_chi_lambda(dga_conf=self.conf, chi_ladder=self.chi, chi_rpa=self.chi_rpa, lambda_=self.lambda_)
+
+        if(self.is_root and save_output):
+            lc.build_chi_lambda(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa, lambda_=self.lambda_)
+            np.save(self.conf.nam.output_path + 'chi_lambda.npy', chi, allow_pickle=True)
+            fp.save_and_plot_chi_lambda(dga_conf=self.conf, chi_lambda=chi)
+            string_temp = 'Number of positive frequencies used for {}: {}'
+            np.savetxt(self.conf.nam.output_path + 'n_lambda_correction.txt',
+                       [string_temp.format('magn', n_lambda['magn']), string_temp.format('dens', n_lambda['dens'])],
+                       delimiter=' ', fmt='%s')
+            string_temp = 'Lambda for {}: {}'
+            np.savetxt(self.conf.nam.output_path + 'lambda.txt',
+                       [string_temp.format('magn', self.lambda_['magn']), string_temp.format('dens', self.lambda_['dens'])],
+                       delimiter=' ', fmt='%s')
+
+    def dga_sde(self, interactive=False):
+        sigma_dga, sigma_com = sde.sde_dga_wrapper(dga_conf=self.conf, vrg=self.vrg, chi=self.chi,
+                                                              qiw_mesh=self.my_qiw_mesh,
+                                                              sigma_input=self.sigma_start, mu_input=self.mu, distributor=self.qiw_distributor)
+        sigma_rpa = sde.rpa_sde_wrapper(dga_conf=self.conf, sigma_input=self.sigma_start,mu_input=self.mu, chi=self.chi_rpa,
+                                        qiw_grid=self.qiw_grid_rpa,
+                                        distributor=self.qiw_distributor_rpa)
+
+        # Here I am not sure if one has to use sigma_dmft instead of sigma_start for self-consistency
+        self.sigma, self.sigma_nc = sde.build_dga_sigma(dga_conf=self.conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa,
+                                              dmft_sde=self.sde_loc, sigma_dmft=self.sigma_start)
+
+        if(interactive):
+            if self.is_root: np.save(self.conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
+            if self.is_root: np.save(self.conf.nam.output_path + 'sigma.npy', self.sigma, allow_pickle=True)
+            if self.is_root: np.save(self.conf.nam.output_path + 'sigma_nc.npy', self.sigma_nc, allow_pickle=True)
+            if self.is_root: plotting.sigma_plots(dga_conf=self.conf, sigma_dga=sigma_dga, dmft_sde=self.sde_loc,
+                                                    sigma_loc=self.sigma_start, sigma=self.sigma, sigma_nc=self.sigma_nc)
+            if self.is_root: plotting.giwk_plots(dga_conf=self.conf, sigma=self.sigma, input_mu=self.mu,
+                                                   output_path=self.conf.nam.output_path)
+            if self.is_root: plotting.giwk_plots(dga_conf=self.conf, sigma=self.sigma_nc, input_mu=self.mu, name='_nc',
+                                                   output_path=self.conf.nam.output_path)
+
+    def get_qiw(self, iqw=None):
+        wn = self.my_qiw_mesh[iqw][-1]
+        q_ind = self.my_qiw_mesh[iqw][0]
+        q = self.q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(-q, wn)  # WARNING: Here I am not sure if it should be +q or -q.
+        return qiw, wn
+
+    def save_ladder_vertex(self, file=None, iqw=None, wn=None, gchi=None, vrg=None, gchi0=None, channel=None,
+                           save_condition=False):
+        omega = pv.get_omega_condition(niv_pp=self.niv_pp)
+        if np.abs(wn) < 2 * self.niv_pp:
+            condition = omega == wn
+
+            f1_slice, f2_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi,
+                                                                          vrg=vrg,
+                                                                          gchi0=gchi0,
+                                                                          beta=self.beta,
+                                                                          u_r=fp.get_ur(u=self.u,
+                                                                                        channel=channel))
+
+            group = '/irrq{:03d}wn{:04d}/'.format(*self.my_qiw_mesh[iqw])
+            file[group + f'f1_{channel}/'] = pv.get_pp_slice_4pt(mat=f1_slice, condition=condition,
+                                                                 niv_pp=self.niv_pp)
+            file[group + f'f2_{channel}/'] = pv.get_pp_slice_4pt(mat=f2_slice, condition=condition,
+                                                                 niv_pp=self.niv_pp)
+
+            if save_condition: file[group + 'condition/'] = condition
 
 
 # -------------------------------------- LAMBDA DGA FUNCTION WRAPPER ---------------------------------------------------
@@ -56,7 +410,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     # ----------------------------------------------- MPI DISTRIBUTION -------------------------------------------------
     my_iw = wn_core
     realt = rt.real_time()
-    realt.create_file(fname=output_path+'cpu_time_lambda_dga.txt')
+    realt.create_file(fname=output_path + 'cpu_time_lambda_dga.txt')
 
     # -------------------------------------------LOAD G2 FROM W2DYN ----------------------------------------------------
     g2_file = w2dyn_aux.g4iw_file(fname=path + fname_g2)
@@ -186,7 +540,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     chi_dens_ladder.mat = mf.wplus2wfull(mat=chi_dens_ladder.mat)
     chi_magn_ladder.mat = mf.wplus2wfull(mat=chi_magn_ladder.mat)
 
-    if(qiw_distributor.my_rank == 0):
+    if (qiw_distributor.my_rank == 0):
         chi_ladder = {
             'chi_dens_ladder': chi_dens_ladder,
             'chi_magn_ladder': chi_magn_ladder,
@@ -231,7 +585,6 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
             chi_dens_rpa.mat = 1. / (1. / chi_dens_rpa_mat + lambda_dens)
             chi_magn_rpa.mat = 1. / (1. / chi_magn_rpa_mat + lambda_magn)
 
-
     realt.write_time_to_file(string='Lambda correction:', rank=comm.rank)
     # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 
@@ -247,14 +600,16 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     g_generator = twop.GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid.grid, hr=hr,
                                                sigma=dmft1p['sloc'])
 
-    if(analyse_spin_fermion_contributions):
-        sigma_dens_dga, sigma_dens_dga_re, sigma_dens_dga_im = sde.sde_dga_spin_fermion_contributions(vrg=dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
-                                     mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
-                                     q_grid=q_grid)
+    if (analyse_spin_fermion_contributions):
+        sigma_dens_dga, sigma_dens_dga_re, sigma_dens_dga_im = sde.sde_dga_spin_fermion_contributions(
+            vrg=dga_susc['vrg_dens'], chir=chi_dens_lambda_my_qiw, g_generator=g_generator,
+            mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
+            q_grid=q_grid)
 
-        sigma_magn_dga, sigma_magn_dga_re, sigma_magn_dga_im = sde.sde_dga_spin_fermion_contributions(vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
-                                     mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
-                                     q_grid=q_grid)
+        sigma_magn_dga, sigma_magn_dga_re, sigma_magn_dga_im = sde.sde_dga_spin_fermion_contributions(
+            vrg=dga_susc['vrg_magn'], chir=chi_magn_lambda_my_qiw, g_generator=g_generator,
+            mu=dmft1p['mu'], qiw_grid=qiw_grid.my_mesh, nq=nq_tot, box_sizes=box_sizes,
+            q_grid=q_grid)
 
         sigma_magn_dga_re_reduce = np.zeros(np.shape(sigma_magn_dga_re), dtype=complex)
         comm.Allreduce(sigma_magn_dga_re, sigma_magn_dga_re_reduce)
@@ -326,7 +681,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         'sigma_nc': sigma_dga_nc
     }
 
-    if(analyse_spin_fermion_contributions):
+    if (analyse_spin_fermion_contributions):
         sigma_dens_dga_re = mf.vplus2vfull(mat=sigma_dens_dga_re_reduce)
         sigma_dens_dga_im = mf.vplus2vfull(mat=sigma_dens_dga_im_reduce)
         sigma_magn_dga_re = mf.vplus2vfull(mat=sigma_magn_dga_re_reduce)
@@ -338,15 +693,15 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         sigma_magn_dga_im = k_grid.symmetrize_irrk(mat=sigma_magn_dga_im)
 
         dga_sde_sf_contrib = {
-            'sigma_dens_re':sigma_dens_dga_re,
-            'sigma_dens_im':sigma_dens_dga_im,
-            'sigma_magn_re':sigma_magn_dga_re,
-            'sigma_magn_im':sigma_magn_dga_im
+            'sigma_dens_re': sigma_dens_dga_re,
+            'sigma_dens_im': sigma_dens_dga_im,
+            'sigma_magn_re': sigma_magn_dga_re,
+            'sigma_magn_im': sigma_magn_dga_im
         }
     else:
         dga_sde_sf_contrib = None
 
-    if(qiw_distributor.my_rank == 0):
+    if (qiw_distributor.my_rank == 0):
         chi_dens_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_dens_lambda.mat)))
         chi_magn_lambda.mat = mf.wplus2wfull(q_grid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi_magn_lambda.mat)))
 
@@ -361,8 +716,9 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
         }
         np.save(output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
         # Safe chi_m at q = (0,0) and lowest Matsubara as proxy for the Knight shift:
-        np.savetxt(output_path + 'Knight_shift.txt', [chi_magn_lambda.mat[0,0,0,niw_core],chi_dens_lambda.mat[0,0,0,niw_core]], delimiter=',',
-               fmt='%.9f')
+        np.savetxt(output_path + 'Knight_shift.txt',
+                   [chi_magn_lambda.mat[0, 0, 0, niw_core], chi_dens_lambda.mat[0, 0, 0, niw_core]], delimiter=',',
+                   fmt='%.9f')
 
     realt.write_time_to_file(string='Building fbz and overhead:', rank=comm.rank)
 

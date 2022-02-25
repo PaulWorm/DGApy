@@ -847,9 +847,9 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
     '''
     if (dga_conf.opt.do_pairing_vertex):
         import PairingVertex as pv
-    beta = dmft_input['beta']
-    u = dmft_input['u']
-    mu = dmft_input['mu']
+    beta = dga_conf.sys.beta
+    u = dga_conf.sys.u
+    mu = dga_conf.sys.mu
     niw = dga_conf.box.niw_core
     niv_core = dga_conf.box.niv_core
     niv_pp = dga_conf.box.niv_pp
@@ -1008,8 +1008,7 @@ def ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=None, distributor=None, m
     return gathered_qiw
 
 
-def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None, distributor=None, qiw_grid=None,
-                             qiw_grid_fbz=None):
+def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None):
     np.save(dga_conf.nam.output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
     string_temp = 'Chi[q=(0,0),iw=0,{}]: {}'
     np.savetxt(dga_conf.nam.output_path + 'Knight_shift.txt',

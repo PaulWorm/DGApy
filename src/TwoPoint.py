@@ -138,6 +138,9 @@ class GreensFunction(object):
         self.sigma = self.cut_iv(arr=self.sigma, niv_cut=niv_cut)
         self.gk = self.cut_iv(arr=self.gk, niv_cut=niv_cut)
 
+    def get_gk_cut_iv(self, niv_cut=0):
+        return self.cut_iv(arr=self.gk, niv_cut=niv_cut)
+
     def cut_iv(self, arr=None, niv_cut=0):
         niv = arr.shape[-1] // 2
         return arr[..., niv - niv_cut:niv + niv_cut]

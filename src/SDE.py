@@ -84,17 +84,17 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
         return sigma
 
 
-def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mesh=None, dmft_input=None,
+def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mesh=None, sigma_input=None, mu_input = None,
                     distributor=None):
     g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
-                                               sigma=dmft_input['sloc'])
+                                               sigma=sigma_input)
 
     if (dga_conf.opt.analyse_spin_fermion_contributions):
         sigma_dens_re, sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                                mu=dmft_input['mu'], qiw_grid=qiw_mesh, analyse_spin_fermion=True)
+                                mu=mu_input, qiw_grid=qiw_mesh, analyse_spin_fermion=True)
 
         sigma_magn_re, sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                                mu=dmft_input['mu'], qiw_grid=qiw_mesh, analyse_spin_fermion=True)
+                                mu=mu_input, qiw_grid=qiw_mesh, analyse_spin_fermion=True)
 
         sigma_dens_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_re, distributor=distributor)
         sigma_dens_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_im, distributor=distributor)
@@ -108,9 +108,9 @@ def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mes
 
     else:
         sigma_dens = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                             mu=dmft_input['mu'], qiw_grid=qiw_mesh)
+                             mu=mu_input, qiw_grid=qiw_mesh)
         sigma_magn = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                             mu=dmft_input['mu'], qiw_grid=qiw_mesh)
+                             mu=mu_input, qiw_grid=qiw_mesh)
 
         sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
         sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
@@ -163,13 +163,13 @@ def rpa_sde(dga_conf=None, chir: fp.LocalSusceptibility = None, g_generator: two
     return sigma
 
 
-def rpa_sde_wrapper(dga_conf: conf.DgaConfig = None, dmft_input=None, chi=None, qiw_grid=None, distributor=None):
+def rpa_sde_wrapper(dga_conf: conf.DgaConfig = None, sigma_input=None, mu_input=None, chi=None, qiw_grid=None, distributor=None):
     g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
-                                               sigma=dmft_input['sloc'])
+                                               sigma=sigma_input)
     sigma_dens = rpa_sde(dga_conf=dga_conf, chir=chi['dens'], g_generator=g_generator, niv_giw=dga_conf.box.niv_urange,
-                         mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+                         mu=mu_input, qiw_grid=qiw_grid.my_mesh)
     sigma_magn = rpa_sde(dga_conf=dga_conf, chir=chi['magn'], g_generator=g_generator, niv_giw=dga_conf.box.niv_urange,
-                         mu=dmft_input['mu'], qiw_grid=qiw_grid.my_mesh)
+                         mu=mu_input, qiw_grid=qiw_grid.my_mesh)
 
     sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
     sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
@@ -181,13 +181,14 @@ def rpa_sde_wrapper(dga_conf: conf.DgaConfig = None, dmft_input=None, chi=None, 
     return sigma
 
 
-def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=None, dmft_sde=None, dmft1p=None):
+def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=None, dmft_sde=None, sigma_dmft=None):
     if (dga_conf.box.wn_rpa.size > 0):
         sigma_dga['dens'] = sigma_dga['dens'] + sigma_rpa['dens']
         sigma_dga['magn'] = sigma_dga['magn'] + sigma_rpa['magn']
 
-    sigma_dmft_clip = dmft1p['sloc'][
-                      dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
+    niv1 = sigma_dga['dens'].shape[-1] // 2
+    niv2 = sigma_dmft.shape[-1] // 2
+    sigma_dmft_clip = sigma_dmft[niv2-niv1:niv2+niv1]
     sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde[
         'magn'] + 2 * dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
     sigma_nc = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
@@ -195,29 +196,14 @@ def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=N
     return sigma, sigma_nc
 
 
-def buid_dga_sigma_vrg_re(dga_conf: conf.DgaConfig = None, sigma_dga_components=None, sigma_rpa=None, dmft_sde_comp=None,
-                          dmft1p=None):
-    sigma_dmft_clip = dmft1p['sloc'][
-                      dga_conf.box.niv_dmft - dga_conf.box.niv_urange:dga_conf.box.niv_dmft + dga_conf.box.niv_urange]
-
-    sigma_dens = sigma_dga_components['dens_re'] + sigma_dga_components['dens_im'] + sigma_rpa['dens']
-    sigma_magn = sigma_dga_components['magn_re'] + sigma_rpa['magn']
-    dmft_sde_sigma = dmft_sde_comp['dens_re'] + dmft_sde_comp['dens_im'] + dmft_sde_comp['magn_re']
-    dmft_dens = dmft_sde_comp['dens_re'] + dmft_sde_comp['dens_im']
-    sigma_vrg_re = -1 * (sigma_dens) + 3 * (sigma_magn) + dmft1p['hartree'] - 2 * \
-                   dmft_sde_comp['magn_re'] + 2 * dmft_dens - dmft_sde_sigma + sigma_dmft_clip
-    return sigma_vrg_re
-
-
 # ---------------------------------------------- MPI FUNCTIONS ---------------------------------------------------------
 
 # -------------------------------------------- WRAPPER FUNCTIONS -------------------------------------------------------
 
 # ======================================================================================================================
-def local_rpa_sde_correction(dmft_input=None, box_sizes=None, iw=None):
-    giw = dmft_input['gloc']
-    beta = dmft_input['beta']
-    u = dmft_input['u']
+def local_rpa_sde_correction(dga_conf: conf.DgaConfig=None, giw=None, box_sizes=None, iw=None):
+    beta = dga_conf.sys.beta
+    u = dga_conf.sys.u
 
     niv_urange = box_sizes.niv_urange
 

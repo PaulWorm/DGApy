@@ -77,12 +77,12 @@ def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fit=None, output_path=None, nam
     plt.close()
 
 
-def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, dmft1p=None, name='', sigma=None, sigma_nc = None):
+def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, sigma_loc=None, name='', sigma=None, sigma_nc = None):
 
 
     # Plot Siw-check:
     vn_list = [dga_conf.box.vn_dmft, dga_conf.box.vn_urange, dga_conf.box.vn_urange, dga_conf.box.vn_urange]
-    siw_list = [dmft1p['sloc'], dmft_sde['siw'], sigma.mean(axis=(0, 1, 2)), sigma_nc.mean(axis=(0, 1, 2))]
+    siw_list = [sigma_loc, dmft_sde['siw'], sigma.mean(axis=(0, 1, 2)), sigma_nc.mean(axis=(0, 1, 2))]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
     plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100, name='siw_check'+name)
 
@@ -100,9 +100,9 @@ def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, 
     plot_siwk_fs(siwk=-sigma_dga['dens'] + dmft_sde['dens'], plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dens'+name)
     plot_siwk_fs(siwk=sigma_nc, plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True, name='nc'+name)
 
-def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, dmft1p=None, name='', output_path = None, niv_plot=10):
+def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, input_mu=None, name='', output_path = None, niv_plot=10):
     # Create the DGA Green's functions:
-    gf_dict = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dmft1p['mu'], adjust_mu=True)
+    gf_dict = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=input_mu, adjust_mu=True)
     ind_gf0 = bz.find_qpd_zeros(qpd=(1. / gf_dict['gk'][:, :, :, gf_dict['niv']]).real, kgrid=dga_conf.k_grid)
     plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga'+name,
                           ind_fs=ind_gf0)

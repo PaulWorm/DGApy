@@ -113,6 +113,10 @@ class IndexGrids():
     def my_indizes(self):
         return self.indizes[self.my_slice]
 
+    @property
+    def my_n_tasks(self):
+        return self.my_mesh.shape[0]
+
 
     def grid_sizes(self):
         return tuple([self.grid_size(ind=ind) for ind in range(self.n_indizes)])
