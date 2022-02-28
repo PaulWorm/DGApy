@@ -192,7 +192,7 @@ class KGrid():
         assert (len(self.grid) == np.size(q)), 'Kgrid and q have different dimensions.'
         kgrid = []
         for i in range(np.size(q)):
-            kgrid.append(self.grid[i] + q[i])
+            kgrid.append(self.grid[i] - q[i])
         return kgrid
 
 

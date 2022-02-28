@@ -54,6 +54,14 @@ class BoxSizes(ConfigBase):
     def niw_core(self):
         return self._niw_core
 
+    @property
+    def niv_padded(self):
+        return self.niv_urange + self.niw_core
+
+    @property
+    def vn_padded(self):
+        return mf.vn(n=self.niv_padded)
+
     @niw_core.setter
     def niw_core(self, value):
         self._niw_core = value

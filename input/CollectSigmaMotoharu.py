@@ -9,11 +9,12 @@ import matplotlib.pyplot as plt
 #path = 'C:/Users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.95/RawDataMotoharu/klist/'
 #path = 'C:/Users/pworm/Research/HubbardModel/2DSquare_U8_tp-0.25_tpp0.12_beta100_n0.85/from_Motoharu/klist/'
 #path = 'mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta16_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
-path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
+#path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/U1.0_beta80_t0.5_tp0_tpp0_n0.85/RawDataMotoharu/klist/'
+path =  '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/ladder_spin_only/klist/'
 #path = '/mnt/c/users/pworm/Research/Superconductivity/2DHubbard_Testsets/Testset1/RawDataMotoharu/klist/'
 
-Nk   = 120
-Niv = 1024
+Nk   = 118
+Niv = 80
 
 siwk = np.zeros((Niv,Nk,Nk), dtype = complex)
 siwk_d = np.zeros((Niv,Nk,Nk), dtype = complex)
@@ -30,8 +31,6 @@ for ikx in range(Nk//2-1,Nk):
         siwk_m[:,ikx,iky] = tmp[:,5] + 1j * tmp[:,6]
         siwk_rest[:,ikx,iky] = tmp[:,7] + 1j * tmp[:,8]
         iter = iter + 1
-
-
 
 for ikx in range(Nk//2-1,Nk):
     for iky in range(ikx,Nk):

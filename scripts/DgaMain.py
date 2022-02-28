@@ -38,12 +38,12 @@ box_sizes = conf.BoxSizes()
 # Define paths of datasets:
 names.input_path = './'
 names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
-#names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+# names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
+# names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
-#names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-#names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
-#names.input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.875/LambdaDgaPython/'
+# names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
+# names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
+# names.input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.875/LambdaDgaPython/'
 names.output_path = names.input_path
 
 # Define names of input/output files:
@@ -52,9 +52,9 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = False # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_pairing_vertex = True
+options.do_pairing_vertex = False
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
@@ -72,7 +72,7 @@ no_mu_adjust_fbz_cont = False
 # Create the real-space Hamiltonian:
 t = 1.0
 hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
-#hr = hr_mod.Ba2CuO4_plane()
+# hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:
 el_conf = conf.EliashbergConfig(k_sym='d-wave')
@@ -86,11 +86,11 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 19
-box_sizes.niw_urange = 19  # This seems not to save enough to be used.
+box_sizes.niw_core = 20
+box_sizes.niw_urange = 20  # This seems not to save enough to be used.
 box_sizes.niv_core = 20
 box_sizes.niv_invbse = 20
-box_sizes.niv_urange = 80  # Must be larger than niv_invbse
+box_sizes.niv_urange = 20  # Must be larger than niv_invbse
 
 # Box size for saving the spin-fermion vertex:
 box_sizes.niw_vrg_save = 5
@@ -123,7 +123,6 @@ names.output_path_el = output.uniquify(names.output_path + 'Eliashberg') + '/'
 # Create the DGA Config object:
 dga_conf = conf.DgaConfig(BoxSizes=box_sizes, Options=options, SystemParameter=sys_param, Names=names,
                           ek_funk=hamk.ek_3d)
-
 
 # Parameter for the polynomial extrapolation to the Fermi-level:
 dga_conf.npf = 4
@@ -170,14 +169,10 @@ if (comm.rank == 0): plotting.plot_gamma_dmft(gamma_dmft=gamma_dmft, output_path
 logger.log_cpu_time(task=' DMFT gamma extraction ')
 # -------------------------------------- LOCAL SCHWINGER DYSON EQUATION ------------------------------------------------
 
-ldga = lambda_dga.LambdaDga(config=dga_conf,comm=comm,sigma_start=dmft1p['sloc'],gamma_magn=gamma_dmft['magn'], gamma_dens=gamma_dmft['dens'])
+ldga = lambda_dga.LambdaDga(config=dga_conf, comm=comm, sigma_dmft=dmft1p['sloc'], sigma_start=dmft1p['sloc'],
+                            gamma_magn=gamma_dmft['magn'], gamma_dens=gamma_dmft['dens'])
 
 ldga.local_sde(safe_output=True, interactive=True)
-
-logger.log_cpu_time(task=' DMFT SDE ')
-
-
-
 
 # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -----------------------------------------------
 ldga.rpa_susceptibility()
@@ -191,12 +186,18 @@ logger.log_cpu_time(task=' lambda correction ')
 # ------------------------------------------- DGA SCHWINGER-DYSON EQUATION ---------------------------------------------
 ldga.dga_sde(interactive=True)
 logger.log_cpu_time(task=' DGA SDE ')
+
+ldga.build_dga_sigma(interactive=True)
 sigma = ldga.sigma
 sigma_nc = ldga.sigma_nc
 
 if comm.rank == 0: output.prepare_and_plot_vrg_dga(dga_conf=dga_conf, distributor=ldga.qiw_distributor)
 
 logger.log_cpu_time(task=' Plotting ')
+
+if comm.rank == 0: plotting.plot_f_dmft(f=ldga.f_loc['dens'], path=dga_conf.nam.output_path, name='f_dmft_dens')
+if comm.rank == 0: plotting.plot_f_dmft(f=ldga.f_loc['magn'], path=dga_conf.nam.output_path, name='f_dmft_magn')
+
 # ------------------------------------------------- OZ-FIT -------------------------------------------------------------
 if comm.rank == 0: output.fit_and_plot_oz(dga_conf=dga_conf)
 
@@ -271,6 +272,6 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 # # ---------------------------------------------- REMOVE THE RANK FILES -------------------------------------------------
 comm.Barrier()
 qiw = mpiaux.MpiDistributor(ntasks=dga_conf.k_grid.nk_irr, comm=comm,
-                                            output_path=dga_conf.nam.output_path,
-                                            name='Qiw')
+                            output_path=dga_conf.nam.output_path,
+                            name='Qiw')
 qiw.delete_file()

@@ -39,7 +39,7 @@ def load_ldga_n_an(path=None):
     # sigma = dga_sde['sigma']
     dmft1p = config['dmft1p']
     dmft_sigma = config['dmft1p']['sloc'][dmft1p['niv'] - niv_urange:dmft1p['niv'] + niv_urange]
-    sigma = -1 * dga_sde['sigma_dens'] + 3 * dga_sde['sigma_magn'] - 2 * dmft_sde['siw_magn'] + 2 * dmft_sde[
+    sigma =  -1*dga_sde['sigma_dens'] + 3 * dga_sde['sigma_magn'] - 2 * dmft_sde['siw_magn'] + 2 * dmft_sde[
         'siw_dens'] - dmft_sde['siw'] + dmft_sigma
     # sigma = dga_sde['sigma_dens'] + 3*dga_sde['sigma_magn'] - 2*dmft_sde['siw_magn'] - 0*dmft_sde['siw_dens'] - dmft_sde['siw']+dmft_sigma
     sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
@@ -58,10 +58,9 @@ def load_ldga_n_an_v2(path=None, sloc= None):
     niv_urange = dmft_sde['siw'].size // 2
     dmft_sigma = sloc[niv - niv_urange:niv + niv_urange]
     #sigma = sigma_dga['dens'] + 3*sigma_dga['magn'] - 2*dmft_sde['magn'] - 0*dmft_sde['dens'] - dmft_sde['siw']+dmft_sigma
-    # sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + 2 * dmft_sde[
-    #     'dens'] - dmft_sde['siw'] + dmft_sigma
+    sigma = -1*sigma_dga['dens'] + 3*sigma_dga['magn'] - 2*dmft_sde['magn']+ 2*dmft_sde['dens'] - dmft_sde['siw'] + dmft_sigma
 
-    sigma = np.load(path + 'sigma.npy', allow_pickle=True)
+    #sigma = np.load(path + 'sigma.npy', allow_pickle=True)
     sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
     sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
     w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta

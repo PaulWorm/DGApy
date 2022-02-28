@@ -352,10 +352,11 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
     return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
-def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None):
+def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None, niv_core=None):
     u_r = get_ur(u=u, channel=vrg.channel)
+    #vrg_asympt = vrg.mat #* (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
+    #vrg_asympt[:, vrg.niv - niv_core:vrg.niv + niv_core] *= (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
     vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
-    # vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
     return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
 
 
@@ -365,7 +366,33 @@ def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0:
     return vrg
 
 
-# ==================================================================================================================
+# ======================================================================================================================
+
+# ======================================================================================================================
+
+def local_vertex_urange(gchi_aux: LocalFourPoint = None, gchi0_urange = None, gchi0_core = None, vrg: LocalThreePoint = None,
+                        chi = None, u=None):
+    u_r = get_ur(u=u, channel=vrg.channel)
+    niv_urange = np.shape(gchi0_urange)[-1] // 2
+    niv_core = np.shape(gchi_aux.mat)[-1] // 2
+    F_urange = u_r * (1-u_r * chi[:,None,None]) * vrg.mat[:,:,None] * vrg.mat[:,None,:]
+    unity = np.eye(np.shape(gchi0_core)[-1], dtype=complex)
+    F_urange[:,niv_urange-niv_core:niv_urange+niv_core,niv_urange-niv_core:niv_urange+niv_core] += 1./gchi0_core[:,:,None] * (unity - gchi_aux.mat * 1./gchi0_core[:,None,:])
+    return F_urange
+
+def local_vertex_inverse_bse_wn(gamma=None, chi0=None, u_r=None, beta=None):
+    niv = np.shape(gamma)[-1] // 2
+    niv_u = np.shape(chi0)[-1] // 2
+    gamma_u = u_r * np.ones((2*niv_u,2*niv_u), dtype=complex) * 1./beta**2
+    gamma_u[niv_u-niv:niv_u+niv,niv_u-niv:niv_u+niv] = gamma # gamma contains internally 1/beta^2
+    return np.matmul(gamma_u,np.linalg.inv(np.eye(2*niv_u,dtype=complex) + gamma_u * chi0[:,None]))
+    #return np.linalg.inv(np.linalg.inv(gamma_u))- np.diag(chi0))
+
+def local_vertex_inverse_bse(gamma=None, chi0=None, u=None):
+    u_r = get_ur(u=u, channel=gamma.channel)
+    return np.array([local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.iw_ind])
+
+
 
 # ======================================================================================================================
 # ----------------------------------------------- NONLOCAL BUBBLE CLASS ------------------------------------------------
@@ -383,7 +410,6 @@ class Bubble():
         self._gkpq = gkpq
         self._beta = beta
         self.set_chi0()
-        self.set_gchi0()
         self.wn = wn
         self.set_asympt()
 
@@ -921,8 +947,8 @@ def dga_susceptibility(dga_conf: conf.DgaConfig = None, dmft_input=None, gamma_d
             if (np.abs(wn) < 2 * niv_pp):
                 condition = omega == wn
 
-                gchi_aux_magn = chi_aux_asympt(chi_aux = gchi_aux_magn, chi=chiq_magn)
-                gchi_aux_dens = chi_aux_asympt(chi_aux = gchi_aux_dens, chi=chiq_dens)
+                gchi_aux_magn = chi_aux_asympt(chi_aux=gchi_aux_magn, chi=chiq_magn)
+                gchi_aux_dens = chi_aux_asympt(chi_aux=gchi_aux_dens, chi=chiq_dens)
                 f1_magn_slice, f2_magn_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchi_aux_magn,
                                                                                         vrg=vrgq_magn_core.mat,
                                                                                         gchi0=chi0q_core.gchi0,

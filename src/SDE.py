@@ -29,6 +29,15 @@ def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None,giw=None, u=N
     return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat_asympt[:, None]) - scal_const / chir.beta) * giw_grid,
                               axis=0)  # The -1./chir.beta is is canceled in the sum. This is only relevant for Fluctuation diagnostics.
 
+def local_sde_vertex(vertex=None, giw=None, u=None, beta=None):
+    niv = vertex.shape[-1] // 2
+    niw = vertex.shape[0] // 2
+    iw = mf.wn(n=niw)
+    giw_grid = wn_slices(mat=giw, n_cut=niv, iw=iw)
+    gloc = mf.cut_v_1d(giw,niv_cut=niv)
+    # 1/beta^2 is included in the vertex
+    return -u/2 * np.sum(vertex*gloc[None,None,:] * giw_grid[:,None,:] * giw_grid[:,:,None], axis=(0,2))
+
 
 def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, giw=None, u=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
@@ -83,56 +92,61 @@ def sde_dga(dga_conf: conf.DgaConfig = None, vrg_in=None, chir: fp.LadderSuscept
     else:
         return sigma
 
+def sde_chi_kernel(dga_conf: conf.DgaConfig = None, kernel=None, g_generator: twop.GreensFunctionGenerator = None, mu=0, qiw_grid=None):
+    ''' Sigma = - \sum_q kernel * G(k-q). Everything is within the kernel here. '''
+    niv_urange = dga_conf.box.niv_urange
+    sigma = np.zeros((g_generator.nkx, g_generator.nky, g_generator.nkz, niv_urange), dtype=complex)
+    for iqw in range(qiw_grid.shape[0]):
+        wn = qiw_grid[iqw][-1]
+        q_ind = qiw_grid[iqw][0]
+        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
+        qiw = np.append(q, wn)
+        gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange)
+        sigma += kernel[iqw, niv_urange:] * gkpq.gk * dga_conf.q_grid.irrk_count[q_ind]
 
-def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, vrg=None, chi=None, qiw_mesh=None, sigma_input=None, mu_input = None,
+        if (wn != 0):
+            qiw = np.append(q, -wn)
+            gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_urange).gk
+            sigma += np.conj(np.flip(kernel[iqw,:], axis=-1)[None, None, None, niv_urange:]) * gkpq * dga_conf.q_grid.irrk_count[q_ind]
+
+    sigma = - 1. / (dga_conf.q_grid.nk_tot) * sigma
+    return sigma
+
+def get_full_dga_kernel(vrg_d=None,vrg_m=None,chi_d:fp.LadderSusceptibility=None,chi_m=None):
+    return chi_d.u/2. * (vrg_d.mat * (1 - chi_d.u_r * chi_d.mat[:,None]) - 3. * vrg_m.mat * (1 - chi_m.u_r * chi_m.mat[:,None]) - 2./chi_d.beta)
+
+def get_dga_kernel_dens(vrg_d=None,chi_d:fp.LadderSusceptibility=None):
+    return chi_d.u_r/2. * (vrg_d.mat * (1 - chi_d.u_r * chi_d.mat[:,None]) - 1./chi_d.beta)
+
+def get_dga_kernel_magn(vrg_m=None,chi_m=None):
+    return chi_m.u_r/2. * (vrg_m.mat * (1 - chi_m.u_r * chi_m.mat[:,None]) - 1./chi_m.beta)
+
+
+def sde_dga_wrapper(dga_conf: conf.DgaConfig = None, f_loc_chi0=None, vrg=None, chi=None, qiw_mesh=None, sigma_input=None, mu_input = None,
                     distributor=None):
     g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
                                                sigma=sigma_input)
 
-    if (dga_conf.opt.analyse_spin_fermion_contributions):
-        sigma_dens_re, sigma_dens_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                                mu=mu_input, qiw_grid=qiw_mesh, analyse_spin_fermion=True)
+    kernel = get_dga_kernel_dens(vrg_d=vrg['dens'], chi_d=chi['dens'])
+    sigma_dens = sde_chi_kernel(dga_conf = dga_conf, kernel=kernel, g_generator = g_generator, mu=mu_input, qiw_grid=qiw_mesh)
 
-        sigma_magn_re, sigma_magn_im = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                                mu=mu_input, qiw_grid=qiw_mesh, analyse_spin_fermion=True)
+    kernel = get_dga_kernel_magn(vrg_m=vrg['magn'], chi_m=chi['magn'])
+    sigma_magn = sde_chi_kernel(dga_conf = dga_conf, kernel=kernel, g_generator = g_generator, mu=mu_input, qiw_grid=qiw_mesh)
 
-        sigma_dens_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_re, distributor=distributor)
-        sigma_dens_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens_im, distributor=distributor)
-        sigma_magn_re = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn_re, distributor=distributor)
-        sigma_magn_im = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn_im, distributor=distributor)
+    # kernel = dga_conf.sys.u/dga_conf.sys.beta * 0.5 *(f_loc_chi0['dens'].mat - f_loc_chi0['magn'].mat)
+    # sigma_dc_corr = sde_chi_kernel(dga_conf = dga_conf, kernel=kernel, g_generator = g_generator, mu=mu_input, qiw_grid=qiw_mesh)
 
-        sigma_dens = sigma_dens_re + sigma_dens_im
-        sigma_magn = sigma_magn_re + sigma_magn_im
+    #sigma_dc_corr = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dc_corr, distributor=distributor)
+    sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
+    sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
 
-
-
-    else:
-        sigma_dens = sde_dga(dga_conf=dga_conf, vrg_in=vrg['dens'].mat, chir=chi['dens'], g_generator=g_generator,
-                             mu=mu_input, qiw_grid=qiw_mesh)
-        sigma_magn = sde_dga(dga_conf=dga_conf, vrg_in=vrg['magn'].mat, chir=chi['magn'], g_generator=g_generator,
-                             mu=mu_input, qiw_grid=qiw_mesh)
-
-        sigma_dens = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_dens, distributor=distributor)
-        sigma_magn = reduce_and_symmetrize_fbz(dga_conf=dga_conf, mat=sigma_magn, distributor=distributor)
-
-        sigma_dens_re = None
-        sigma_dens_im = None
-        sigma_magn_re = None
-        sigma_magn_im = None
 
     sigma = {
         'dens': sigma_dens,
         'magn': sigma_magn
     }
 
-    sigma_components = {
-        'dens_re': sigma_dens_re,
-        'dens_im': sigma_dens_im,
-        'magn_re': sigma_magn_re,
-        'magn_im': sigma_magn_im,
-    }
-
-    return sigma, sigma_components
+    return sigma
 
 
 def reduce_and_symmetrize_fbz(dga_conf: conf.DgaConfig = None, mat=None, distributor=None):
@@ -189,10 +203,19 @@ def build_dga_sigma(dga_conf: conf.DgaConfig = None, sigma_dga=None, sigma_rpa=N
     niv1 = sigma_dga['dens'].shape[-1] // 2
     niv2 = sigma_dmft.shape[-1] // 2
     sigma_dmft_clip = sigma_dmft[niv2-niv1:niv2+niv1]
-    sigma = -1 * sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] - 2 * dmft_sde[
-        'magn'] + 2 * dmft_sde['dens'] - dmft_sde['siw'] + sigma_dmft_clip
-    sigma_nc = sigma_dga['dens'] + 3 * sigma_dga['magn'] - 2 * dmft_sde['magn'] + dmft_sde['hartree'] - \
-                            dmft_sde['siw'] + sigma_dmft_clip
+    niv_urange = dga_conf.box.niv_urange
+    niv_full = dga_conf.box.niv_urange + dga_conf.box.niw_core
+
+    sigma = np.zeros((dga_conf.k_grid.nk) + (2*niv_full,), dtype=complex)
+    sigma_nc = np.zeros((dga_conf.k_grid.nk) + (2*niv_full,), dtype=complex)
+    sigma[:,:,:,:] = sigma_dmft[None,None,None,niv2-niv_full:niv2+niv_full]
+    sigma_nc[:,:,:,:] = sigma_dmft[None,None,None,niv2-niv_full:niv2+niv_full]
+    sigma[:,:,:,niv_full-niv_urange:niv_full+niv_urange] = -1*sigma_dga['dens'] + 3 * sigma_dga['magn'] + dmft_sde['hartree'] -  2*dmft_sde[
+        'magn'] +  2*dmft_sde['dens']  - dmft_sde['siw'] + sigma_dmft_clip
+
+    sigma_nc[:,:,:,niv_full-niv_urange:niv_full+niv_urange] = sigma_dga['dens'] + 3 * sigma_dga['magn'] - \
+                            2*dmft_sde['magn'] + dmft_sde['hartree'] - dmft_sde['siw'] + sigma_dmft_clip
+
     return sigma, sigma_nc
 
 

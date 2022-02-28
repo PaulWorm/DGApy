@@ -28,21 +28,28 @@ class LambdaDga():
 
     sde_loc = None  # Output from the local Schwinger dyson equation
     chi_loc = None  # Local physical susceptibility
+    f_loc = None # Local vertex
     chi_rpa_loc = None  # Local rpa physical susceptibility
     vrg = None # non-local spin-fermion vertex
     chi = None # non-local susceptibility
     chi_rpa = None # non-local rpa susceptibility
     lambda_ = None # Lambda for lambda-correction
 
+    f_loc_chi0 = None # F_loc * chi0_q for lambda-dga local double counting correction
+
+
+    sigma_dmft = None # DMFT self-energy
     sigma_dga = None # Self-energy from dga schwinger dyson equation
+    sigma_rpa = None # Self-energy from rpa schinger dyson equation
     sigma = None # Self-energy as obtained by DGA with RPA and box-size corrections
     sigma_nc = None # Self-energy as obtained by DGA, but slightly different (yeah I know that comment is kinda useless)
 
     sigma_com = None
     sigma_com_loc = None # Components of the self-energy originating from different scattering channels
 
-    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_start=None, gamma_magn=None, gamma_dens=None):
+    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None, sigma_start=None, gamma_magn=None, gamma_dens=None):
         self.comm = comm  # MPI communicator
+        self.sigma_dmft = sigma_dmft # Self-energy of DMFT
         self.sigma_start = sigma_start  # Input self-energy
         self.conf = config  # Config parameter settings. At a later stage this will possibly be integrated directly here.
         self.gamma_magn = gamma_magn  # DMFT local irreducible ph vertex in the magnetic channel
@@ -53,7 +60,7 @@ class LambdaDga():
 
         # I am not yet sure if they should be set at the start, or rather computed on demand. But time will tell.
         self.mu = self.g_gen.adjust_mu(n=self.n, mu0=self.mu_dmft)
-        self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_core)
+        self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_urange)
         self.g_loc = self.gk.k_mean()
 
         # ----------------------------------------- CREATE MPI DISTRIBUTORS ----------------------------------------------------
@@ -97,6 +104,10 @@ class LambdaDga():
     @property
     def niw_core(self):
         return self.conf.box.niw_core
+
+    @property
+    def niw_urange(self):
+        return self.conf.box.niw_urange
 
     @property
     def niv_core(self):
@@ -160,23 +171,22 @@ class LambdaDga():
         return self.qiw_grid_rpa.my_n_tasks
 
     def local_sde(self, safe_output=False, use_rpa_correction=True, interactive=False, ana_w0=False):
-        self.sde_loc, self.chi_loc, vrg_loc, self.sigma_com_loc = lr.local_dmft_sde_from_gamma(dga_conf=self.conf,
+        self.sde_loc, self.chi_loc, vrg_loc, self.f_loc = lr.local_dmft_sde_from_gamma(dga_conf=self.conf,
                                                                                           giw=self.g_loc,
-                                                                                          gamma_dmft=self.gamma_dmft,
-                                                                                          ana_w0=ana_w0)
+                                                                                          gamma_dmft=self.gamma_dmft)
 
         if (use_rpa_correction):
             rpa_sde_loc, self.chi_rpa_loc = sde.local_rpa_sde_correction(dga_conf=self.conf, giw=self.g_loc,
                                                                     box_sizes=self.conf.box,
                                                                     iw=self.conf.box.wn_rpa)
             self.sde_loc = lr.add_rpa_correction(dmft_sde=self.sde_loc, rpa_sde_loc=rpa_sde_loc,
-                                                 wn_rpa=self.conf.box.wn_rpa,
-                                                 sigma_comp=self.sigma_com_loc)
+                                                 wn_rpa=self.conf.box.wn_rpa)
 
         if (safe_output and self.is_root):
             np.save(self.conf.nam.output_path + 'dmft_sde.npy', self.sde_loc, allow_pickle=True)
             np.save(self.conf.nam.output_path + 'chi_dmft.npy', self.chi_loc, allow_pickle=True)
             np.save(self.conf.nam.output_path + 'vrg_dmft.npy', vrg_loc, allow_pickle=True)
+            np.save(self.conf.nam.output_path + 'f_dmft.npy', self.f_loc, allow_pickle=True)
 
         if (interactive):
             if (self.is_root): plotting.plot_vrg_dmft(vrg_dmft=vrg_loc, beta=self.beta,
@@ -191,15 +201,22 @@ class LambdaDga():
         vrg_dens = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='dens', beta=self.beta, u=self.u)
         vrg_magn = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='magn', beta=self.beta, u=self.u)
 
+        # floc_chi0_dens = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='dens', beta=self.beta, u=self.u)
+        # floc_chi0_magn = fp.LadderObject(qiw=self.qiw_grid.my_mesh, channel='magn', beta=self.beta, u=self.u)
+
         for iqw in range(self.my_n_qiw_tasks):
-            qiw, wn = self.get_qiw(iqw=iqw)
+            qiw, wn = self.get_qiw(iqw=iqw,qiw_mesh=self.my_qiw_mesh)
             wn_lin = np.array(mf.cen2lin(wn, -self.conf.box.niw_core), dtype=int)
 
             gkpq_urange = self.g_gen.generate_gk(mu=self.mu, qiw=qiw, niv=self.niv_urange)
 
             chi0q_core = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_core),
                                    gkpq=gkpq_urange.get_gk_cut_iv(niv_cut=self.niv_core), beta=self.beta, wn=wn)
+            chi0q_core.set_gchi0()
+
             chi0q_urange = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_urange), gkpq=gkpq_urange.gk, beta=self.beta, wn=wn)
+
+            chi0q_urange.set_gchi0()
 
             gchi_aux_dens = fp.construct_gchi_aux(gammar=self.gamma_dens, gchi0=chi0q_core, u=self.u, wn_lin=wn_lin)
             gchi_aux_magn = fp.construct_gchi_aux(gammar=self.gamma_magn, gchi0=chi0q_core, u=self.u, wn_lin=wn_lin)
@@ -219,6 +236,9 @@ class LambdaDga():
             vrgq_magn, vrgq_magn_core = fp.fermi_bose_from_chi_aux_urange(gchi_aux=gchi_aux_magn, gchi0=chi0q_core,
                                                                           niv_urange=self.niv_urange)
             vrgq_magn = fp.fermi_bose_asympt(vrg=vrgq_magn, chi_urange=chiq_magn)
+
+            # floc_chi0_dens.ladder[iqw] = np.sum(self.f_loc['dens'][wn_lin,:,:] * chi0q_urange.gchi0[None,:], axis=-1)
+            # floc_chi0_magn.ladder[iqw] = np.sum(self.f_loc['magn'][wn_lin,:,:] * chi0q_urange.gchi0[None,:], axis=-1)
 
             chi_dens.mat[iqw] = chiq_dens.mat_asympt
             chi_magn.mat[iqw] = chiq_magn.mat_asympt
@@ -247,6 +267,9 @@ class LambdaDga():
         vrg_dens.set_qiw_mat()
         vrg_magn.set_qiw_mat()
 
+        # floc_chi0_dens._mat = np.array(floc_chi0_dens.ladder)
+        # floc_chi0_magn._mat = np.array(floc_chi0_magn.ladder)
+
         self.chi = {
             'dens': chi_dens,
             'magn': chi_magn
@@ -257,12 +280,17 @@ class LambdaDga():
         }
         self.qiw_distributor.close_file()
 
+        # self.f_loc_chi0 = {
+        #     'dens': floc_chi0_dens,
+        #     'magn': floc_chi0_magn
+        # }
+
     def rpa_susceptibility(self):
         chi_rpa_dens = fp.LadderSusceptibility(channel='dens', beta=self.beta, u=self.u, qiw=self.my_rpa_qiw_mesh)
         chi_rpa_magn = fp.LadderSusceptibility(channel='magn', beta=self.beta, u=self.u, qiw=self.my_rpa_qiw_mesh)
 
         for iqw in range(self.my_n_rpa_qiw_tasks):
-            qiw, wn = self.get_qiw(iqw=iqw)
+            qiw, wn = self.get_qiw(iqw=iqw,qiw_mesh=self.my_rpa_qiw_mesh)
             gkpq_urange = self.g_gen.generate_gk(mu=self.mu, qiw=qiw, niv=self.niv_urange)
 
             chi0q_urange = fp.Bubble(gk=self.gk.get_gk_cut_iv(niv_cut=self.niv_urange), gkpq=gkpq_urange.gk, beta=self.beta, wn=wn)
@@ -320,31 +348,35 @@ class LambdaDga():
                        delimiter=' ', fmt='%s')
 
     def dga_sde(self, interactive=False):
-        sigma_dga, sigma_com = sde.sde_dga_wrapper(dga_conf=self.conf, vrg=self.vrg, chi=self.chi,
+        self.sigma_dga = sde.sde_dga_wrapper(dga_conf=self.conf, vrg=self.vrg, f_loc_chi0=self.f_loc_chi0, chi=self.chi,
                                                               qiw_mesh=self.my_qiw_mesh,
                                                               sigma_input=self.sigma_start, mu_input=self.mu, distributor=self.qiw_distributor)
-        sigma_rpa = sde.rpa_sde_wrapper(dga_conf=self.conf, sigma_input=self.sigma_start,mu_input=self.mu, chi=self.chi_rpa,
+
+        self.sigma_rpa = sde.rpa_sde_wrapper(dga_conf=self.conf, sigma_input=self.sigma_start,mu_input=self.mu, chi=self.chi_rpa,
                                         qiw_grid=self.qiw_grid_rpa,
                                         distributor=self.qiw_distributor_rpa)
 
-        # Here I am not sure if one has to use sigma_dmft instead of sigma_start for self-consistency
-        self.sigma, self.sigma_nc = sde.build_dga_sigma(dga_conf=self.conf, sigma_dga=sigma_dga, sigma_rpa=sigma_rpa,
-                                              dmft_sde=self.sde_loc, sigma_dmft=self.sigma_start)
+
 
         if(interactive):
-            if self.is_root: np.save(self.conf.nam.output_path + 'sigma_dga.npy', sigma_dga, allow_pickle=True)
+            if self.is_root: np.save(self.conf.nam.output_path + 'sigma_dga.npy', self.sigma_dga, allow_pickle=True)
+
+    def build_dga_sigma(self, interactive=False):
+        # Here I am not sure if one has to use sigma_dmft instead of sigma_start for self-consistency
+        self.sigma, self.sigma_nc = sde.build_dga_sigma(dga_conf=self.conf, sigma_dga=self.sigma_dga, sigma_rpa=self.sigma_rpa,
+                                              dmft_sde=self.sde_loc, sigma_dmft=self.sigma_dmft)
+        if(interactive):
             if self.is_root: np.save(self.conf.nam.output_path + 'sigma.npy', self.sigma, allow_pickle=True)
             if self.is_root: np.save(self.conf.nam.output_path + 'sigma_nc.npy', self.sigma_nc, allow_pickle=True)
-            if self.is_root: plotting.sigma_plots(dga_conf=self.conf, sigma_dga=sigma_dga, dmft_sde=self.sde_loc,
-                                                    sigma_loc=self.sigma_start, sigma=self.sigma, sigma_nc=self.sigma_nc)
+            if self.is_root: plotting.sigma_plots(dga_conf=self.conf, sigma_dga=self.sigma_dga, dmft_sde=self.sde_loc,
+                                                    sigma_loc=self.sigma_dmft, sigma=self.sigma, sigma_nc=self.sigma_nc)
             if self.is_root: plotting.giwk_plots(dga_conf=self.conf, sigma=self.sigma, input_mu=self.mu,
-                                                   output_path=self.conf.nam.output_path)
-            if self.is_root: plotting.giwk_plots(dga_conf=self.conf, sigma=self.sigma_nc, input_mu=self.mu, name='_nc',
-                                                   output_path=self.conf.nam.output_path)
+                                                    output_path=self.conf.nam.output_path)
 
-    def get_qiw(self, iqw=None):
-        wn = self.my_qiw_mesh[iqw][-1]
-        q_ind = self.my_qiw_mesh[iqw][0]
+
+    def get_qiw(self, iqw=None, qiw_mesh=None):
+        wn = qiw_mesh[iqw][-1]
+        q_ind = qiw_mesh[iqw][0]
         q = self.q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(-q, wn)  # WARNING: Here I am not sure if it should be +q or -q.
         return qiw, wn

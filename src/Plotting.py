@@ -61,6 +61,21 @@ def insert_colorbar(ax=None, im=None):
     cax = divider.append_axes('right', size='5%', pad=0.05)
     plt.colorbar(im, cax=cax, orientation='vertical')
 
+def plot_f_dmft(f=None,path=None,name=None,niv_cut=-1):
+    niw = f.shape[0] // 2
+    niv = f.shape[-1] // 2
+    if(niv_cut == -1):
+        niv_cut = niv
+    plt.figure()
+    plt.imshow(f[niw,niv-niv_cut:niv+niv_cut,niv-niv_cut:niv+niv_cut].real, cmap='RdBu', origin='lower')
+    plt.colorbar()
+    plt.xlabel(r'$\nu_p$')
+    plt.xlabel(r'$\nu$')
+    plt.title(name)
+    plt.savefig(path + f'{name}.png')
+    plt.show()
+    plt.close()
+
 
 def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fit=None, output_path=None, name=None):
     plt.figure()
@@ -81,18 +96,16 @@ def sigma_plots(dga_conf: conf.DgaConfig = None, sigma_dga=None, dmft_sde=None, 
 
 
     # Plot Siw-check:
-    vn_list = [dga_conf.box.vn_dmft, dga_conf.box.vn_urange, dga_conf.box.vn_urange, dga_conf.box.vn_urange]
     siw_list = [sigma_loc, dmft_sde['siw'], sigma.mean(axis=(0, 1, 2)), sigma_nc.mean(axis=(0, 1, 2))]
     labels = [r'$\Sigma_{DMFT}(\nu)$', r'$\Sigma_{DMFT-SDE}(\nu)$', r'$\Sigma_{DGA}(\nu)$', r'$\Sigma_{DGA-NC}(\nu)$']
-    plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100, name='siw_check'+name)
+    plot_siw(siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100, name='siw_check'+name)
 
     # Plot non-local Siw contributions:
-    vn_list = [dga_conf.box.vn_urange, dga_conf.box.vn_urange]
     siw_dga_magn_ksum = 3*sigma_dga['magn'].mean(axis=(0, 1, 2))  - 3 * dmft_sde['magn']
     siw_dga_dens_ksum = -sigma_dga['dens'].mean(axis=(0, 1, 2))  +  dmft_sde['dens']
     siw_list = [siw_dga_magn_ksum, siw_dga_dens_ksum]
     labels = [r'$\Sigma_{DGA-Magn}(\nu)$', r'$\Sigma_{DGA-Dens}(\nu)$']
-    plot_siw(vn_list=vn_list, siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100,name='siw_channel_contribution'+name)
+    plot_siw(siw_list=siw_list, labels_list=labels, plot_dir=dga_conf.nam.output_path, niv_plot=100,name='siw_channel_contribution'+name)
 
     # Plot self-energy at the Fermi-surface:
     plot_siwk_fs(siwk=sigma, plot_dir=dga_conf.nam.output_path, kgrid=dga_conf.k_grid, do_shift=True,name=name)
@@ -107,7 +120,7 @@ def giwk_plots(dga_conf: conf.DgaConfig = None, sigma=None, input_mu=None, name=
     plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga'+name,
                           ind_fs=ind_gf0)
     plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=dga_conf.k_grid, do_shift=True, name='dga'+name)
-    plot_siw_along_fs(vn=dga_conf.box.vn_urange, siwk=sigma, ind_fs=ind_gf0, output_path=output_path, niv_plot=niv_plot,name='sigma_along_fs'+name)
+    plot_siw_along_fs(vn=dga_conf.box.vn_padded, siwk=sigma, ind_fs=ind_gf0, output_path=output_path, niv_plot=niv_plot,name='sigma_along_fs'+name)
 
 def plot_siw_along_fs(siwk=None,ind_fs=None,vn=None, niv_plot = 10,niv_plot_min=-1, output_path=None, name='sigma_along_fs'):
 
@@ -524,25 +537,29 @@ def plot_chiw(wn_list=None, chiw_list=None, labels_list=None, channel=None, plot
         plt.close()
 
 
-def plot_siw(vn_list=None, siw_list=None, labels_list=None, plot_dir=None, niv_plot_min=-10, niv_plot=200,
+def plot_siw(siw_list=None, labels_list=None, plot_dir=None, niv_plot_min=-10, niv_plot=200,
              name='siw_check', ncol=1, ms=2):
     markers = __markers__
-    nplot = len(vn_list)
+    nplot = len(siw_list)
     assert nplot < len(markers), 'More plots-lines requires, than markers avaiable.'
 
     plt.figure()
     plt.subplot(211)
 
-    for i in range(len(vn_list)):
-        ind = np.logical_and(vn_list[i] >= niv_plot_min, vn_list[i] <= niv_plot)
-        plt.plot(vn_list[i][ind], siw_list[i][ind].real, markers[i], ms=ms, label=labels_list[i])
+    for i in range(nplot):
+        niv = siw_list[i].shape[-1] // 2
+        vn = mf.vn(n=niv)
+        ind = np.logical_and(vn >= niv_plot_min, vn <= niv_plot)
+        plt.plot(vn[ind], siw_list[i][ind].real, markers[i], ms=ms, label=labels_list[i])
     plt.legend()
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Re \Sigma$')
     plt.subplot(212)
-    for i in range(len(vn_list)):
-        ind = np.logical_and(vn_list[i] >= niv_plot_min, vn_list[i] <= niv_plot)
-        plt.plot(vn_list[i][ind], siw_list[i][ind].imag, markers[i], ms=ms, label=labels_list[i])
+    for i in range(nplot):
+        niv = siw_list[i].shape[-1] // 2
+        vn = mf.vn(n=niv)
+        ind = np.logical_and(vn >= niv_plot_min, vn <= niv_plot)
+        plt.plot(vn[ind], siw_list[i][ind].imag, markers[i], ms=ms, label=labels_list[i])
     plt.legend(ncol=ncol, loc='upper right')
     plt.xlabel(r'$\omega$')
     plt.ylabel(r'$\Im \Sigma$')

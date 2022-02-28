@@ -10,7 +10,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import MatsubaraFrequencies as mf
 import h5py
-import pandas as pd
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def load_ldga_data(path=None):
