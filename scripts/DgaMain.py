@@ -52,8 +52,8 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = False
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']

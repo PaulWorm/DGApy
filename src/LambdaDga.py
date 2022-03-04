@@ -324,14 +324,15 @@ class LambdaDga():
         chi_magn = self.dga_ladder_susc_allgather_qiw_and_build_fbziw(channel='magn')
         chi = {'dens':chi_dens,
                'magn':chi_magn}
-        chi_rpa_dens = self.dga_ladder_susc_allgather_qiw_and_build_fbziw(channel='magn')
+        chi_rpa_dens = self.rpa_ladder_susc_allgather_qiw_and_build_fbziw(channel='magn')
         chi_rpa_magn = self.rpa_ladder_susc_allgather_qiw_and_build_fbziw(channel='dens')
         chi_rpa = {'dens': chi_rpa_dens,
                'magn': chi_rpa_magn}
-        self.lambda_, n_lambda, chi_sum = lc.lambda_correction(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa,
+        self.lambda_, n_lambda, chi_sum, lambda_start = lc.lambda_correction(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa,
                                                  chi_dmft=self.chi_loc,
                                                  chi_rpa_loc=self.chi_rpa_loc)
 
+        if(self.is_root): fp.save_and_plot_chi_lambda(dga_conf=self.conf, chi_lambda=chi,name='ladder')
         lc.build_chi_lambda(dga_conf=self.conf, chi_ladder=self.chi, chi_rpa=self.chi_rpa, lambda_=self.lambda_)
 
         if(self.is_root and save_output):
@@ -346,10 +347,15 @@ class LambdaDga():
             np.savetxt(self.conf.nam.output_path + 'lambda.txt',
                        [string_temp.format('magn', self.lambda_['magn']), string_temp.format('dens', self.lambda_['dens'])],
                        delimiter=' ', fmt='%s')
+            np.savetxt(self.conf.nam.output_path + 'lambda_start.txt',
+                       [string_temp.format('magn', lambda_start['magn']),
+                        string_temp.format('dens', lambda_start['dens'])],
+                       delimiter=' ', fmt='%s')
             np.savetxt(self.conf.nam.output_path + 'chi_sum.txt',
                        [string_temp.format('magn', chi_sum['magn']),
                         string_temp.format('dens', chi_sum['dens']),
-                        string_temp.format('dens_ladder', chi_sum['dens_ladder'])],
+                        string_temp.format('dens_ladder', chi_sum['dens_ladder']),
+                        string_temp.format('magn_ladder', chi_sum['magn_ladder'])],
                        delimiter=' ', fmt='%s')
 
     def dga_sde(self, interactive=False):

@@ -1034,18 +1034,18 @@ def ladder_susc_allgather_qiw_and_build_fbziw(dga_conf=None, distributor=None, m
     return gathered_qiw
 
 
-def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None):
-    np.save(dga_conf.nam.output_path + 'chi_lambda.npy', chi_lambda, allow_pickle=True)
+def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None, name=''):
+    np.save(dga_conf.nam.output_path + f'chi_lambda_{name}.npy', chi_lambda, allow_pickle=True)
     string_temp = 'Chi[q=(0,0),iw=0,{}]: {}'
-    np.savetxt(dga_conf.nam.output_path + 'Knight_shift.txt',
+    np.savetxt(dga_conf.nam.output_path + f'Knight_shift_{name}.txt',
                [string_temp.format('magn', chi_lambda['magn'].mat[0, 0, 0, dga_conf.box.niw_core]),
                 string_temp.format('dens', chi_lambda['dens'].mat[0, 0, 0, dga_conf.box.niw_core])], delimiter=' ',
                fmt='%s')
     import Plotting as plotting
     plotting.plot_chi_fs(chi=chi_lambda['magn'].mat.real, output_path=dga_conf.nam.output_path, kgrid=dga_conf.q_grid,
-                         name='magn_w0')
+                         name=f'magn_w0_{name}')
     plotting.plot_chi_fs(chi=chi_lambda['dens'].mat.real, output_path=dga_conf.nam.output_path, kgrid=dga_conf.q_grid,
-                         name='dens_w0')
+                         name=f'dens_w0_{name}')
 
 
 if __name__ == "__main__":
