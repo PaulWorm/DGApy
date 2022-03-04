@@ -135,8 +135,13 @@ def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None, chi_rpa=
         'dens': n_dens,
         'magn': n_magn
     }
+    chi_sum = {
+        'dens': chi_dens_loc_sum,
+        'magn': chi_magn_loc_sum,
+        'dens_ladder': chi_dens_ladder_sum
+    }
 
-    return lambda_, n_lambda
+    return lambda_, n_lambda, chi_sum
 
 
 def build_chi_lambda(dga_conf: conf.DgaConfig = None, chi_ladder = None, chi_rpa=None, lambda_=None):

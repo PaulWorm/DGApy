@@ -70,11 +70,11 @@ def wn_plus(n=10):
 
 
 def w(beta=1.0, n=10):
-    return (vn(n=n) * 2) * np.pi / beta
+    return (wn(n=n) * 2) * np.pi / beta
 
 
 def iw(beta=1.0, n=10):
-    return v(beta=beta, n=n) * 1j
+    return w(beta=beta, n=n) * 1j
 
 
 def wnfind(niw=None, n=None):

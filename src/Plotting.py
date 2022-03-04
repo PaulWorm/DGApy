@@ -7,7 +7,6 @@ import itertools
 import matplotlib
 import os
 
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import FourPoint as fp

@@ -17,13 +17,13 @@ import BrillouinZone as bz
 
 # Define Paramters:
 # ----------------------------------
-nkx = 200
-nky = 200
+nkx = 24
+nky = 24
 nkz = 1
 # t0  = -0.879
 t = 1.0
-tp = -0.15
-tpp = 0.075
+tp = -0.2
+tpp = 0.1
 
 hr = hr_mod.Ba2CuO4_plane()
 kgrid = bz.KGrid(nk=(nkx,nky,nkz))

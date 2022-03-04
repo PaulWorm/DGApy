@@ -37,9 +37,9 @@ box_sizes = conf.BoxSizes()
 
 # Define paths of datasets:
 names.input_path = './'
-names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
+#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta6.6666_n0.99/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
-# names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
 # names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 # names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
@@ -52,16 +52,16 @@ names.fname_g2 = 'g4iw_sym.hdf5'  # 'Vertex_sym.hdf5' #'g4iw_sym.hdf5'
 names.fname_ladder_vertex = 'LadderVertex.hdf5'
 
 # Define options:
-options.do_max_ent_loc = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
-options.do_max_ent_irrk = False  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_loc = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
+options.do_max_ent_irrk = True  # Perform analytic continuation using MaxEnt from Josef Kaufmann's ana_cont package.
 options.do_pairing_vertex = False
 options.keep_ladder_vertex = False
 options.lambda_correction_type = 'sp'  # Available: ['spch','sp','none','sp_only']
 options.use_urange_for_lc = False  # Use with care. This is not really tested and at least low k-grid samples don't look too good.
 options.lc_use_only_positive = True  # Use only frequency box where susceptibility is positive for lambda correction.
-options.analyse_spin_fermion_contributions = False  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
+options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
 options.analyse_w0_contribution = False  # Analyse the w0 contribution to the self-energy
-options.use_fbz = False  # Perform the calculation in the full BZ
+options.use_fbz = True  # Perform the calculation in the full BZ
 
 # Analytic continuation flags:
 dmft_fs_cont = False
@@ -70,8 +70,8 @@ no_mu_adjust_fs_cont = False
 no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
-t = 1.0
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.2 * t, tpp=0.1 * t)
+t = 0.25
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.0 * t, tpp=0.0 * t)
 # hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:
@@ -86,20 +86,20 @@ sym_sing = True
 sym_trip = True
 
 # Define frequency box-sizes:
-box_sizes.niw_core = 20
-box_sizes.niw_urange = 20  # This seems not to save enough to be used.
-box_sizes.niv_core = 20
-box_sizes.niv_invbse = 20
-box_sizes.niv_urange = 20  # Must be larger than niv_invbse
+box_sizes.niw_core = 27
+box_sizes.niw_urange = 27  # This seems not to save enough to be used.
+box_sizes.niv_core = 27
+box_sizes.niv_invbse = 27
+box_sizes.niv_urange = 27  # Must be larger than niv_invbse
 
 # Box size for saving the spin-fermion vertex:
 box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 24
+nkx = 32
 nky = nkx
-nqx = 24
+nqx = 32
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)

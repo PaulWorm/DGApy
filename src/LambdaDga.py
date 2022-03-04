@@ -328,7 +328,7 @@ class LambdaDga():
         chi_rpa_magn = self.rpa_ladder_susc_allgather_qiw_and_build_fbziw(channel='dens')
         chi_rpa = {'dens': chi_rpa_dens,
                'magn': chi_rpa_magn}
-        self.lambda_, n_lambda = lc.lambda_correction(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa,
+        self.lambda_, n_lambda, chi_sum = lc.lambda_correction(dga_conf=self.conf, chi_ladder=chi, chi_rpa=chi_rpa,
                                                  chi_dmft=self.chi_loc,
                                                  chi_rpa_loc=self.chi_rpa_loc)
 
@@ -345,6 +345,11 @@ class LambdaDga():
             string_temp = 'Lambda for {}: {}'
             np.savetxt(self.conf.nam.output_path + 'lambda.txt',
                        [string_temp.format('magn', self.lambda_['magn']), string_temp.format('dens', self.lambda_['dens'])],
+                       delimiter=' ', fmt='%s')
+            np.savetxt(self.conf.nam.output_path + 'chi_sum.txt',
+                       [string_temp.format('magn', chi_sum['magn']),
+                        string_temp.format('dens', chi_sum['dens']),
+                        string_temp.format('dens_ladder', chi_sum['dens_ladder'])],
                        delimiter=' ', fmt='%s')
 
     def dga_sde(self, interactive=False):
