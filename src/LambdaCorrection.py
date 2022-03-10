@@ -27,6 +27,7 @@ def lambda_correction_single(lambda_start=0, chir: fp.LadderSusceptibility = Non
         f_lam = chir_sum - chi_loc_sum
         fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat[..., mask] + lambda_)) ** 2.)
         lambda_ = lambda_old - np.real(f_lam / fp_lam)
+        print('Lambda: ',lambda_,'f_lam: ', f_lam,'fp_lam: ', fp_lam)
         if (np.abs(f_lam.real) < eps):
             break
 
@@ -53,7 +54,7 @@ def lambda_correction_single_use_rpa(lambda_start=0, chir: fp.LadderSusceptibili
         fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat[..., mask] + lambda_)) ** 2.)
         fp_lam += -1. / (beta * nq) * np.sum((1. / (1. / chir_rpa.mat + lambda_)) ** 2.)
         lambda_ = lambda_old - np.real(f_lam / fp_lam)
-
+        print(lambda_)
         if (np.abs(f_lam.real) < eps):
             break
 

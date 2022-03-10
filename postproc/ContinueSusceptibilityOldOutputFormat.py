@@ -32,7 +32,7 @@ import BrillouinZone as bz
 def cont_k(iw, data_1, w, err_val=0.002, verbose=False, preblur=False, blur_width=0.0, alpha_determination='chi2kink'):
     #     model = np.ones_like(w)
     data_1 = np.squeeze(data_1)
-    model = np.exp(-w ** 2 / 0.15 ** 2)
+    model = np.exp(-w ** 2 / 2.0 ** 2)
     model *= data_1[0].real / np.trapz(model, w)
     err = err_val * np.ones_like(iw)
     probl = cont.AnalyticContinuationProblem(re_axis=w, im_axis=iw,
@@ -165,7 +165,7 @@ q_grid = bz.KGrid(nk=nk)
 chi = chi[..., niw:]
 
 fac = 1
-q_path = KPath(nk[0])
+q_path = KPath2(nk[0])
 chi_qpath = chi[q_path.ikx[::fac], q_path.iky[::fac], 0]
 w = w_max * np.tan(np.linspace(0., np.pi / 2.1, num=nw)) / np.tan(np.pi / 2.1)
 s = np.zeros((len(q_path.ikx[::fac]), nw))

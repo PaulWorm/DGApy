@@ -170,8 +170,8 @@ logger.log_cpu_time(task=' DMFT gamma extraction ')
 # -------------------------------------- LOCAL SCHWINGER DYSON EQUATION ------------------------------------------------
 
 ldga = lambda_dga.LambdaDga(config=dga_conf, comm=comm, sigma_dmft=dmft1p['sloc'], sigma_start=dmft1p['sloc'],
-                            gamma_magn=gamma_dmft['magn'], gamma_dens=gamma_dmft['dens'])
-
+                            gamma_magn=gamma_dmft['magn'], gamma_dens=gamma_dmft['dens'], adjust_mu=False)
+#ldga.g_loc = dmft1p['gloc']
 ldga.local_sde(safe_output=True, interactive=True)
 
 # ----------------------------------------- NON-LOCAL RPA SUCEPTIBILITY  -----------------------------------------------

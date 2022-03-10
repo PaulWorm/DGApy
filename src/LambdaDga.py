@@ -47,7 +47,7 @@ class LambdaDga():
     sigma_com = None
     sigma_com_loc = None # Components of the self-energy originating from different scattering channels
 
-    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None, sigma_start=None, gamma_magn=None, gamma_dens=None):
+    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None, sigma_start=None, gamma_magn=None, gamma_dens=None, adjust_mu=True):
         self.comm = comm  # MPI communicator
         self.sigma_dmft = sigma_dmft # Self-energy of DMFT
         self.sigma_start = sigma_start  # Input self-energy
@@ -59,7 +59,10 @@ class LambdaDga():
         self.g_gen = twop.GreensFunctionGenerator(beta=self.beta, kgrid=self.k_grid, hr=self.hr, sigma=sigma_start)
 
         # I am not yet sure if they should be set at the start, or rather computed on demand. But time will tell.
-        self.mu = self.g_gen.adjust_mu(n=self.n, mu0=self.mu_dmft)
+        if(adjust_mu):
+            self.mu = self.g_gen.adjust_mu(n=self.n, mu0=self.mu_dmft)
+        else:
+            self.mu = self.mu_dmft
         self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_urange)
         self.g_loc = self.gk.k_mean()
 
@@ -170,7 +173,7 @@ class LambdaDga():
     def my_n_rpa_qiw_tasks(self):
         return self.qiw_grid_rpa.my_n_tasks
 
-    def local_sde(self, safe_output=False, use_rpa_correction=True, interactive=False, ana_w0=False):
+    def local_sde(self, safe_output=False, use_rpa_correction=True, interactive=False):
         self.sde_loc, self.chi_loc, vrg_loc, self.f_loc = lr.local_dmft_sde_from_gamma(dga_conf=self.conf,
                                                                                           giw=self.g_loc,
                                                                                           gamma_dmft=self.gamma_dmft)
