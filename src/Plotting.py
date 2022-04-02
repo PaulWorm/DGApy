@@ -16,6 +16,10 @@ import OrnsteinZernickeFunction as ozfunc
 import BrillouinZone as bz
 import Config as conf
 import TwoPoint as twop
+import socket
+
+if(socket.gethostname() != 'LAPTOP-SB9HJ48I'):
+    matplotlib.use('agg') # non GUI backend since VSC has no display
 
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
