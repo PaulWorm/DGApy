@@ -95,11 +95,11 @@ def load_ldga_n_an_v4(path=None):
     sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
     siw_dmft_clip = dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
     sigma = sigma_dga['dens'] + 3*sigma_dga['magn']  - 2*dmft_sde['magn'] + 0*dmft_sde['dens'] - dmft_sde['siw'] + siw_dmft_clip
-    #sigma = np.load(path + 'sigma.npy', allow_pickle=True)
-    sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
-    sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
-    #w = (config.box.vn_padded[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
-    w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
+    sigma = np.load(path + 'sigma.npy', allow_pickle=True)
+    sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_padded:]
+    sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_padded:]
+    w = (config.box.vn_padded[niv_padded:] * 2 + 1) * np.pi / config.sys.beta
+    #w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
     return w, sigma_node, sigma_anti_node
 
 
@@ -156,7 +156,7 @@ input_path_2 = '/mnt/d/Research/U2BenchmarkData/'
 input_path_3 = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 
 path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_lc_sp_Nk6400_Nq6400_core30_invbse30_vurange250_wurange200/'
-path_066 = input_path_3  + 'LambdaDga_lc_sp_Nk6400_Nq6400_core15_invbse15_vurange15_wurange15/'
+path_066 = input_path_3  + 'LambdaDga_lc_sp_Nk1024_Nq1024_core30_invbse30_vurange30_wurange30/'
 #ldga_066, config_066 = load_ldga_data(path_066)
 #w066, sldga_n_066, sldga_an_066 = load_ldga_n_an(path_066)
 w066, sldga_n_066, sldga_an_066 = load_ldga_n_an_v4(path_066)

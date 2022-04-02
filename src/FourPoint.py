@@ -134,7 +134,7 @@ class LocalBubble():
         return np.array([self.get_chi0(wn=wn) for wn in self._iw])
 
     def set_asympt(self):
-        self.asympt = 0*self.vec_get_asympt_correction()
+        self.asympt = self.vec_get_asympt_correction()
 
     def get_asympt_correction(self, wn=0):
         vn = (2 * mf.vn(n=self.niv_sum) + 1)
@@ -451,7 +451,7 @@ class Bubble():
         return np.array([self.get_chi0(wn=wn) for wn in self._iw])
 
     def set_asympt(self):
-        self.asympt = 0*self.get_asympt_correction(wn=self.wn)
+        self.asympt = self.get_asympt_correction(wn=self.wn)
 
     def get_asympt_correction(self, wn=0):
         vn = (2 * mf.vn(n=self.niv) + 1)
