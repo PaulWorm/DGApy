@@ -66,7 +66,7 @@ class LambdaDga():
         self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_urange)
         #%
 
-        if(gloc_dmft is not None and use_gloc_dmft is True):
+        if(gloc_dmft is not None and config.opt.use_gloc_dmft is True):
             self.g_loc = mf.cut_v_1d(gloc_dmft,niv_cut=config.box.niv_padded)
         else:
             self.g_loc = self.gk.k_mean()
