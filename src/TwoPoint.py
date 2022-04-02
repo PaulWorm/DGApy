@@ -220,6 +220,11 @@ class GreensFunctionGenerator():
             sigma = self.shift_mat_by_q(mat=sigma,q=q)
         return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
 
+    def get_ekpq(self,qiw=(0, 0, 0, 0)):
+        q = qiw[:3]
+        kgrid = self.add_q_to_kgrid(q=q)
+        return hk.ek_3d(kgrid=kgrid, hr=self.hr)
+
     def get_v_slice(self,niv=None,v_range='full'):
         if v_range in {'+','p','plus'}:
             return slice(niv, None)

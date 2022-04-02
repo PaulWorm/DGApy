@@ -62,6 +62,7 @@ options.lc_use_only_positive = True  # Use only frequency box where susceptibili
 options.analyse_spin_fermion_contributions = True  # Analyse the contributions of the Re/Im part of the spin-fermion vertex seperately
 options.analyse_w0_contribution = False  # Analyse the w0 contribution to the self-energy
 options.use_fbz = True  # Perform the calculation in the full BZ
+options.use_gloc_dmft = True # Use DMFT output g_loc
 
 # Analytic continuation flags:
 dmft_fs_cont = False
@@ -87,7 +88,7 @@ sym_trip = True
 
 # Define frequency box-sizes:
 box_sizes.niw_core = 27
-box_sizes.niw_urange = 27  # This seems not to save enough to be used.
+box_sizes.niw_urange = 27  # This seems not save enough to be used.
 box_sizes.niv_core = 27
 box_sizes.niv_invbse = 27
 box_sizes.niv_urange = 27  # Must be larger than niv_invbse
@@ -97,9 +98,9 @@ box_sizes.niw_vrg_save = 5
 box_sizes.niv_vrg_save = 5
 
 # Define k-ranges:
-nkx = 32
+nkx = 64
 nky = nkx
-nqx = 32
+nqx = 64
 nqy = nkx
 
 box_sizes.nk = (nkx, nky, 1)
@@ -169,7 +170,7 @@ if (comm.rank == 0): plotting.plot_gamma_dmft(gamma_dmft=gamma_dmft, output_path
 logger.log_cpu_time(task=' DMFT gamma extraction ')
 # -------------------------------------- LOCAL SCHWINGER DYSON EQUATION ------------------------------------------------
 
-ldga = lambda_dga.LambdaDga(config=dga_conf, comm=comm, sigma_dmft=dmft1p['sloc'], sigma_start=dmft1p['sloc'],
+ldga = lambda_dga.LambdaDga(config=dga_conf, comm=comm, sigma_dmft=dmft1p['sloc'],gloc_dmft=dmft1p['gloc'],use_gloc_dmft=use_gloc_dmft, sigma_start=dmft1p['sloc'],
                             gamma_magn=gamma_dmft['magn'], gamma_dens=gamma_dmft['dens'], adjust_mu=False)
 #ldga.g_loc = dmft1p['gloc']
 ldga.local_sde(safe_output=True, interactive=True)

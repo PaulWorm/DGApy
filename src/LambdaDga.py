@@ -47,7 +47,7 @@ class LambdaDga():
     sigma_com = None
     sigma_com_loc = None # Components of the self-energy originating from different scattering channels
 
-    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None, sigma_start=None, gamma_magn=None, gamma_dens=None, adjust_mu=True):
+    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None,gloc_dmft=None, sigma_start=None, gamma_magn=None, gamma_dens=None, adjust_mu=True,use_gloc_dmft=False):
         self.comm = comm  # MPI communicator
         self.sigma_dmft = sigma_dmft # Self-energy of DMFT
         self.sigma_start = sigma_start  # Input self-energy
@@ -64,7 +64,12 @@ class LambdaDga():
         else:
             self.mu = self.mu_dmft
         self.gk = self.g_gen.generate_gk(mu=self.mu, niv=self.niv_urange + self.niw_urange)
-        self.g_loc = self.gk.k_mean()
+        #%
+
+        if(gloc_dmft is not None and use_gloc_dmft is True):
+            self.g_loc = mf.cut_v_1d(gloc_dmft,niv_cut=config.box.niv_padded)
+        else:
+            self.g_loc = self.gk.k_mean()
 
         # ----------------------------------------- CREATE MPI DISTRIBUTORS ----------------------------------------------------
         self.qiw_distributor = mpiaux.MpiDistributor(ntasks=self.conf.box.wn_core_plus.size * self.conf.q_grid.nk_irr,

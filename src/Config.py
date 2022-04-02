@@ -70,7 +70,7 @@ class BoxSizes(ConfigBase):
 
     @property
     def niv_core(self):
-        return self._niw_core
+        return self._niv_core
 
     @niv_core.setter
     def niv_core(self, value):
@@ -173,7 +173,7 @@ class Options(ConfigBase):
         self.use_fbz = False  # Use the full Brillouin zone instead of the irreduzible one
         self.g2_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
         self.g1_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
-
+        self.use_gloc_dmft = False # Use DMFT output local Greens function
 
 class SystemParamter(ConfigBase):
     '''

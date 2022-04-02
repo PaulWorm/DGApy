@@ -87,9 +87,9 @@ q_grid = bz.KGrid(nk=nk)
 
 # Cut negative frequencies:
 chi = chi[..., niw:]
-chip = chi[nk[0]//4,nk[1]//4,0]
+chip = chi[nk[0]//2,nk[1]//2,0]
 
-sigma = np.array([1.0,2.0,4.0])
+sigma = np.array([0.2,0.5,1.0,2.0,4.0,8.0,10,20,50,100])
 fac = 1
 w = w_max * np.tan(np.linspace(0., np.pi / 2.1, num=nw)) / np.tan(np.pi / 2.1)
 s = np.zeros((len(sigma), nw))
@@ -114,6 +114,7 @@ plt.figure()
 for ik in range(len(sigma)):
     plt.plot(w*tev,w * s[ik], label=f'$\sigma = {sigma[ik]}')
 plt.legend()
+plt.xlim(0,2)
 plt.show()
 
 plt.figure()

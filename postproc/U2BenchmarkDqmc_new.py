@@ -45,6 +45,7 @@ def load_ldga_n_an(path=None):
 def load_ldga_n_an_v2(path=None, sloc= None):
     dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
     config = np.load(path + 'config.npy', allow_pickle=True).item()
+
     nk = config.k_grid.nk
     niv_urange = config.box.niv_urange
     sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
@@ -58,6 +59,42 @@ def load_ldga_n_an_v2(path=None, sloc= None):
     sigma = np.load(path + 'sigma.npy', allow_pickle=True)
     sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
     sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
+    w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
+    return w, sigma_node, sigma_anti_node
+
+def load_ldga_n_an_v3(path=None):
+    dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
+    config = np.load(path + 'config.npy', allow_pickle=True).item()
+    dmft1p = np.load(path + 'dmft1p.npy', allow_pickle=True).item()
+
+    nk = config.k_grid.nk
+    niv_urange = config.box.niv_urange
+
+    sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
+    siw_dmft_clip = dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
+    sigma = sigma_dga['dens'] + 3*sigma_dga['magn']  - 2*dmft_sde['magn'] - 0*dmft_sde['dens'] - dmft_sde['siw'] + siw_dmft_clip
+    #sigma = np.load(path + 'sigma.npy', allow_pickle=True)
+    sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
+    sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
+    w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
+    return w, sigma_node, sigma_anti_node
+
+def load_ldga_n_an_v4(path=None):
+    dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
+    config = np.load(path + 'config.npy', allow_pickle=True).item()
+    dmft1p = np.load(path + 'dmft1p.npy', allow_pickle=True).item()
+
+    nk = config.k_grid.nk
+    niv_urange = config.box.niv_urange
+    niv_padded = config.box.niv_padded
+
+    sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
+    siw_dmft_clip = dmft1p['sloc'][dmft1p['niv']-niv_urange:dmft1p['niv']+niv_urange]
+    sigma = sigma_dga['dens'] + 3*sigma_dga['magn']  - 2*dmft_sde['magn'] + 0*dmft_sde['dens'] - dmft_sde['siw'] + siw_dmft_clip
+    #sigma = np.load(path + 'sigma.npy', allow_pickle=True)
+    sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_urange:]
+    sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_urange:]
+    #w = (config.box.vn_padded[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
     w = (config.box.vn_urange[niv_urange:] * 2 + 1) * np.pi / config.sys.beta
     return w, sigma_node, sigma_anti_node
 
@@ -99,10 +136,10 @@ w01, sldga_n_01, sldga_an_01= load_ldga_n_an(path_01)
 nk = config_01['box_sizes']['nk']
 niw_core = config_01['box_sizes']['niw_core']
 chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
-fig = plt.figure()
-plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
-plt.colorbar()
-plt.show()
+# fig = plt.figure()
+# plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
+# plt.colorbar()
+# plt.show()
 
 
 
@@ -117,6 +154,20 @@ w066, sldga_n_066, sldga_an_066= load_ldga_n_an(path_066)
 path_063 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta17_mu1/' + 'LambdaDga_Nk14400_Nq14400_core30_urange60/'
 ldga_063, config_0v = load_ldga_data(path_063)
 w063, sldga_n_063, sldga_an_063= load_ldga_n_an(path_063)
+
+# New data
+input_path_2 = '/mnt/d/Research/U2BenchmarkData/'
+path_063 = input_path_2 + '2DSquare_U2_tp-0.0_tpp0.0_beta16_mu1/' + 'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange250_wurange30/'
+path_063 = input_path_2 + '2DSquare_U2_tp-0.0_tpp0.0_beta16_mu1/' + 'LambdaDga_lc_sp_Nk4096_Nq4096_core20_invbse30_vurange500_wurange20/'
+w063, sldga_n_063, sldga_an_063= load_ldga_n_an_v3(path_063)
+
+input_path_3 = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+
+path_066 = input_path + '2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/' + 'LambdaDga_lc_sp_Nk6400_Nq6400_core30_invbse30_vurange250_wurange200/'
+path_066 = input_path_3  + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange27_wurange27_33/'
+#ldga_066, config_066 = load_ldga_data(path_066)
+#w066, sldga_n_066, sldga_an_066 = load_ldga_n_an(path_066)
+w066, sldga_n_066, sldga_an_066 = load_ldga_n_an_v4(path_066)
 
 # path_bm_ts = input_path + 'BenchmarkSchaefer_beta_15/LambdaDgaPython/' + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange27_wurange27/'
 # dmft_sloc = np.load(path_bm_ts + 'config.npy', allow_pickle=True).item()['dmft1p']['sloc']
@@ -176,17 +227,41 @@ ax1.set_title(r'Node')
 plt.tight_layout()
 plt.show()
 
-
 fig = plt.figure()
-plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
-plt.colorbar()
+plt.plot(dmc_an_063[:,0],dmc_an_063[:,1], '-o', color = colors[4])
+plt.plot(w066*4,4*sldga_an_066.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+plt.xlim(0,5)
+plt.xlabel(r'$\omega_n$')
+plt.ylabel(r'$\Im \Sigma$')
 plt.show()
 
-
 fig = plt.figure()
-plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
-plt.colorbar()
+plt.plot(dmc_n_063[:,0],dmc_n_063[:,1], '-o', color = colors[4])
+plt.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+plt.xlim(0,5)
+plt.xlabel(r'$\omega_n$')
+plt.ylabel(r'$\Im \Sigma$')
 plt.show()
+
+#
+# fig = plt.figure()
+# plt.plot(dmc_n_063[:,0],dmc_n_063[:,1], '-o', color = colors[4])
+# plt.plot(w063,sldga_n_063.imag,'-s', color=colors[4], ms=2, markeredgecolor='k')
+# plt.xlim(0,5)
+# plt.xlabel(r'$\omega_n$')
+# plt.ylabel(r'$\Im \Sigma$')
+# plt.show()
+
+# fig = plt.figure()
+# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+#
+# fig = plt.figure()
+# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
 
 
 
