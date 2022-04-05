@@ -47,7 +47,7 @@ class LambdaDga():
     sigma_com = None
     sigma_com_loc = None # Components of the self-energy originating from different scattering channels
 
-    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None,gloc_dmft=None, sigma_start=None, gamma_magn=None, gamma_dens=None, adjust_mu=True,use_gloc_dmft=False):
+    def __init__(self, config: configs.DgaConfig = None, comm=None, sigma_dmft = None,gloc_dmft=None, sigma_start=None, gamma_magn=None, gamma_dens=None, adjust_mu=True):
         self.comm = comm  # MPI communicator
         self.sigma_dmft = sigma_dmft # Self-energy of DMFT
         self.sigma_start = sigma_start  # Input self-energy

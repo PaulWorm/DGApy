@@ -44,7 +44,7 @@ def load_ldga_n_an(path=None,sigma_type='normal'):
         sigma = np.load(path + 'sigma_nc.npy', allow_pickle=True)
     else:
         sigma = np.load(path + 'sigma.npy', allow_pickle=True)
-    #sigma = +sigma_dga['dens'] + 3*sigma_dga['magn']  -2* dmft_sde['magn'] -0* dmft_sde['dens'] - dmft_sde['siw'] + siw_dmft_clip
+    #sigma = -sigma_dga['dens'] + 3*sigma_dga['magn']  -2* dmft_sde['magn'] -0* dmft_sde['dens'] - dmft_sde['siw'] + siw_dmft_clip
 
     sigma_node = sigma[nk[0] // 4, nk[1] // 4, 0, niv_padded:]
     sigma_anti_node = sigma[nk[0] // 2, 0, 0, niv_padded:]
@@ -120,9 +120,10 @@ w_dga_ed = []
 sldga_n_ed = []
 sldga_an_ed = []
 
-nk_ed = [32,64,100,64,64,64,64,64,64,64,64]
-nv_ed = [30,30,30,30,30,30,30,30,30,30,30]
-plt_ind= [1,1,1,0,0,0,0,0,0,1,1]
+nk_ed = [32,64,100,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64]
+nv_ed = [30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,60,60]
+nvu_ed = [30,30,30,30,30,30,100,30,30,500,500,500,500,500,250,150,60,250]
+plt_ind= [1,1,1,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1]
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk1024_Nq1024_core30_invbse30_vurange30_wurange30/')
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange30_wurange30/')
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk10000_Nq10000_core30_invbse30_vurange30_wurange30/')
@@ -134,6 +135,13 @@ w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldg
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_spch_Nk4096_Nq4096_core30_invbse30_vurange30_wurange30/')
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_spch_Nk4096_Nq4096_core30_invbse30_vurange500_wurange30/')
 w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange500_wurange30/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_4+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange500_wurange30/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_5+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange500_wurange30/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange500_wurange30_1/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange250_wurange30_1/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core30_invbse30_vurange150_wurange30/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core60_invbse60_vurange60_wurange60/')
+w_dga_ed, sldga_n_ed, sldga_an_ed = append_dga_output(w_dga_ed, sldga_n_ed, sldga_an_ed,path=input_path_3+'LambdaDga_lc_sp_Nk4096_Nq4096_core60_invbse60_vurange250_wurange60/')
 
 # ------------------------------------------------- PLOTS --------------------------------------------------------------
 
@@ -155,24 +163,26 @@ shift = 0.000
 ax0.plot(dga_sp_an_065[:, 0], rescal(dga_sp_an_065[:, 1]), '-o', color=colors[3])
 for i, w in enumerate(w_dga_ed):
     if (plt_ind[i] == 1):
-        ax0.plot(w, sldga_an_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}')
+        ax0.plot(w, sldga_an_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}; nvu={nvu_ed[i]}')
 ax0.set_xlim(0, 5)
 ax0.legend()
 
 # Anti-Node:
 ax2.plot(dmc_an_065[:, 0], dmc_an_065[:, 1], '-o', color=colors[3])
+#ax2.plot(dmc_an_063[:, 0], dmc_an_063[:, 1], '-o', color=colors[4])
 for i, w in enumerate(w_dga_ed):
     if (plt_ind[i] == 1):
-        ax2.plot(w, sldga_an_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}')
+        ax2.plot(w, sldga_an_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}; nvu={nvu_ed[i]}')
 ax2.set_xlim(0, 5)
 ax2.legend()
 
 
 # Node:
 ax1.plot(dga_sp_n_065[:, 0], rescal(dga_sp_n_065[:, 1]), '-o', color=colors[3])
+#ax1.plot(dga_sp_n_063[:, 0], rescal(dga_sp_n_063[:, 1]), '-o', color=colors[4])
 for i, w in enumerate(w_dga_ed):
     if(plt_ind[i] == 1):
-        ax1.plot(w, sldga_n_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}')
+        ax1.plot(w, sldga_n_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}; nvu={nvu_ed[i]}')
 ax1.set_xlim(0, 5)
 ax0.grid()
 ax1.grid()
@@ -182,9 +192,10 @@ ax0.set_ylabel(r'$\Im \Sigma$')
 
 # Node:
 ax3.plot(dmc_n_065[:, 0], dmc_n_065[:, 1], '-o', color=colors[3])
+#ax3.plot(dmc_n_063[:, 0], dmc_n_063[:, 1], '-o', color=colors[4])
 for i, w in enumerate(w_dga_ed):
     if (plt_ind[i] == 1):
-        ax3.plot(w, sldga_n_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}')
+        ax3.plot(w, sldga_n_ed[i].imag+shift,'-s',ms=2,label=f'nk={nk_ed[i]}; nv={nv_ed[i]}; nvu={nvu_ed[i]}')
 ax3.set_xlim(0, 5)
 ax3.legend()
 

@@ -133,8 +133,10 @@ def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=Non
     """
     g_model = get_g_model(mu=mu, iv=iv, hloc=hloc, smom0=smom0)
     gloc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
-    rho_loc = 1./(1. + np.exp(
-        beta * (smom0 + hloc.real - mu)))
+    if(beta * (smom0 + hloc.real - mu) < 20):
+        rho_loc = 1./(1. + np.exp(beta * (smom0 + hloc.real - mu)))
+    else:
+        rho_loc = np.exp(-beta * (smom0 + hloc.real - mu))
     rho_new = rho_loc + np.sum(gloc.real - g_model.real, axis=0) / beta
     n_el = 2. *  rho_new
     if(verbose): print(n_el, 'electrons at ', mu)
