@@ -1,3 +1,5 @@
+import sys,os
+sys.path.append(os.environ['HOME'] + "/Programs/dga/src")
 import numpy as np
 import matplotlib.pyplot as plt
 import Hr as hamr
@@ -10,6 +12,10 @@ import FourPoint as fp
 import Indizes as ind
 import MpiAux
 import mpi4py.MPI as mpi
+import matplotlib
+import socket
+if(socket.gethostname() != 'LAPTOP-SB9HJ48I'):
+    matplotlib.use('agg') # non GUI backend since VSC has no display
 
 comm = mpi.COMM_WORLD
 
@@ -18,7 +24,7 @@ input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_t
 niv = 100
 niv_core = 40
 niw_core = 20
-nkx = 16
+nkx = 32
 nky = nkx
 nk = (nkx,nky,1)
 kgrid = bz.KGrid(nk=nk)
@@ -40,8 +46,6 @@ gk_shift = bz.shift_mat_by_pi(gk.gk,nk=nk)
 plt.imshow(gk_shift.imag[:,:,0,niv], cmap='terrain')
 plt.colorbar()
 plt.show()
-
-#%%
 
 def get_qiw(iqw=None, qiw_mesh=None):
     wn = qiw_mesh[iqw][-1]
@@ -67,9 +71,22 @@ for iqw in range(qiw_grid.my_n_tasks):
 
     chi0q = fp.Bubble(gk=gk.get_gk_cut_iv(niv_cut=niv_core),gkpq=gkpq_urange.get_gk_cut_iv(niv_cut=niv_core), beta=dmft1p['beta'], wn=wn)
 
-    chi0.mat[iqw] = chi0q.chi0_asympt
+    chi0.mat[iqw] = chi0q.chi0
 
 chi0.mat_to_array()
-chi0.mat = kgrid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0.mat))
-chi0.mat = mf.wplus2wfull(mat=chi0.mat)
-np.save(input_path+ f'chi0_tight_binding_d_{delta}_niv_{niv}_niw_{niw_core}.npy', chi0.mat, allow_pickle=True)
+chi0 = qiw_distributor.allgather(chi0.mat)
+
+if(comm.rank == 0):
+    chi0 = kgrid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0))
+    chi0 = mf.wplus2wfull(mat=chi0)
+    np.save(input_path+ f'chi0_tight_binding_d_{delta}_niv_{niv}_niw_{niw_core}.npy', chi0, allow_pickle=True)
+#%%
+
+plt.figure()
+plt.imshow(chi0[:,:,0,niw_core].real,cmap='terrain')
+plt.colorbar()
+plt.show()
+
+plt.figure()
+plt.plot(chi0[nkx//2,nkx//2,0,:].real)
+plt.show()

@@ -156,15 +156,15 @@ name = '_pipi'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
 input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange250_wurange80/'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange500_wurange80/'
-input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_spch_Nk14400_Nq14400_core80_invbse80_vurange500_wurange80/'
-
+#input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_spch_Nk14400_Nq14400_core80_invbse80_vurange500_wurange80/'
+fname_chi0 = 'chi0_tight_binding_d_0.2_niv_100_niw_20.npy'
 output_path = input_path
 output_folder = f'ChiCont_nw_{nw}_err_{err}_sigma_{sigma}_lambda_{lambda_add}'
 output_path = output.uniquify(output_path + output_folder) + '/'
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 chi_data = np.load(input_path + 'chi_lambda.npy', allow_pickle=True).item()
-result = 'old'
+result = 'chi0'
 if(result=='old'):
     chi = chi_data['chi_magn_lambda'].mat.real * t_scal
     beta = config['system']['beta'] * t_scal
@@ -173,6 +173,14 @@ if(result=='old'):
     niw = config['box_sizes']['niw_core']
     nk = config['box_sizes']['nk']
     q_grid = bz.KGrid(nk=nk)
+elif(result=='chi0'):
+    chi = np.load(input_path + fname_chi0, allow_pickle=True)
+    beta = config.sys.beta
+    n = config.sys.n
+    u = config.sys.u
+    niw = config.box.niw_core
+    nk = config.k_grid.nk
+    q_grid = config.q_grid
 else:
     chi = chi_data['magn'].mat.real * t_scal
     beta = config.sys.beta
