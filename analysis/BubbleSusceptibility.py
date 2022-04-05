@@ -25,7 +25,7 @@ input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_t
 niv = 100
 niv_core = 40
 niw_core = 20
-nkx = 32
+nkx = 42
 nky = nkx
 nk = (nkx,nky,1)
 kgrid = bz.KGrid(nk=nk)
@@ -37,9 +37,10 @@ dmft1p = np.load(input_path+'dmft1p.npy', allow_pickle=True).item()
 
 vn = mf.vn(niv)
 delta = 0.2
-sigma = np.ones(np.shape(vn))*delta*1j
+sigma = dmft1p['sloc']
+sigma = mf.cut_v_1d(sigma,niv)
 gk_gen = tp.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=kgrid,hr=hr,sigma=sigma)
-mu = gk_gen.adjust_mu(n=dmft1p['n'],mu0=-0.7254370956737395)
+mu = gk_gen.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
 n_test = gk_gen.get_fill(mu=mu)
 gk = gk_gen.generate_gk(mu=mu)
 
@@ -80,7 +81,7 @@ chi0 = qiw_distributor.allgather(chi0.mat)
 if(comm.rank == 0):
     chi0 = kgrid.irrk2fbz(mat=qiw_grid.reshape_matrix(chi0))
     chi0 = mf.wplus2wfull(mat=chi0)
-    np.save(input_path+ f'chi0_tight_binding_d_{delta}_niv_{niv}_niw_{niw_core}.npy', chi0, allow_pickle=True)
+    np.save(input_path+ f'chi0_nk{nkx}_d_{delta}_niv_{niv}_niw_{niw_core}.npy', chi0, allow_pickle=True)
 #%%
 
 plt.figure()
