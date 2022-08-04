@@ -4,6 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
+import pandas as pd
 
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
@@ -122,7 +123,7 @@ def read_Hk_w2k(fname, spin_sym = True):
 # ==================================================================================================================
 def read_Hr_w2k(fname):
     '''
-        Load the H(R) LDA-Hamiltonian from a wien2k structure file.
+        Load the H(R) LDA-Hamiltonian from a wien2k hr file.
     '''
     Hr_file = pd.read_csv(fname, header = None,names = np.arange(15), sep = '\s+', dtype = float, engine='python')
     Nbands = Hr_file.values[0].astype(int)[0]

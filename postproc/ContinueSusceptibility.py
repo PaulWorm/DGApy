@@ -136,7 +136,7 @@ def add_lambda(chi,lambda_add):
 # -------------------------------------------------- MAIN --------------------------------------------------------------
 tev = 0.4
 t_scal = 1.00
-err = 0.2
+err = 0.002
 w_max = 10
 nw = 501
 use_preblur = False
@@ -154,17 +154,19 @@ name = '_pipi'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.4_tpp0.12/2DSquare_U8_tp-0.4_tpp0.12_beta50_n0.85/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.3_tpp0.12/2DSquare_U8_tp-0.3_tpp0.12_beta75_n0.85/LambdaDga_lc_sp_Nk10000_Nq10000_core120_invbse120_vurange500_wurange120_1/'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
-input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange250_wurange80/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.925/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange250_wurange80/'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange500_wurange80/'
 #input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_spch_Nk14400_Nq14400_core80_invbse80_vurange500_wurange80/'
-fname_chi0 = 'chi0_tight_binding_d_0.2_niv_340_niw_80.npy'
+#fname_chi0 = 'chi0_tight_binding_d_0.2_niv_340_niw_80.npy'
+input_path = '/mnt/c/users/pworm/Research/U7_Nickelates/2DSquare_U7_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core100_invbse100_vurange250_wurange100/'
+# fname_chi0 = 'chi0_nk100_d_0.2_niv_340_niw_80.npy'
 output_path = input_path
 output_folder = f'ChiCont_nw_{nw}_err_{err}_sigma_{sigma}_lambda_{lambda_add}'
 output_path = output.uniquify(output_path + output_folder) + '/'
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 chi_data = np.load(input_path + 'chi_lambda.npy', allow_pickle=True).item()
-result = 'chi0'
+result = ''
 if(result=='old'):
     chi = chi_data['chi_magn_lambda'].mat.real * t_scal
     beta = config['system']['beta'] * t_scal

@@ -181,6 +181,10 @@ class KGrid():
         ind = self.find_q_ind(q=q)
         return np.roll(mat,ind,axis=(0,1,2))
 
+    def shift_mat_by_ind(self, mat, ind = (0,0,0)):
+        ''' Structure of mat has to be {kx,ky,kz,...} '''
+        return np.roll(mat,ind,axis=(0,1,2))
+
     def find_q_ind(self,q=(0,0,0)):
         ind = []
         ind.append(np.argmin(np.abs(self.kx - q[0])))

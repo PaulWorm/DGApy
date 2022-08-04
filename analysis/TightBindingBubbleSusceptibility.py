@@ -37,7 +37,7 @@ dmft1p = np.load(input_path+'dmft1p.npy', allow_pickle=True).item()
 
 vn = mf.vn(niv)
 delta = 0.2
-sigma = np.ones(np.shape(vn))*delta*1j
+sigma = -np.ones(np.shape(vn))*delta*1j * np.sign(vn)
 gk_gen = tp.GreensFunctionGenerator(beta=dmft1p['beta'],kgrid=kgrid,hr=hr,sigma=sigma)
 mu = gk_gen.adjust_mu(n=dmft1p['n'],mu0=-0.7254370956737395)
 n_test = gk_gen.get_fill(mu=mu)

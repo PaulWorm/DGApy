@@ -152,7 +152,7 @@ class GreensFunction(object):
 class GreensFunctionGenerator():
     '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
 
-    def __init__(self, beta=1.0, kgrid: bz.KGrid =None, hr=None, sigma=None):
+    def __init__(self, beta=1.0, kgrid: bz.KGrid =None, hr=None, sigma=None,set_smom=True):
         self._beta = beta
         self.k_grid = kgrid
         self._hr = hr
@@ -165,7 +165,8 @@ class GreensFunctionGenerator():
             self._sigma = sigma
             self._sigma_type = 'nloc'
 
-        self.set_smom()
+        if(set_smom):
+            self.set_smom()
 
     @property
     def beta(self) -> float:
