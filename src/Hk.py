@@ -178,3 +178,20 @@ def convham2(Hr = None, Rgrid = None, Rweights = None, kmesh = None):
     return Hk
 # ==================================================================================================================
 
+# ==================================================================================================================
+def write_hk_wannier90(Hk, fname, kmesh, nk):
+    '''
+        Writes a Hamiltonian to a text file in wannier90 style.
+    '''
+
+    # .reshape(nk)
+    # write hamiltonian in the wannier90 format to file
+    f = open(fname, 'w')
+    n_orb = np.shape(Hk)[-1]
+    # header: no. of k-points, no. of wannier functions(bands), no. of bands (ignored)
+    print(np.prod(nk), n_orb, n_orb, file=f)
+    for ik in range(np.prod(nk)):
+            print(kmesh[0, ik], kmesh[1, ik], kmesh[2, ik], file=f)
+            np.savetxt(f, Hk[ik,...].view(float), fmt='%.12f',delimiter=' ', newline='\n', header='', footer='', comments='#')
+
+    f.close()
