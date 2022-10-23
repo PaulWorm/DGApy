@@ -230,7 +230,10 @@ KNOWN_K_POINTS = {
     'X': np.array([0.5,0,0]),#np.array([np.pi,0,0]),
     'Y': np.array([0,0.5,0]),#np.array([0,np.pi,0]),
     'M': np.array([0.5,0.5,0]),#np.array([np.pi,np.pi,0]),
-    'M2':np.array([0.25,0.25,0]) #np.array([np.pi/2,np.pi/2,0])
+    'M2':np.array([0.25,0.25,0]), #np.array([np.pi/2,np.pi/2,0])
+    'Z':np.array([0.0,0.0,0.5]), #np.array([np.pi/2,np.pi/2,0])
+    'R':np.array([0.5,0.0,0.5]), #np.array([np.pi/2,np.pi/2,0])
+    'A':np.array([0.5,0.5,0.5]) #np.array([np.pi/2,np.pi/2,0])
 }
 
 class KPath():
@@ -250,17 +253,22 @@ class KPath():
         self.nk = nk
 
         # Set k-grids:
-        self.kx = self.set_kgrid(kx)
-        self.ky = self.set_kgrid(ky)
-        self.kz = self.set_kgrid(kz)
+        self.kx = self.set_kgrid(kx,nk[0])
+        self.ky = self.set_kgrid(ky,nk[1])
+        self.kz = self.set_kgrid(kz,nk[2])
 
         # Set the k-path:
         self.ckp = self.corner_k_points()
         self.kpts, self.nkp = self.build_k_path()
+        self.k_val = self.get_kpath_val()
 
-    def set_kgrid(self,k_in):
+    def get_kpath_val(self):
+        k = [self.kx[self.kpts[:,0]],self.kx[self.kpts[:,1]],self.kx[self.kpts[:,2]]]
+        return k
+
+    def set_kgrid(self,k_in,nk):
         if(k_in is None):
-            k = np.linspace(0,np.pi*2,nk[0],endpoint=False)
+            k = np.linspace(0,np.pi*2,nk,endpoint=False)
         else:
             k = k_in
         return k
@@ -274,6 +282,22 @@ class KPath():
     def cind(self):
         return np.concatenate(([0],np.cumsum(self.nkp)-1))
 
+    @property
+    def ikx(self):
+        return self.kpts[:,0]
+
+    @property
+    def iky(self):
+        return self.kpts[:,1]
+
+    @property
+    def ikz(self):
+        return self.kpts[:,2]
+
+    @property
+    def k_axis(self):
+        return np.linspace(0,1,np.sum(self.nkp),endpoint=True)
+
     def corner_k_points(self):
         ckps = self.ckps
         ckp = np.zeros((np.size(ckps),3))
@@ -285,12 +309,13 @@ class KPath():
 
         return ckp
 
+
+
     def build_k_path(self):
         k_path = []
         nkp = []
         nckp = np.shape(self.ckp)[0]
         for i in range(nckp-1):
-            print(i)
             segment, nkps = kpath_segment(self.ckp[i],self.ckp[i+1],self.nk)
             nkp.append(nkps)
             if(i == 0):
@@ -313,7 +338,6 @@ class KPath():
 
 def kpath_segment(k_start,k_end,nk):
     nkp = int(np.round(np.linalg.norm(k_start*nk-k_end*nk)))
-    print(nkp)
     k_segment = k_start[None,:]*nk + np.linspace(0,1,nkp,endpoint=True)[:,None] * ((k_end-k_start)*nk)[None,:]
     k_segment = np.round(k_segment).astype(int)
     return k_segment, nkp

@@ -39,10 +39,12 @@ def ph_to_pp_notation(mat_ph=None,wn=0):
     mat_pp = np.zeros(mat_ph.shape[:-3]+(2*niv_pp,2*niv_pp), dtype=complex)
     for i, vi in enumerate(iv):
         for j, vip in enumerate(iv):
-            wn = niw + vi-vip
+            iwn = niw + vi-vip
+            # iwn = niw + vi+vip+1-wn
             vn = niv + vi
             vnp = niv - (vip+1)
-            mat_pp[...,i,j] = mat_ph[...,wn,vn,vnp]
+            # vnp = niv + vip
+            mat_pp[...,i,j] = mat_ph[...,iwn,vn,vnp]
 
     return mat_pp
 

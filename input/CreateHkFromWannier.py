@@ -3,15 +3,23 @@ import matplotlib.pyplot as plt
 import Hk as hamk
 import BrillouinZone as bz
 
-path = '/mnt/c/Users/pworm/Research/Susceptibility/La2NiO4/4Paul2/'
-name_core = '1onSTO-5orb'
+#path = '/mnt/c/Users/pworm/Research/Susceptibility/La2NiO4/4Paul2/'
+# path = 'D:/Research/Susceptibility/La2NiO4/4Paul2/'
+path = 'D:/Research/TestWien2k/LaNiO2/CheckConvham/'
+# name_cor<e = '1onSTO-2orb'
+# name_core = '3onNGO-2orb'
+# name_core = '2onLSAT-2orb'
+name_core = 'CheckConvham'
+# name_core = '4onLAO-2orb'
+# name_core = '4onLAO-2orb'
 fname = path + f'{name_core}_hr_no_header.dat'
-fname_out = path + f'{name_core}.hk'
+nk = (16,16,1)
+fname_out = path + f'{name_core}_nkx{nk[0]}_nky{nk[1]}_nkz{nk[2]}.hk'
 fig_name = name_core
 
 Hr, Rgrid, Rweights, orbs = hamk.read_Hr_w2k(fname)
 # nk = (100,100,12)
-nk = (100,100,12)
+
 kgrid = bz.KGrid(nk=nk)
 kmesh = kgrid.kmesh.reshape(3,-1)
 Hk = hamk.convham(Hr, Rgrid, Rweights, kmesh)

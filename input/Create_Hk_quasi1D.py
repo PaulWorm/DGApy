@@ -15,14 +15,23 @@ import matplotlib.pyplot as plt
 kpoints = 200
 Nkz = 1
 # t0  = -0.879
-t = 1.00
-tp = -0.1809
-tpp = 0.1089
+
+# CaCuO2
+t = 0.504079
+tp = -0.051481/t
+tpp = 0.045622/t
+mu = 0.128290/t
+
+# LaNiO2
+t = 0.389093
+tp = -0.097869/t
+tpp = 0.046592/t
+mu = 0.267672/t
 # generate non-interacting 2d Hamiltonian
 # kmesh = np.linspace(-(kpoints)//2+1, kpoints//2, kpoints, endpoint=True)/float(kpoints)
 kmesh = np.linspace(0, kpoints, kpoints, endpoint=False) / float(kpoints)
 kz = np.linspace(0, 1, Nkz, endpoint=False)
-Hk = -2 * t * (np.cos(2 * np.pi * kmesh)[None, :] + np.cos(2 * np.pi * kmesh)[:, None]) - 4 * tp * t * np.cos(
+Hk = mu*t + -2 * t * (np.cos(2 * np.pi * kmesh)[None, :] + np.cos(2 * np.pi * kmesh)[:, None]) - 4 * tp * t * np.cos(
     2 * np.pi * kmesh)[None, :] * np.cos(2 * np.pi * kmesh)[:, None] - 2 * tpp * t * (
                  np.cos(4 * np.pi * kmesh)[None, :] + np.cos(4 * np.pi * kmesh)[:, None])
 

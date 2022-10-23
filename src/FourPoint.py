@@ -214,6 +214,7 @@ class LocalFourPoint():
 def vec_chir_from_g2(g2: LocalFourPoint = None, giw=None):
     if (g2.channel == 'dens'):
         ggv = get_ggv(giw=giw, niv_ggv=g2.niv)
+        # print('Doing dens!')
     else:
         ggv = None
     return np.array([chir_from_g2(g2=g2._mat[wn], ggv=ggv, beta=g2.beta, wn=g2.iw[wn]) for wn in g2.iw_ind])
