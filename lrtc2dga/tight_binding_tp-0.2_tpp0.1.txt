@@ -1,0 +1,28 @@
+begin hopping
+# a1 a2 a3  orb1 orb2   hopping.real
+    0   0   0   1   1   0.0
+    1   0   0   1   1   1.0
+    0   1   0   1   1   1.0
+    0   -1   0   1   1   1.0
+    -1   0   0   1   1   1.0
+    1   1   0   1   1   -0.2
+    1   -1   0   1   1   -0.2
+    -1   1   0   1   1   -0.2
+    -1   -1   0   1   1   -0.2
+    2   0   0   1   1   0.1
+    0   2   0   1   1   0.1
+    -2   0   0   1   1   0.1
+    0   -2   0   1   1   0.1
+end hopping
+
+begin atoms
+# sort rx ry rz
+    1   0   0   0 # fractional coordinates
+end atoms
+
+begin real_lattice
+#   x   y   z
+    3.875   0   0 # a1 lattice vectors in units of angstroem
+    0   3.875   0 # a2
+    0   0   3.210 # a3
+end real_lattice

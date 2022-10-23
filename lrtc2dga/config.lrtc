@@ -1,0 +1,14 @@
+[General]
+RunMode         =  mu
+EnergyFile      =  lrtc-tb-100-100-1-red.hdf5
+OutputFile      =  test.hdf5
+BFieldMode      =  T
+Interband       =  F
+Intraband       =  T
+Boltzmann       =  T
+QuadResponse    =  T
+FermiOccupation =  T
+
+[MuMode]
+[[Scattering]]
+ScatteringFile = scattering_file.hdf5                   # if existent use all the quantities from this HDF5 file only

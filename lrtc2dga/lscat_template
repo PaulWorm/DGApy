@@ -1,0 +1,81 @@
+#! /usr/bin/env python
+
+from __future__ import print_function, division, absolute_import
+import sys
+import logging
+
+import numpy as np
+import h5py
+
+''' insert the linretrace path here to get access to the FullScattering class '''
+sys.path.insert(0,'C:/Users/pworm/Research/Superconductivity/Programs/lrtc/')
+from  scattering.fullscattering import FullScattering
+
+''' define object via lrtc energy file '''
+scatobj = FullScattering('lrtc-tb-100-100-1-red.hdf5')
+
+''' get dependencies '''
+spins, nkp, nbands = scatobj.getDependencies()
+kgrid              = scatobj.getMomentumGrid() # [ nkp, 3 ]
+energies           = scatobj.getEnergies()     # [ spins, nkp, nbands ]
+mudft              = scatobj.mudft             # DFT chemical potential
+
+''' define temperature grid:
+    tmin: minimum temperature [K]
+    tmax: maximum temperature [K]
+    nt  : number of temperature steps
+    optional tlog: True  - logarithmic steps
+                   False - linear steps
+                   (default: False)
+'''
+# nt = 1 # steps
+# scatobj.defineTemperatures(tmin = 464, \
+#                            tmax = 464, \
+#                            nt   = nt, \
+#                            tlog = True)
+
+''' or chemical potential grid:
+    temp:  temperature [K]
+    mumin: minimum chemical potential [eV]
+    mumax: maximum chemical potential [eV]
+    nmu  : number of chemical potential steps
+    optional mlog : True  - logarithmic steps
+                    False - linear steps
+                    (default: False)
+    optional muabs: True  - provided mumin/mumax values are absolute values
+                    False - provided mumin/mumax values are relative to DFT chemical potential
+                    (default: False)
+    '''
+nt = 1 # steps
+scatobj.defineChemicalPotentials(temp = 464, \
+                                 mumin = -1.353614449, \
+                                 mumax = +1.353614449, \
+                                 nmu   = nt, \
+                                 mlog  = False, \
+                                 muabs = False)
+
+''' define Gamma, Z and energy shift dependence '''
+path = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange250_wurange60/PolyFit/'
+sigma = np.load(path+'sigma_extrap.npy', allow_pickle=True).item()
+gamma = np.ones((nt, spins, nkp, nbands), dtype=np.float64)
+qpweight = np.ones((nt, spins, nkp, nbands), dtype=np.float64)
+bandshift = np.ones((nt, spins, nkp, nbands), dtype=np.float64)
+
+gamma[0,0,:,0] = -sigma['im_fs'].flatten()
+gamma[gamma<1e-9] = 10**(-9)
+qpweight[0,0,:,0] = sigma['Z'].flatten()
+qpweight[qpweight>1] = 1
+bandshift[0,0,:,0] = sigma['re_fs'].flatten()
+# qpweight = np.load(path+)
+#
+# gamma *= 1e-3
+# qpweight = np.ones_like(gamma, dtype=np.float64)
+# bandshift = np.zeros_like(gamma, dtype=np.float64)
+
+''' create output.
+    note that qpweight and bandshift are optional parameters
+    if qpweight is not provided it will be set to a default of Z=1 for all points
+'''
+scatobj.defineScatteringRates(gamma)
+# scatobj.defineScatteringRates(gamma, qpweight=qpweight, bandshift=bandshift)
+scatobj.createOutput('scattering_file.hdf5')
