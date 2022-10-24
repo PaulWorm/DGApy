@@ -18,3 +18,5 @@ We adopt the following notation for the different boxes:
 -) core: inner part 
 -) shell: outer part 
 -) tilde: corrected quantity
+
+Convergence with number of asymptotic frequencies is quite slow. 
