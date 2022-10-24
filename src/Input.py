@@ -42,7 +42,7 @@ def extract_gamma_w2dyn(dga_conf: conf.DgaConfig = None, giw_dmft=None, channel=
     g2.cut_iv(niv_cut=dga_conf.box.niv_invbse)
 
     # Create generalized susceptibility:
-    gchi = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2,giw=giw_dmft), channel=g2.channel,beta=g2.beta, iw=g2.iw)
+    gchi = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2,giw=giw_dmft), channel=g2.channel, beta=g2.beta, iw=g2.wn)
 
     # Extract gamma:
     chi0_urange = fp.LocalBubble(giw=giw_dmft, beta=g2.beta, niv_sum=dga_conf.box.niv_urange, iw=dga_conf.box.wn_core)

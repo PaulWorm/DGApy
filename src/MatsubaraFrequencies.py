@@ -4,16 +4,27 @@ import numpy as np
 def cen2lin(val=None, start=0):
     return val - start
 
+def wn_cen2lin(wn=0,niw=None):
+    return cen2lin(wn,-niw)
+
+
 
 def cut_v_1d(arr=None, niv_cut=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
     niv = arr.shape[0] // 2
+    if (niv_cut == -1): niv_cut = niv
     return arr[niv - niv_cut:niv + niv_cut]
+
+def cut_v_1d_wn(arr=None, niw_cut=0):
+    assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
+    niv = arr.shape[0] // 2
+    return arr[niv - niw_cut:niv + niw_cut+1]
 
 
 def cut_iv_2d(arr=None, niv_cut=0):
     assert np.size(np.shape(arr)) == 2, 'Array is not 2D.'
     niv = arr.shape[-1] // 2
+    if(niv_cut == -1): niv_cut = niv
     return arr[niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
 
@@ -23,6 +34,11 @@ def cut_v(arr=None, niv_cut=0, axes=(0,)):
     for axis in axes:
         tmp = np.apply_along_axis(cut_v_1d, axis=axis, arr=tmp, niv_cut=niv_cut)
     return tmp
+
+def cut_v_1d_iwn(arr=None, niv_cut=0, iwn=0):
+    assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
+    niv = arr.shape[0] // 2
+    return arr[niv - niv_cut-iwn:niv + niv_cut-iwn]
 
 
 def wplus2wfull(mat=None, axis=-1):
@@ -40,21 +56,21 @@ def vplus2vfull(mat=None, axis=-1):
     return mat_full
 
 # ----------------------------------------------- FERMIONIC ------------------------------------------------------------
-def vn(n=10):
-    return np.arange(-n, n)
+def vn(n=10,shift=0):
+    return np.arange(-n+shift, n+shift)
 
 def vn_plus(n=10):
     return np.arange(0, n)
 
-def v(beta=1.0, n=10):
-    return (vn(n=n) * 2 + 1) * np.pi / beta
+def v(beta=1.0, n=10, shift=0):
+    return (vn(n=n,shift=shift) * 2 + 1) * np.pi / beta
 
 def v_plus(beta=1.0, n=10):
     return (vn_plus(n=n) * 2 + 1) * np.pi / beta
 
 
-def iv(beta=1.0, n=10):
-    return v(beta=beta, n=n) * 1j
+def iv(beta=1.0, n=10, shift=0):
+    return v(beta=beta, n=n, shift=shift) * 1j
 
 def iv_plus(beta=1.0, n=10):
     return v_plus(beta=beta, n=n) * 1j
@@ -117,3 +133,12 @@ if __name__ == '__main__':
     wnp = 1j*wn_plus(n=10)
     wn_full = wplus2wfull(mat=wnp)
     print(f'{wn_full.imag=}')
+
+    # Test wn_cen2lin:
+    iwn = 1
+    niw = 10
+
+    wn = wn(niw)
+    iwn_lin = wn_cen2lin(iwn,niw)
+    print(iwn_lin)
+    print(wn[iwn_lin])

@@ -92,7 +92,7 @@ def plot_chi_dmft(chis=None, box_sizes=None, title=''):
 
     fig = plt.figure()
     for i, chi in enumerate(chis):
-        plt.plot(chi.iw,chi.mat.real,'o', ms = 1, label='Core:{} ;Urange{} '.format(box_sizes[i]['niv_core'],box_sizes[i]['niv_urange']))
+        plt.plot(chi.wn, chi.mat.real, 'o', ms = 1, label='Core:{} ;Urange{} '.format(box_sizes[i]['niv_core'], box_sizes[i]['niv_urange']))
     plt.legend()
     plt.xlabel(r'$\nu_n$')
     plt.ylabel(r'$\chi_{loc}$')

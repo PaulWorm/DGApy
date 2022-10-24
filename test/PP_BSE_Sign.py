@@ -42,11 +42,11 @@ def gammar_from_gchir_wn(gchir=None, gchi0=None):
 
 def gammar_from_gchir(gchir = None, gchi0 = None):
     gammar = np.array(
-        [gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0=gchi0.gchi0[wn]) for wn in gchir.iw_ind])
-    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
+        [gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0=gchi0.gchi0[wn]) for wn in gchir.wn_lin])
+    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
 
-path = 'D:Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.85/'
-path = 'D:Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.90/from_Motoharu/'
+path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.85/'
+path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.85/from_Motoharu/'
 # path = 'D:Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta20_mu1/'
 fname1p = '1p-data.hdf5'
 fname2p = 'g4iw_sym.hdf5'
@@ -67,9 +67,9 @@ niw_core = 50
 niv_invbse = niw_core
 wn_core = mf.wn(n=niw_core)
 g2_dens = fp.LocalFourPoint(matrix=f2p.read_g2_iw(channel='dens', iw=wn_core), channel='dens',
-                       beta=dmft1p['beta'], iw=wn_core)
+                       beta=dmft1p['beta'], wn=wn_core)
 g2_magn = fp.LocalFourPoint(matrix=f2p.read_g2_iw(channel='magn', iw=wn_core), channel='magn',
-                       beta=dmft1p['beta'], iw=wn_core)
+                       beta=dmft1p['beta'], wn=wn_core)
 f2p.close()
 
 g2_dens.cut_iv(niv_cut=niv_invbse)
@@ -80,18 +80,18 @@ niv_core = g2_dens.mat.shape[-1]
 niv_urange = niv_core
 
 # Create generalized susceptibility:
-gchi_dens = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_dens, giw=giw_dmft), channel='dens', beta=beta, iw=wn_core)
-gchi_magn = fp.LocalFourPoint(matrix=fp.vec_chir_from_g2(g2=g2_magn, giw=giw_dmft), channel='magn', beta=beta, iw=wn_core)
+gchi_dens = fp.chir_from_g2(g2_dens,giw_dmft)
+gchi_magn = fp.chir_from_g2(g2_magn,giw_dmft)
 
 # Extract gamma:
-chi0_urange = fp.LocalBubble(giw=giw_dmft, beta=beta, niv_sum=niv_urange, iw=wn_core)
-chi0_core = fp.LocalBubble(giw=giw_dmft, beta=beta, niv_sum=niv_invbse, iw=wn_core)
+chi0_urange = fp.LocalBubble(giw=giw_dmft, beta=beta, niv=niv_urange, wn=wn_core)
+chi0_core = fp.LocalBubble(giw=giw_dmft, beta=beta, niv=niv_invbse, wn=wn_core)
 
 gamma_dens =  gammar_from_gchir(gchir=gchi_dens, gchi0=chi0_core)
 gamma_magn = gammar_from_gchir(gchir=gchi_magn, gchi0=chi0_core)
 
-gamma_dens =  fp.gammar_from_gchir(gchir=gchi_dens, gchi0_urange=chi0_core, u=u)
-gamma_magn = fp.gammar_from_gchir(gchir=gchi_magn, gchi0_urange=chi0_core, u=u)
+# gamma_dens =  fp.gammar_from_gchir(gchir=gchi_dens, gchi0_urange=chi0_core, u=u)
+# gamma_magn = fp.gammar_from_gchir(gchir=gchi_magn, gchi0_urange=chi0_core, u=u)
 
 
 # Build vertex from BSE:
@@ -202,18 +202,18 @@ plt.show()
 # plt.tight_layout()
 # plt.show()
 
-# fig, axes = plt.subplots(nrows=3,ncols=2,figsize=(7,5))
-# axes = axes.flatten()
-#
-# draw_gamma(axes[0],gamma_dens.mat[niw_core])
-# draw_gamma(axes[1],gamma_magn.mat[niw_core])
-# draw_gamma(axes[2],gamma_dens_bse)
-# draw_gamma(axes[3],gamma_magn_bse)
-# draw_gamma(axes[4],gamma_dens_from_gchi)
-# draw_gamma(axes[5],gamma_magn_from_gchi)
-# plt.tight_layout()
-# plt.show()
-#
+fig, axes = plt.subplots(nrows=3,ncols=2,figsize=(7,5))
+axes = axes.flatten()
+
+draw_gamma(axes[0],gamma_dens.mat[niw_core])
+draw_gamma(axes[1],gamma_magn.mat[niw_core])
+draw_gamma(axes[2],gamma_dens_bse)
+draw_gamma(axes[3],gamma_magn_bse)
+draw_gamma(axes[4],gamma_dens_from_gchi)
+draw_gamma(axes[5],gamma_magn_from_gchi)
+plt.tight_layout()
+plt.show()
+
 # fig, axes = plt.subplots(nrows=3,ncols=2,figsize=(7,7))
 # axes = axes.flatten()
 #

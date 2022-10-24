@@ -41,6 +41,23 @@ class MidpointNormalize(colors.Normalize):
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
+# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+def plot_fourpoint_nu_nup(mat,vn,do_save = True, pdir = './', name='NoName',cmap='RdBu',figsize=(8, 4)):
+    fig, axes = plt.subplots(ncols=2, figsize=figsize)
+    axes = axes.flatten()
+    axes[0].pcolormesh(vn, vn, mat.real, cmap=cmap)
+    axes[1].pcolormesh(vn, vn, mat.imag, cmap=cmap)
+    plt.tight_layout()
+    if (do_save): plt.savefig(pdir + '/' + name + '.png')
+    plt.show()
+
+
+
+
+
 def add_afzb(ax=None, kx=None, ky=None, lw=1.0, shift_pi=True):
     if (shift_pi):
         kx = kx - np.pi
@@ -492,7 +509,7 @@ def plot_fp(fp: fp.LocalFourPoint = None, w_plot=0, name='', niv_plot=-1):
         niv_plot = fp.niv
     A = fp
     plt.imshow(
-        A.mat[A.iw == w_plot, A.niv - niv_plot:A.niv + niv_plot, A.niv - niv_plot:A.niv + niv_plot].squeeze().real,
+        A.mat[A.wn == w_plot, A.niv - niv_plot:A.niv + niv_plot, A.niv - niv_plot:A.niv + niv_plot].squeeze().real,
         cmap='RdBu', extent=[-niv_plot, niv_plot, -niv_plot, niv_plot])
     plt.colorbar()
     plt.title(name + '-' + A.channel + '(' + r'$ \omega=$' + '{})'.format(w_plot))
@@ -506,7 +523,7 @@ def plot_tp(tp: fp.LocalThreePoint = None, niv_cut=-1, name=''):
         niv_cut = tp.niv
     A = tp
     plt.imshow(A.mat.real[:, tp.niv - niv_cut:tp.niv + niv_cut], cmap='RdBu',
-               extent=[-niv_cut, niv_cut, A.iw[0], A.iw[-1]])
+               extent=[-niv_cut, niv_cut, A.wn[0], A.wn[-1]])
     plt.colorbar()
     plt.title(r'$\Re$' + name + '-' + A.channel)
     plt.xlabel(r'$\nu$')
@@ -514,7 +531,7 @@ def plot_tp(tp: fp.LocalThreePoint = None, niv_cut=-1, name=''):
     plt.show()
 
     plt.imshow(A.mat.imag[:, tp.niv - niv_cut:tp.niv + niv_cut], cmap='RdBu',
-               extent=[A.iw[0], A.iw[-1], -niv_cut, niv_cut])
+               extent=[A.wn[0], A.wn[-1], -niv_cut, niv_cut])
     plt.colorbar()
     plt.title(r'$\Im$' + name + '-' + A.channel)
     plt.xlabel(r'$\nu$')

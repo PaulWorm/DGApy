@@ -261,7 +261,7 @@ def local_dmft_sde_from_g2(dmft_input=None, box_sizes=None, g2_dens=None, g2_mag
     u = dmft_input['u']
     n = dmft_input['n']
 
-    iw = g2_dens.iw
+    iw = g2_dens.wn
 
     niv_core = box_sizes['niv_core']
     niv_urange = box_sizes['niv_urange']

@@ -7,10 +7,59 @@ import numpy as np
 import Hk as hk
 import ChemicalPotential as chempot
 import BrillouinZone as bz
+import MatsubaraFrequencies as mf
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+# @property
+# def statistic(self) -> str:
+#     return self._statistic
+# @statistic.setter
+# def statistic(self, value):
+#     assert value in KNOWN_STATISTICS, f'Statistic with name {value} not known. Kown are {KNOWN_STATISTICS}.'
+#     self._statistic = value
+
+KNOWN_STATISTICS = ['fermi', 'boson']
+
+class LocalFermionicTwoPoint():
+    ''' Parent class for local two-point correlation functions.'''
+
+    def __init__(self,mat=None,beta=None):
+        self.mat = mat
+        self.beta = beta
+
+    @property
+    def niv(self):
+        return self.mat.shape[0] // 2
+
+    @property
+    def wn(self):
+        return mf.vn(self.niv)
+
+class LocalGreensFunction(LocalFermionicTwoPoint):
+    ''' Container class for local Green's fucntions'''
+
+    def __init__(self,mat=None,beta=None,hf_denom=None):
+        '''
+            hf_denom: high-frequency denominator. Typically mu - hartree
+            ToDo: add high-frequency behaviour fitting if hf_denom is not supplied.
+        '''
+        super().__init__(mat=mat,beta=beta)
+        self.hf_denom = hf_denom
+
+    # @property
+    # def high_freq(self):
+    #     ''' High frequency denominator: mu - Hartree'''
+    #     return self.mu - self.hartree
 
 
 # ======================================================================================================================

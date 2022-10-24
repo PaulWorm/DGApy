@@ -11,6 +11,8 @@ import numpy as np
 import Indizes as ind
 import MatsubaraFrequencies as mf
 import Config as conf
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -28,20 +30,6 @@ def cut_iw(mat=None, niw_cut=0):
     return mat
 
 
-def get_ggv(giw=None, niv_ggv=-1):
-    niv = giw.shape[0] // 2
-    if (niv_ggv == -1):
-        niv_ggv = niv
-    return giw[niv - niv_ggv:niv + niv_ggv][:, None] * giw[niv - niv_ggv:niv + niv_ggv][None, :]
-
-
-def chir_from_g2(g2=None, ggv=None, beta=1.0, wn=0):
-    if (ggv is not None and wn == 0):
-        return beta * (g2 - 2. * ggv)
-    else:
-        return beta * g2
-
-
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
         sign = -1
@@ -52,144 +40,78 @@ def get_ur(u=1.0, channel='dens'):
     return u * sign
 
 
-# ------------------------------------------------ OBJECTS -------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
-
-# ======================================================================================================================
-# ---------------------------------------------- LOCAL BUBBLE CLASS  ---------------------------------------------------
-# ======================================================================================================================
-
-
-class LocalBubble():
-    ''' Computes the local Bubble suszeptibility \chi_0 = - beta GG '''
-
-    asympt = None  # Asymptotic correction with G = 1/iv
-
-    def __init__(self, giw=None, beta=1.0, niv_sum=-1, iw=None):
-        self._giw = giw
-        self._beta = beta
-        if (niv_sum == -1):
-            niv_sum = self.niv_giw - np.max(np.abs(iw))
-        self._niv_sum = niv_sum
-        self._iw = iw
-        self.set_chi0()
-        self.set_gchi0()
-
-        self.set_asympt()
-
-    @property
-    def giw(self):
-        return self._giw
-
-    @property
-    def iw(self):
-        return self._iw
-
-    @property
-    def niw(self):
-        return self.iw.size
-
-    @property
-    def iw_ind(self):
-        return np.arange(0, self.iw.size)
-
-    @property
-    def niv_sum(self) -> int:
-        return self._niv_sum
-
-    @property
-    def niv(self) -> int:
-        return self._niv_sum
-
-    @property
-    def niv_giw(self) -> int:
-        return self._giw.shape[0] // 2
-
-    @property
-    def chi0_asympt(self):
-        return self.chi0 + self.asympt
-
-    @property
-    def beta(self) -> float:
-        return self._beta
-
-    @property
-    def chi0(self):
-        return self._chi0
-
-    @property
-    def gchi0(self):
-        return self._gchi0
-
-    def set_chi0(self):
-        self._chi0 = self.vec_get_chi0()
-
-    def get_chi0(self, wn=0):
-        niv_giw = self.niv_giw
-        niv_sum = self.niv_sum
-        return - 1. / self._beta * np.sum(self._giw[niv_giw - niv_sum:niv_giw + niv_sum]
-                                          * self._giw[niv_giw - niv_sum - wn:niv_giw + niv_sum - wn])
-
-    def vec_get_chi0(self):
-        return np.array([self.get_chi0(wn=wn) for wn in self._iw])
-
-    def set_asympt(self):
-        self.asympt = self.vec_get_asympt_correction()
-
-    def get_asympt_correction(self, wn=0):
-        vn = (2 * mf.vn(n=self.niv_sum) + 1)
-        vpwn = (2 * mf.vn(n=self.niv_sum) + 1) - 2 * wn
-        if (wn == 0):
-            return self.beta / np.pi ** 2 * (np.pi ** 2 / 8 - 0.5 * np.sum(1. / vn * 1. / vpwn))
-        else:
-            return self.beta / np.pi ** 2 * (- 0.5 * np.sum(1. / vn * 1. / vpwn))
-
-    def vec_get_asympt_correction(self):
-        return np.array([self.get_asympt_correction(wn=wn) for wn in self._iw])
-
-    def set_gchi0(self):
-        self._gchi0 = self.vec_get_gchi0()
-
-    def get_gchi0(self, wn=0):
-        niv = self.niv
-        niv_giw = self.niv_giw
-        return - self.beta * self.giw[niv_giw - niv:niv_giw + niv] * self.giw[
-                                                                     niv_giw - niv - wn:niv_giw + niv - wn]
-
-    def vec_get_gchi0(self):
-        return np.array([self.get_gchi0(wn=wn) for wn in self.iw])
-
+KNOWN_CHANNELS = ['dens', 'magn', 'trip', 'sing', 'updo', 'upup']
 
 # ======================================================================================================================
 # -------------------------------------------- FOUR POINT PARENT CLASS  ------------------------------------------------
 # ======================================================================================================================
-class LocalFourPoint():
-    ''' Parent class for local four-point correlation '''
 
-    def __init__(self, matrix=None, channel=None, beta=None, iw=None):
-        assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
+FIGSIZE = (7, 3)
+ALPHA = 0.7
+BASECOLOR = 'cornflowerblue'
 
-        self._channel = channel
-        self._mat = matrix
+
+def plot_fourpoint_nu_nup(mat, vn, do_save=True, pdir='./', name='NoName', cmap='RdBu', figsize=FIGSIZE):
+    fig, axes = plt.subplots(ncols=2, figsize=figsize)
+    axes = axes.flatten()
+    im1 = axes[0].pcolormesh(vn, vn, mat.real, cmap=cmap)
+    im2 = axes[1].pcolormesh(vn, vn, mat.imag, cmap=cmap)
+    axes[0].set_title('$\Re$')
+    axes[1].set_title('$\Im$')
+    for ax in axes:
+        ax.set_xlabel(r'$\nu_p$')
+        ax.set_ylabel(r'$\nu$')
+        ax.set_aspect('equal')
+    fig.suptitle(name)
+    fig.colorbar(im1, ax=(axes[0]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    fig.colorbar(im2, ax=(axes[1]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    plt.tight_layout()
+    if (do_save): plt.savefig(pdir + '/' + name + '.png')
+    plt.show()
+
+
+def plot_omega_dep(x, y, do_save=True, pdir='./', name='NoName', figsize=FIGSIZE):
+    fig, axes = plt.subplots(ncols=2, figsize=figsize)
+    axes[0].plot(x, y.real, '-o', color=BASECOLOR, markeredgecolor='k', alpha=ALPHA)
+    axes[1].plot(x, y.imag, '-o', color=BASECOLOR, markeredgecolor='k', alpha=ALPHA)
+    for ax in axes: ax.set_xlabel('$\omega_n$')
+    axes[0].set_ylabel('$\Re$' + name)
+    axes[1].set_ylabel('$\Im$' + name)
+    plt.tight_layout()
+    if (do_save): plt.savefig(pdir + '/' + name + '.png')
+    plt.show()
+
+
+class FourPointBase():
+    '''
+        Parent class for local four-point objects
+    '''
+
+    def __init__(self, matrix=None, beta=None, wn=None):
+        if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
+        if (matrix is not None):
+            assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
+        self._mat = matrix  # [iw, iv, iv']
         self._beta = beta
-        self._iw = iw
-        self._niw = np.size(self._iw)
+        self._wn = wn  # bosonic frequency index
 
     @property
     def mat(self):
         return self._mat
 
     @property
-    def iw(self):
-        return self._iw
+    def wn(self):
+        return self._wn
 
     @property
-    def iw_ind(self):
-        return np.arange(0, self.iw.size)
-
-    @property
-    def channel(self):
-        return self._channel
+    def wn_lin(self):
+        return np.arange(0, self.wn.size)
 
     @property
     def beta(self) -> float:
@@ -201,24 +123,331 @@ class LocalFourPoint():
 
     @property
     def niw(self) -> int:
-        return self._iw.size
+        return self._wn.size
+
+    @property
+    def vn(self):
+        return mf.vn(self.niv)
+
+    def as_dict(self):
+        return self.__dict__
+
+
+class LocalSusceptibility():
+
+    def __init__(self, matrix=None, channel=None, beta=None, wn=None):
+        if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
+        if (matrix is not None):
+            assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
+        self.mat = matrix  # [iw, iv, iv']
+        self.beta = beta
+        self.wn = wn  # bosonic frequency index
+
+        self.channel = channel  # dens/magn/trip/sing/bubb
+
+    @property
+    def channel(self) -> str:
+        return self._channel
+
+    @channel.setter
+    def channel(self, value):
+        assert value in KNOWN_CHANNELS, f"Channel with name {value} not known. Kown are {KNOWN_CHANNELS}."
+        self._channel = value
+
+
+class LocalThreePoint(FourPointBase):
+
+    def __init__(self, channel=None, matrix=None, beta=None, wn=None):
+        super().__init__(matrix=matrix, beta=beta, wn=wn)
+        self.channel = channel  # dens/magn/trip/sing/bubb
+
+    @property
+    def channel(self) -> str:
+        return self._channel
+
+    @channel.setter
+    def channel(self, value):
+        assert value in KNOWN_CHANNELS, f"Channel with name {value} not known. Kown are {KNOWN_CHANNELS}."
+        self._channel = value
+
+
+class LocalFourPoint(FourPointBase):
+    ''' Parent class for local four-point correlation
+        IMPORTANT: This object does NOT have to contain the full omega range, but is only defined on a set of points wn
+    '''
+
+    def __init__(self, channel=None, matrix=None, beta=None, wn=None):
+        super().__init__(matrix=matrix, beta=beta, wn=wn)
+        self.channel = channel  # dens/magn/trip/sing/bubb
+
+    @property
+    def channel(self) -> str:
+        return self._channel
+
+    @channel.setter
+    def channel(self, value):
+        assert value in KNOWN_CHANNELS, f"Channel with name {value} not known. Kown are {KNOWN_CHANNELS}."
+        self._channel = value
 
     def cut_iv(self, niv_cut=None):
-        niv = self.niv
-        self._mat = self._mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
+        self._mat = cut_iv(self.mat, niv_cut)
 
     def contract_legs(self):
-        return 1. / self.beta ** 2 * np.sum(self._mat, axis=(-2, -1))
+        return LocalSusceptibility(matrix=1. / self.beta ** 2 * np.sum(self.mat, axis=(-2, -1)), channel=self.channel, beta=self.beta, wn=self.wn)
+
+    def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1):
+        assert iwn in self.wn, 'omega index not in dataset.'
+        iwn_lin = self.wn_lin[self.wn == iwn][0]
+        data = mf.cut_iv_2d(self.mat[iwn_lin], niv_cut=niv)
+        vn = mf.cut_v_1d(self.vn, niv_cut=niv)
+        plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name, do_save=do_save)
 
 
-def vec_chir_from_g2(g2: LocalFourPoint = None, giw=None):
-    if (g2.channel == 'dens'):
-        ggv = get_ggv(giw=giw, niv_ggv=g2.niv)
-        # print('Doing dens!')
+# ======================================================================================================================
+# ---------------------------------------------- LOCAL BUBBLE CLASS  ---------------------------------------------------
+# ======================================================================================================================
+
+def get_gchi0(giw, niv, beta, iwn):
+    niv_giw = np.shape(giw)[0] // 2  # ToDo: Maybe I should introduce a Green's function object, but for now keep it like this
+    return - beta * giw[niv_giw - niv:niv_giw + niv] * giw[niv_giw - niv - iwn:niv_giw + niv - iwn]
+
+
+def vec_get_gchi0(giw, beta, niv, wn):
+    return jnp.array([get_gchi0(giw, niv, beta, iwn) for iwn in wn])
+
+
+def get_gchi0_inv(giw, niv, beta, iwn):
+    niv_giw = np.shape(giw)[0] // 2
+    return - 1 / beta * 1 / giw[niv_giw - niv:niv_giw + niv] * 1 / giw[niv_giw - niv - iwn:niv_giw + niv - iwn]
+
+
+def vec_get_gchi0_inv(giw, beta, niv, wn):
+    return jnp.array([get_gchi0_inv(giw, niv, beta, iwn) for iwn in wn])
+
+
+def get_chi0_sum(giw, beta, niv, iwn=0):
+    niv_giw = np.shape(giw)[0] // 2
+    iwnd2 = iwn // 2
+    iwnd2mod2 = iwn // 2 + iwn % 2
+    return - 1. / beta * np.sum(giw[niv_giw - niv + iwnd2:niv_giw + niv + iwnd2] * giw[niv_giw - niv - iwnd2mod2:niv_giw + niv - iwnd2mod2])
+
+
+def vec_get_chi0_sum(giw, beta, niv, wn):
+    return np.array([get_chi0_sum(giw, beta, niv, iwn=iwn) for iwn in wn])
+
+
+def chi0_asympt_iwn(mu, u, totdens, niv, iwn):
+    iwnd2 = iwn // 2
+    iwnd2mod2 = iwn // 2 + iwn % 2
+    iv = mf.iv(beta, niv, shift=iwnd2)
+    ivmw = mf.iv(beta, niv, shift=-iwnd2mod2)
+    g_tail = 1 / (iv + mu - u * totdens / 2)
+    gshift_tail = 1 / (ivmw + mu - u * totdens / 2)
+    chi0_tail = - 1 / beta * np.sum(g_tail * gshift_tail)
+    return chi0_tail
+
+
+def chi0_asympt(u, totdens, mu, niv_asympt, niv, wn):
+    full = jnp.array([chi0_asympt_iwn(mu, u, totdens, niv_asympt, iwn) for iwn in wn])
+    inner = jnp.array([chi0_asympt_iwn(mu, u, totdens, niv, iwn) for iwn in wn])
+    return full - inner
+
+
+KNOWN_CHI0_METHODS = ['sum']
+
+
+class LocalBubble():
+    ''' Computes the local Bubble suszeptibility \chi_0 = - beta GG '''
+
+    def __init__(self, beta=None, wn=None, giw=None, niv=-1, chi0_method='sum', is_inv=False):
+        self._wn = wn
+        self._beta = beta
+        self._giw = giw
+        self._niv = niv
+        self.is_inv = is_inv
+        self._mat = self.get_gchi0()
+        self.chi0_method = chi0_method
+
+        self.set_chi0()
+        # self.set_asympt()
+
+    @property
+    def giw(self):
+        return self._giw
+
+    @property
+    def niv(self) -> int:
+        return self._niv
+
+    @niv.setter
+    def niv(self, value):
+        assert value <= self.niv_giw - np.max(np.abs(self.wn)), f'niv ({value}) exceeds the limit of: {self.niv_giw - np.max(np.abs(self.wn))}'
+        if (value == -1):
+            value = self.niv_giw - np.max(np.abs(self.wn))
+        self._niv = value
+
+    @property
+    def mat(self):
+        return self._mat
+
+    @property
+    def vn(self):
+        return mf.vn(self.niv)
+
+    @property
+    def wn(self):
+        return self._wn
+
+    @property
+    def beta(self) -> float:
+        return self._beta
+
+    @property
+    def niv_giw(self) -> int:
+        return self._giw.shape[0] // 2
+
+    # @property
+    # def chi0_asympt(self):
+    #     return self.chi0 + self.asympt
+
+    @property
+    def niw(self):
+        return self._wn.size
+
+    @property
+    def wn_lin(self):
+        return np.arange(0, self.niw)
+
+    @property
+    def chi0(self):
+        return self._chi0
+
+    @property
+    def gchi0(self):
+        return self._mat
+
+    def get_gchi0(self):
+        if (self.is_inv == True):
+            gchi0 = vec_get_gchi0_inv(self.giw, self.beta, self.niv, self.wn)
+        else:
+            gchi0 = vec_get_gchi0(self.giw, self.beta, self.niv, self.wn)
+        return gchi0
+
+    def set_chi0(self):
+        if (self.chi0_method == 'sum'):
+            self._chi0 = vec_get_chi0_sum(self.giw, self.beta, self.niv, self.wn)
+        else:
+            raise NotImplementedError(f'Method not in {KNOWN_CHI0_METHODS}')
+
+    @property
+    def gchi0_full(self):
+        ''' Return the full qkk' matrix'''
+        return jnp.array([jnp.diag(self.mat[iwn_lin]) for iwn_lin in self.wn_lin])
+
+    def plot(self, iwn=0, pdir='./', name=None, do_save=True):
+        assert iwn in self.wn, 'omega index not in dataset.'
+        iwn_lin = self.wn_lin[self.wn == iwn][0]
+        plot_fourpoint_nu_nup(np.diag(self.mat[iwn_lin]), self.vn, pdir=pdir, name=name, do_save=do_save)
+        plot_omega_dep(self.wn, self.chi0, pdir=pdir, name=name, do_save=do_save)
+
+
+def chir_from_g2_wn(g2=None, ggv=None, beta=None, iwn=0):
+    if (ggv is not None and iwn == 0):
+        chir = beta * (g2 - 2. * ggv)
     else:
-        ggv = None
-    return np.array([chir_from_g2(g2=g2._mat[wn], ggv=ggv, beta=g2.beta, wn=g2.iw[wn]) for wn in g2.iw_ind])
+        chir = beta * g2
+    return chir
 
+
+def chir_from_g2(g2: LocalFourPoint = None, giw=None):
+    ''' chi_r = beta * (G2 - 2 * GG \delta_dens) '''
+    chir_mat = g2.beta * g2.mat
+    if (g2.channel == 'dens' and 0 in g2.wn):
+        ggv = get_ggv(giw, niv_ggv=g2.niv)
+        chir_mat[g2.wn == 0] = g2.beta * (g2.mat[g2.wn == 0] - 2. * ggv)
+    chir_mat = jnp.array(chir_mat)
+    return LocalFourPoint(matrix=chir_mat, channel=g2.channel, beta=g2.beta, wn=g2.wn)
+
+
+def g2_from_chir(chir: LocalFourPoint = None, giw=None):
+    ''' G2 = 1/beta * chi_r + 2*GG \delta_dens'''
+    chir_mat = 1 / chir.beta * chir.mat
+    if (chir.channel == 'dens' and 0 in chir.wn):
+        ggv = get_ggv(giw, niv_ggv=chir.niv)
+        chir_mat[chir.wn == 0] = 1 / chir.beta * chir.mat[chir.wn == 0] + 2. * ggv
+    chir_mat = jnp.array(chir_mat)
+    return LocalFourPoint(matrix=chir_mat, channel=chir.channel, beta=chir.beta, wn=chir.wn)
+
+
+def Fob2_from_chir(chir: LocalFourPoint = None, chi0_inv: LocalBubble = None):
+    ''' Do not include the beta**2 in F.
+        F_r = [chi_0^-1 - chi_0^-1 chi_r chi_0^-1]
+    '''
+    assert chir.niv == chi0_inv.niv
+    F0b2_mat = chi0_inv.gchi0_full - chi0_inv.mat[:, :, None] * chir.mat * chi0_inv.mat[:, None, :]
+    return LocalFourPoint(matrix=F0b2_mat, channel=chir.channel, beta=chir.beta, wn=chir.wn)
+
+
+def chir_from_Fob2(F_r: LocalFourPoint = None, chi0: LocalBubble = None):
+    ''' Do not include the beta**2 in F.
+        F_r = [chi_0^-1 - chi_0^-1 chi_r chi_0^-1]
+    '''
+    assert F_r.niv == chi0.niv
+    chir_mat = chi0.gchi0_full - chi0.mat[:, :, None] * F_r.mat * chi0.mat[:, None, :]
+    return LocalFourPoint(matrix=chir_mat, channel=F_r.channel, beta=F_r.beta, wn=F_r.wn)
+
+
+def gamob2_from_chir(chir: LocalFourPoint = None, chi0_inv: LocalBubble = None):
+    ''' Gamma = - ( chi_0^-1 - chi_r^-1) '''
+    gam_r = jnp.array([gamob2_from_chir_wn(chir.mat[iwn_lin], chi0_inv.mat[iwn_lin]) for iwn_lin in chir.wn_lin])
+    return LocalFourPoint(matrix=gam_r, channel=chir.channel, beta=chir.beta, wn=chir.wn)
+
+
+def gamob2_from_chir_wn(chir=None, chi0_inv=None):
+    gam_r = -(jnp.diag(chi0_inv) - jnp.linalg.inv(chir))
+    return gam_r
+
+
+def wn_slices(mat=None, n_cut=None, wn=None):
+    n = mat.shape[-1] // 2
+    mat_grid = jnp.array([mat[n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
+    return mat_grid
+
+
+def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
+    u_r = get_ur(u, channel=gam.channel)
+    vrg = jnp.array([vrg_from_gam_wn(gam.mat[iwn_lin], chi0_inv.mat[iwn_lin], gam.beta, u_r) for iwn_lin in gam.wn_lin])
+    return LocalThreePoint(matrix=vrg, channel=gam.channel, beta=gam.beta, wn=gam.wn)
+
+
+def vrg_from_gam_wn(gam, chi0_inv, beta, u_r):
+    return 1 / beta * chi0_inv * jnp.sum(jnp.linalg.inv(np.diag(chi0_inv) + gam - u_r / beta ** 2), axis=-1)
+
+
+def three_leg_from_F(F: LocalFourPoint = None, chi0: LocalBubble = None):
+    ''' sg = \sum_k' F \chi_0 '''
+    sg = 1 / F.beta * jnp.sum(F.mat * chi0.mat[:, None, :], axis=-1)
+    return LocalThreePoint(matrix=sg, channel=F.channel, beta=F.beta, wn=F.wn)
+
+
+def schwinger_dyson_F(F: LocalFourPoint = None, chi0: LocalBubble = None, giw=None, u=None, totdens=None):
+    ''' Sigma = U*n/2 + 1/beta**3 * U \sum_{qk} F \chi_0 G(k-q)'''
+    hartree = u * totdens / 2.0
+    sigma_F_q = jnp.sum(1 / F.beta * u * F.mat * chi0.mat[:, None, :], axis=-1)
+    mat_grid = wn_slices(giw, n_cut=F.niv, wn=F.wn)
+    sigma_F = jnp.sum(sigma_F_q * mat_grid, axis=0)
+    return hartree + sigma_F
+
+
+def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw=None, u=None, totdens=None):
+    ''' Sigma = U*n/2 + '''
+    hartree = u * totdens / 2.0
+    mat_grid = wn_slices(giw, n_cut=vrg.niv, wn=vrg.wn)
+    sigma_F = vrg.beta * u * jnp.sum((1 - (1 + u * chir_phys.mat[:, None]) * vrg.mat) * mat_grid)
+    return hartree + sigma_F
+
+
+# ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
 class LocalThreePoint(LocalFourPoint):
     ''' Class for local three-point objects like the Fermi-bose vertex'''
@@ -231,64 +460,64 @@ class LocalThreePoint(LocalFourPoint):
 # ------------------------------------------- LOCAL SUSCEPTIBILITY CLASS  ----------------------------------------------
 # ======================================================================================================================
 
-class LocalSusceptibility():
-    ''' Parent class for local susceptibilities'''
-
-    asympt = None  # asymptotic correction from Chi = Chi0
-
-    def __init__(self, matrix=None, channel='dens', beta=1.0, iw=None, chi0_urange: LocalBubble = None):
-        assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
-
-        self._channel = channel
-        self._mat = matrix
-        self._beta = beta
-        self._iw = iw
-        self._niw = np.size(self._iw)
-
-        self.set_asympt(chi0_urange=chi0_urange)
-
-    @property
-    def mat(self):
-        return self._mat
-
-    @property
-    def iw(self):
-        return self._iw
-
-    @property
-    def channel(self):
-        return self._channel
-
-    @property
-    def beta(self) -> float:
-        return self._beta
-
-    @property
-    def niv(self) -> int:
-        return self._niv
-
-    @property
-    def niw(self) -> int:
-        return self._iw.size
-
-    def set_asympt(self, chi0_urange: LocalBubble = None):
-        self.asympt = chi0_urange.chi0_asympt - chi0_urange.chi0
-
-    @property
-    def mat_asympt(self):
-        return self.mat + self.asympt
+# class LocalSusceptibility():
+#     ''' Parent class for local susceptibilities'''
+#
+#     asympt = None  # asymptotic correction from Chi = Chi0
+#
+#     def __init__(self, matrix=None, channel='dens', beta=1.0, iw=None, chi0_urange: LocalBubble = None):
+#         assert (matrix.shape[0] == iw.size), 'Size of iw_core does not match first dimension of four_point'
+#
+#         self._channel = channel
+#         self._mat = matrix
+#         self._beta = beta
+#         self._iw = iw
+#         self._niw = np.size(self._iw)
+#
+#         self.set_asympt(chi0_urange=chi0_urange)
+#
+#     @property
+#     def mat(self):
+#         return self._mat
+#
+#     @property
+#     def iw(self):
+#         return self._iw
+#
+#     @property
+#     def channel(self):
+#         return self._channel
+#
+#     @property
+#     def beta(self) -> float:
+#         return self._beta
+#
+#     @property
+#     def niv(self) -> int:
+#         return self._niv
+#
+#     @property
+#     def niw(self) -> int:
+#         return self._iw.size
+#
+#     def set_asympt(self, chi0_urange: LocalBubble = None):
+#         self.asympt = chi0_urange.chi0_asympt - chi0_urange.chi0
+#
+#     @property
+#     def mat_asympt(self):
+#         return self.mat + self.asympt
 
 
 def local_chi_phys_from_chi_aux(chi_aux=None, chi0_urange: LocalBubble = None, chi0_core: LocalBubble = None, u=None):
     u_r = get_ur(u=u, channel=chi_aux.channel)
     chi = 1. / (1. / (chi_aux.mat + chi0_urange.chi0 - chi0_core.chi0) + u_r)
-    return LocalSusceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.iw,
+    return LocalSusceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.wn,
                                chi0_urange=chi0_urange)
 
 
 def local_susceptibility_from_four_point(four_point: LocalFourPoint = None, chi0_urange=None):
     return LocalSusceptibility(matrix=four_point.contract_legs(), channel=four_point.channel
-                               , beta=four_point.beta, iw=four_point.iw, chi0_urange=chi0_urange)
+                               , beta=four_point.beta, iw=four_point.wn, chi0_urange=chi0_urange)
 
 
 def local_rpa_susceptibility(chi0_urange: LocalBubble = None, channel=None, u=None):
@@ -307,8 +536,8 @@ def gammar_from_gchir(gchir: LocalFourPoint = None, gchi0_urange: LocalBubble = 
     u_r = get_ur(u=u, channel=gchir.channel)
     gammar = np.array(
         [gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0_urange=gchi0_urange.gchi0[wn], niv_core=gchir.niv,
-                              beta=gchir.beta, u=u_r) for wn in gchir.iw_ind])
-    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, iw=gchir.iw)
+                              beta=gchir.beta, u=u_r) for wn in gchir.wn_lin])
+    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, iw=gchir.wn)
 
 
 def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
@@ -326,8 +555,8 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
     u_r = get_ur(u=u, channel=gammar.channel)
     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
-                                                       beta=gammar.beta, u=u_r) for wn in gammar.iw_ind])
-    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, iw=gammar.iw)
+                                                       beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
+    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, iw=gammar.wn)
 
 
 def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
@@ -342,7 +571,7 @@ def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
 # ==================================================================================================================
 def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None):
     vrg = 1. / gchi0.gchi0 * 1. / gchi0.beta * np.sum(gchi_aux.mat, axis=-1)
-    return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, iw=gchi_aux.iw)
+    return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, iw=gchi_aux.wn)
 
 
 def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
@@ -350,15 +579,15 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
         niv_urange = vrg.niv
     vrg_urange = 1. / vrg.beta * np.ones((vrg.niw, 2 * niv_urange), dtype=complex)
     vrg_urange[:, niv_urange - vrg.niv:niv_urange + vrg.niv] = vrg.mat
-    return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
+    return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, iw=vrg.wn)
 
 
 def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None, niv_core=None):
     u_r = get_ur(u=u, channel=vrg.channel)
-    #vrg_asympt = vrg.mat #* (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
-    #vrg_asympt[:, vrg.niv - niv_core:vrg.niv + niv_core] *= (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
+    # vrg_asympt = vrg.mat #* (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
+    # vrg_asympt[:, vrg.niv - niv_core:vrg.niv + niv_core] *= (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
     vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
-    return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.iw)
+    return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.wn)
 
 
 def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None, niv_urange=-1):
@@ -371,28 +600,30 @@ def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0:
 
 # ======================================================================================================================
 
-def local_vertex_urange(gchi_aux: LocalFourPoint = None, gchi0_urange = None, gchi0_core = None, vrg: LocalThreePoint = None,
-                        chi = None, u=None):
+def local_vertex_urange(gchi_aux: LocalFourPoint = None, gchi0_urange=None, gchi0_core=None, vrg: LocalThreePoint = None,
+                        chi=None, u=None):
     u_r = get_ur(u=u, channel=vrg.channel)
     niv_urange = np.shape(gchi0_urange)[-1] // 2
     niv_core = np.shape(gchi_aux.mat)[-1] // 2
-    F_urange = u_r * (1-u_r * chi[:,None,None]) * vrg.mat[:,:,None] * vrg.mat[:,None,:]
+    F_urange = u_r * (1 - u_r * chi[:, None, None]) * vrg.mat[:, :, None] * vrg.mat[:, None, :]
     unity = np.eye(np.shape(gchi0_core)[-1], dtype=complex)
-    F_urange[:,niv_urange-niv_core:niv_urange+niv_core,niv_urange-niv_core:niv_urange+niv_core] += 1./gchi0_core[:,:,None] * (unity - gchi_aux.mat * 1./gchi0_core[:,None,:])
+    F_urange[:, niv_urange - niv_core:niv_urange + niv_core, niv_urange - niv_core:niv_urange + niv_core] += 1. / gchi0_core[:, :, None] * (
+            unity - gchi_aux.mat * 1. / gchi0_core[:, None, :])
     return F_urange
+
 
 def local_vertex_inverse_bse_wn(gamma=None, chi0=None, u_r=None, beta=None):
     niv = np.shape(gamma)[-1] // 2
     niv_u = np.shape(chi0)[-1] // 2
-    gamma_u = u_r * np.ones((2*niv_u,2*niv_u), dtype=complex) * 1./beta**2
-    gamma_u[niv_u-niv:niv_u+niv,niv_u-niv:niv_u+niv] = gamma # gamma contains internally 1/beta^2
-    return np.matmul(gamma_u,np.linalg.inv(np.eye(2*niv_u,dtype=complex) + gamma_u * chi0[:,None]))
-    #return np.linalg.inv(np.linalg.inv(gamma_u))- np.diag(chi0))
+    gamma_u = u_r * np.ones((2 * niv_u, 2 * niv_u), dtype=complex) * 1. / beta ** 2
+    gamma_u[niv_u - niv:niv_u + niv, niv_u - niv:niv_u + niv] = gamma  # gamma contains internally 1/beta^2
+    return np.matmul(gamma_u, np.linalg.inv(np.eye(2 * niv_u, dtype=complex) + gamma_u * chi0[:, None]))
+    # return np.linalg.inv(np.linalg.inv(gamma_u))- np.diag(chi0))
+
 
 def local_vertex_inverse_bse(gamma=None, chi0=None, u=None):
     u_r = get_ur(u=u, channel=gamma.channel)
-    return np.array([local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.iw_ind])
-
+    return np.array([local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.wn_lin])
 
 
 # ======================================================================================================================
@@ -467,6 +698,13 @@ class Bubble():
 
     def get_gchi0(self):
         return - self.beta * np.mean(self.gk * self.gkpq, axis=(0, 1, 2))
+
+
+def get_ggv(giw=None, niv_ggv=-1):
+    niv = giw.shape[0] // 2
+    if (niv_ggv == -1):
+        niv_ggv = niv
+    return giw[niv - niv_ggv:niv + niv_ggv][:, None] * giw[niv - niv_ggv:niv + niv_ggv][None, :]
 
 
 # ======================================================================================================================
