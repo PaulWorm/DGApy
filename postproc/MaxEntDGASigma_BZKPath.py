@@ -39,6 +39,7 @@ def plot_imag_data(iw,giw=None,plot_dir=None, fname=None,niv=-1):
     plt.savefig(plot_dir + fname + '.png')
     plt.savefig(plot_dir + fname + '.pdf')
     plt.show()
+
 # ------------------------------------------------ PARAMETERS -------------------------------------------------
 
 # Set the path, where the input-data is located:
@@ -50,6 +51,8 @@ path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurang
 # ------------------------------------------------- LOAD DATA --------------------------------------------------
 
 dga_sde = np.load(path + 'dga_sde.npy', allow_pickle=True).item()
+dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
+hartree = dmft_sde['hartree']
 sigma = dga_sde['sigma_nc']
 dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
 beta = dga_conf['system']['beta']
@@ -64,20 +67,29 @@ vn = mf.v(beta,gk.niv)
 bz_path='Gamma-X-M-Gamma'
 k_path = bz.KPath(nk=k_grid.nk,path=bz_path)
 
+
+# sigma_loc = np.mean(sigma,axis=(0,1,2))
+# vn = mf.vn(n=niv)
+# niv_plot = 100
+# plt.figure()
+# plt.plot(vn[niv:niv+niv_plot],sigma_loc[niv:niv+niv_plot].real,'-o',color='cornflowerblue',markeredgecolor='k')
+# plt.show()
+
+
 # Set the output folder and file names:
 path_out = path
 
-folder_out = 'MaxEnt_BZKPath'
+folder_out = 'MaxEntSigma_BZKPath'
 folder_out = output.uniquify(path_out+folder_out) + '/'
-fname_g = 'ContinuedG.hdf5'
+fname_g = 'ContinuedSigma.hdf5'
 
 # Set parameter for the analytic continuation:
 interactive = True
-w_grid_type = 'tan'
+w_grid_type = 'lin'
 alpha_det_method = "chi2kink"
 wmax = 15
-Nwr = 1001
-nf = 100 # Number of frequencies to keep
+Nwr = 501
+nf = 60 # Number of frequencies to keep
 use_preblur = True
 bw = 0.1  # preblur width
 aerr_g = 1e-3
@@ -106,22 +118,22 @@ model /= np.trapz(model, w)
 error_g = np.ones((nf,), dtype=np.float64) * aerr_g
 
 fac = 1
-gk_kpath = gk.gk[k_path.ikx[::fac], k_path.iky[::fac], 0,niv:niv+nf]
-nk_use = np.shape(gk_kpath)[0]
-Gw = np.zeros((Nwr,nk_use), dtype=complex)
+sigma_kpath = sigma[k_path.ikx[::fac], k_path.iky[::fac], 0,niv:niv+nf] - hartree
+nk_use = np.shape(sigma_kpath)[0]
+Sw = np.zeros((Nwr,nk_use), dtype=complex)
 alpha_g = np.zeros((nk_use,), dtype=complex)
 chi2_g = np.zeros((nk_use,), dtype=complex)
 print('Continuing G:')
 for i in range(nk_use):
-    problem = cont.AnalyticContinuationProblem(im_axis=vn_cut, re_axis=w, im_data=gk_kpath[i,:], kernel_mode="freq_fermionic",
+    problem = cont.AnalyticContinuationProblem(im_axis=vn_cut, re_axis=w, im_data=sigma_kpath[i,:], kernel_mode="freq_fermionic",
                                                beta=beta)
     sol, _ = problem.solve(method="maxent_svd", model=model, stdev=error_g, alpha_determination=alpha_det_method,
                            optimizer="newton", preblur=use_preblur, blur_width=bw)
-    Gw[:,i] = cont.GreensFunction(spectrum=sol.A_opt, wgrid=w, kind='fermionic').kkt()
+    Sw[:,i] = cont.GreensFunction(spectrum=sol.A_opt, wgrid=w, kind='fermionic').kkt()
     alpha_g[i] = sol.__dict__['alpha']
     chi2_g[i] = sol.chi2
 
-
+Sw = Sw + hartree
 # -------------------------------------------- OUTPUT -----------------------------------------------
 Nw = w.shape[0]
 
@@ -130,7 +142,7 @@ Outputfile = h5py.File(folder_out + fname_g, 'w')
 Outputfile['beta'] = beta
 Outputfile['alpha'] = alpha_g
 Outputfile['chi2'] = chi2_g
-Outputfile['Gw'] = Gw
+Outputfile['Sw'] = Sw
 Outputfile['w'] = w
 Outputfile['aerr'] = aerr_g
 Outputfile['mu'] = mu
@@ -145,10 +157,11 @@ Outputfile.close()
 try:
     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
     axes = np.atleast_1d(axes)
-    im1 = axes[0].pcolormesh(k_path.k_axis[::fac],w,-1/np.pi*Gw.imag,cmap='magma',shading='nearest')
+    im1 = axes[0].pcolormesh(k_path.k_axis[::fac],w,Sw.imag,cmap='magma',shading='nearest')
     plt.colorbar(im1)
     plt.ylim(-5,5)
     plt.tight_layout()
+    plt.savefig(folder_out + 'sigma_dispersion.png')
     plt.show()
 except:
     pass
