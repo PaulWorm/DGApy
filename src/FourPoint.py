@@ -104,7 +104,7 @@ class FourPointBase():
 
     niv_ind = -1  # Index for (one of the) fermionic frequency indizes
 
-    def __init__(self, matrix=None, beta=None, wn=None, shell=None):
+    def __init__(self, matrix=None, beta=None, wn=None, shell=None, mat_tilde=None):
         if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
         if (matrix is not None):
             assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
@@ -112,6 +112,7 @@ class FourPointBase():
         self._beta = beta
         self._wn = wn  # bosonic frequency index
         self.shell = shell
+        self._mat_tilde = mat_tilde
 
     @property
     def mat(self):
@@ -143,10 +144,10 @@ class FourPointBase():
 
     @property
     def mat_tilde(self):
-        if (self.shell is None):
+        if (self._mat_tilde is None):
             return self.mat
         else:
-            return self.mat + self.shell
+            return self._mat_tilde
 
     def as_dict(self):
         return self.__dict__
@@ -154,7 +155,7 @@ class FourPointBase():
 
 class LocalSusceptibility():
 
-    def __init__(self, matrix=None, channel=None, beta=None, wn=None, shell=None):
+    def __init__(self, matrix=None, channel=None, beta=None, wn=None, shell=None, mat_tilde=None):
         if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
         if (matrix is not None):
             assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
@@ -163,13 +164,14 @@ class LocalSusceptibility():
         self.wn = wn  # bosonic frequency index
         self.channel = channel  # dens/magn/trip/sing/bubb
         self.shell = shell
+        self._mat_tilde = mat_tilde
 
     @property
     def mat_tilde(self):
-        if (self.shell is None):
+        if (self._mat_tilde is None):
             return self.mat
         else:
-            return self.mat + self.shell
+            return self._mat_tilde
 
     @property
     def channel(self) -> str:
@@ -183,8 +185,8 @@ class LocalSusceptibility():
 
 class LocalThreePoint(FourPointBase):
 
-    def __init__(self, channel=None, matrix=None, beta=None, wn=None, shell=None):
-        super().__init__(matrix=matrix, beta=beta, wn=wn, shell=shell)
+    def __init__(self, channel=None, matrix=None, beta=None, wn=None, shell=None, mat_tilde=None):
+        super().__init__(matrix=matrix, beta=beta, wn=wn, shell=shell, mat_tilde=mat_tilde)
         self.channel = channel  # dens/magn/trip/sing/bubb
 
     @property
@@ -253,8 +255,10 @@ def vec_get_gchi0_inv(giw, beta, niv, wn):
 
 def get_chi0_sum(giw, beta, niv, iwn=0):
     niv_giw = np.shape(giw)[0] // 2
-    iwnd2 = iwn // 2
-    iwnd2mod2 = iwn // 2 + iwn % 2
+    # iwnd2 = iwn // 2
+    # iwnd2mod2 = iwn // 2 + iwn % 2
+    iwnd2 = 0
+    iwnd2mod2 = -iwn
     return - 1. / beta * np.sum(giw[niv_giw - niv + iwnd2:niv_giw + niv + iwnd2] * giw[niv_giw - niv - iwnd2mod2:niv_giw + niv - iwnd2mod2])
 
 
@@ -263,10 +267,12 @@ def vec_get_chi0_sum(giw, beta, niv, wn):
 
 
 def chi0_asympt_iwn(beta, hf_denom, niv, iwn):
-    iwnd2 = iwn // 2
-    iwnd2mod2 = iwn // 2 + iwn % 2
-    iv = mf.iv(beta, niv, shift=iwnd2)
-    ivmw = mf.iv(beta, niv, shift=-iwnd2mod2)
+    # iwnd2 = iwn // 2
+    # iwnd2mod2 = iwn // 2 + iwn % 2
+    # iv = mf.iv(beta, niv, shift=iwnd2)
+    # ivmw = mf.iv(beta, niv, shift=-iwnd2mod2)
+    iv = mf.iv(beta, niv, shift=0)
+    ivmw = mf.iv(beta, niv, shift=-iwn)
     g_tail = 1 / (iv + hf_denom)
     gshift_tail = 1 / (ivmw + hf_denom)
     chi0_tail = - 1 / beta * np.sum(g_tail * gshift_tail)
@@ -476,46 +482,83 @@ def schwinger_dyson_F(F: LocalFourPoint = None, chi0: LocalBubble = None, giw=No
     return hartree + sigma_F
 
 
-def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw=None, u=None, totdens=None):
+def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None, u=None,
+                        do_tilde=True):
     ''' Sigma = U*n/2 + '''
-    hartree = u * totdens / 2.0
-    mat_grid = wn_slices(giw, n_cut=vrg.niv, wn=vrg.wn)
-    sigma_F = vrg.beta * u * jnp.sum((1 - (1 + u * chir_phys.mat[:, None]) * vrg.mat) * mat_grid)
-    return hartree + sigma_F
+    u_r = get_ur(u, channel=chir_phys.channel)
+    mat_grid = wn_slices(giw.mat, n_cut=vrg.niv, wn=vrg.wn)
+    if (do_tilde):
+        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta - (1 - u_r * chir_phys.mat_tilde[:, None]) * vrg.mat_tilde) * mat_grid, axis=0)
+    else:
+        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta - (1 - u_r * chir_phys.mat[:, None]) * vrg.mat) * mat_grid, axis=0)
+    return sigma_F
+
+
+def schwinger_dyson_w_asympt(gchi0: LocalBubble = None,giw=None, u=None,niv=None):
+    mat_grid = wn_slices(giw.mat, n_cut=niv, wn=gchi0.wn)
+    return -u * u/gchi0.beta * jnp.sum(gchi0.chi0_tilde[:,None] * mat_grid, axis=0)
+
+
+def lam_from_chir_FisUr(chir: LocalFourPoint = None, gchi0: LocalBubble = None, u=None):
+    ''' lambda vertex'''
+    assert gchi0.shell is not None, "Shell of gchi0 needed for shell of lambda."
+    u_r = get_ur(u, chir.channel)
+    sign = get_sign(chir.channel)
+    lam = jnp.sum(jnp.eye(chir.niv * 2)[None, :, :] - chir.mat * (1 / gchi0.mat)[:, :, None], axis=-1)
+    shell = +u_r * gchi0.shell[:, None]
+    tilde = (lam + shell)
+    return LocalThreePoint(channel=chir.channel, matrix=lam, beta=chir.beta, wn=chir.wn, shell=shell, mat_tilde=tilde)
+
+
+def chi_phys_tilde_FisUr(chir: LocalFourPoint = None, gchi0: LocalBubble = None, lam: LocalFourPoint = None, u=None):
+    u_r = get_ur(u, chir.channel)
+    chi_core = chir.contract_legs()
+    chi_shell = gchi0.shell - u_r * gchi0.shell ** 2 - 2 * u_r * gchi0.shell * gchi0.chi0
+    chi_tilde = (chi_core.mat + chi_shell)
+    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell, mat_tilde=chi_tilde)
 
 
 def lam_from_chir(chir: LocalFourPoint = None, gchi0: LocalBubble = None, u=None):
     ''' lambda vertex'''
     assert gchi0.shell is not None, "Shell of gchi0 needed for shell of lambda."
-    lam = jnp.sum(jnp.eye(chir.niv*2)[None, :, :] - chir.mat * (1 / gchi0.mat)[:, :, None], axis=-1)
-    shell = u * gchi0.shell[:, None]
-    return LocalThreePoint(channel=chir.channel, matrix=lam, beta=chir.beta, wn=chir.wn, shell=shell)
+    u_r = get_ur(u, chir.channel)
+    sign = get_sign(chir.channel)
+    lam = jnp.sum(jnp.eye(chir.niv * 2)[None, :, :] - chir.mat * (1 / gchi0.mat)[:, :, None], axis=-1)
+    # shell = +u * gchi0.shell[:, None]
+    # tilde = 1 / (1 - u * gchi0.shell[:, None]) * (lam + shell)
+    shell = +u_r * gchi0.shell[:, None]  # + u * u_r * gchi0.shell[:, None]
+    # tilde = 1 / (1 + u_r * gchi0.shell[:, None]) * (lam + shell)
+    tilde = (lam + shell)
+    # tilde =  (lam + shell)
+    return LocalThreePoint(channel=chir.channel, matrix=lam, beta=chir.beta, wn=chir.wn, shell=shell, mat_tilde=tilde)
 
 
 def chi_phys_tilde(chir: LocalFourPoint = None, gchi0: LocalBubble = None, lam: LocalFourPoint = None, u=None):
     sign = get_sign(chir.channel)
+    u_r = get_ur(u, chir.channel)
     chi_core = chir.contract_legs()
-    chi_shell = -sign * u * gchi0.shell ** 2 - gchi0.shell * (1 + 2 * u / chir.beta * jnp.sum((lam.mat_tilde + sign) * gchi0.mat, axis=-1))
-    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell)
+    chi_shell = - u_r * gchi0.shell ** 2  # - gchi0.shell * (1 - 2 *  u/chir.beta**2 * jnp.sum((lam.mat_tilde - 1) * gchi0.mat))#gchi0.shell- 2 * u_r * gchi0.shell * gchi0.chi0
+    chi_tilde = 1 / (1 - (u * gchi0.shell) ** 2) * (chi_core.mat + chi_shell)
+    chi_shell = gchi0.shell - u_r * gchi0.shell ** 2 - 2 * u_r * gchi0.shell * gchi0.chi0
+    chi_tilde = (chi_core.mat + chi_shell)
+    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell, mat_tilde=chi_tilde)
 
 
 def vrg_from_lam(chir: LocalSusceptibility = None, lam: LocalFourPoint = None, u=None, do_tilde=True):
     sign = get_sign(chir.channel)
-    if(do_tilde):
-        vrg = 1/chir.beta * (1 + sign * lam.mat_tilde)/(1 - sign * u * chir.mat_tilde[:,None])
-    else:
-        vrg = 1/chir.beta * (1 + sign * lam.mat)/(1 - sign * u * chir.mat[:,None])
-    return LocalThreePoint(channel=chir.channel,matrix=vrg,beta=chir.beta,wn=chir.wn)
-
+    u_r = get_ur(u, chir.channel)
+    vrg_tilde = 1 / chir.beta * (1 - lam.mat_tilde) / (1 - u_r * chir.mat_tilde[:, None])
+    vrg = 1 / chir.beta * (1 - lam.mat) / (1 - u_r * chir.mat[:, None])
+    return LocalThreePoint(channel=chir.channel, matrix=vrg, beta=chir.beta, wn=chir.wn, mat_tilde=vrg_tilde)
 
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
-class LocalThreePoint(LocalFourPoint):
-    ''' Class for local three-point objects like the Fermi-bose vertex'''
-
-    def contract_legs(self):
-        return 1. / self.beta * np.sum(self._mat, axis=(-1))
+# class LocalThreePoint(LocalFourPoint):
+#     ''' Class for local three-point objects like the Fermi-bose vertex'''
+#
+#     def contract_legs(self):
+#         return 1. / self.beta * np.sum(self._mat, axis=(-1))
 
 
 # ======================================================================================================================
@@ -573,13 +616,11 @@ class LocalThreePoint(LocalFourPoint):
 def local_chi_phys_from_chi_aux(chi_aux=None, chi0_urange: LocalBubble = None, chi0_core: LocalBubble = None, u=None):
     u_r = get_ur(u=u, channel=chi_aux.channel)
     chi = 1. / (1. / (chi_aux.mat + chi0_urange.chi0 - chi0_core.chi0) + u_r)
-    return LocalSusceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, iw=chi_aux.wn,
-                               chi0_urange=chi0_urange)
+    return LocalSusceptibility(matrix=chi, channel=chi_aux.channel, beta=chi_aux.beta, wn=chi_aux.wn)
 
 
 def local_susceptibility_from_four_point(four_point: LocalFourPoint = None, chi0_urange=None):
-    return LocalSusceptibility(matrix=four_point.contract_legs(), channel=four_point.channel
-                               , beta=four_point.beta, iw=four_point.wn, chi0_urange=chi0_urange)
+    return four_point.contract_legs()
 
 
 def local_rpa_susceptibility(chi0_urange: LocalBubble = None, channel=None, u=None):
@@ -599,7 +640,7 @@ def gammar_from_gchir(gchir: LocalFourPoint = None, gchi0_urange: LocalBubble = 
     gammar = np.array(
         [gammar_from_gchir_wn(gchir=gchir.mat[wn], gchi0_urange=gchi0_urange.gchi0[wn], niv_core=gchir.niv,
                               beta=gchir.beta, u=u_r) for wn in gchir.wn_lin])
-    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, iw=gchir.wn)
+    return LocalFourPoint(matrix=gammar, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
 
 
 def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
@@ -618,7 +659,7 @@ def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalB
     u_r = get_ur(u=u, channel=gammar.channel)
     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
-    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, iw=gammar.wn)
+    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
 
 
 def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
@@ -633,7 +674,7 @@ def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
 # ==================================================================================================================
 def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None):
     vrg = 1. / gchi0.gchi0 * 1. / gchi0.beta * np.sum(gchi_aux.mat, axis=-1)
-    return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, iw=gchi_aux.wn)
+    return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, wn=gchi_aux.wn)
 
 
 def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
@@ -641,7 +682,7 @@ def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
         niv_urange = vrg.niv
     vrg_urange = 1. / vrg.beta * np.ones((vrg.niw, 2 * niv_urange), dtype=complex)
     vrg_urange[:, niv_urange - vrg.niv:niv_urange + vrg.niv] = vrg.mat
-    return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, iw=vrg.wn)
+    return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, wn=vrg.wn)
 
 
 def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None, niv_core=None):

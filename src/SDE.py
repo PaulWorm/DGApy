@@ -14,9 +14,9 @@ import MatsubaraFrequencies as mf
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
-def wn_slices(mat=None, n_cut=None, iw=None):
+def wn_slices(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2
-    mat_grid = np.array([mat[n - n_cut - wn:n + n_cut - wn] for wn in iw])
+    mat_grid = np.array([mat[n - n_cut - wn:n + n_cut - wn] for wn in wn])
     return mat_grid
 
 
@@ -24,16 +24,16 @@ def local_dmft_sde(vrg = None, chir: fp.LocalSusceptibility = None,giw=None, u=N
     #assert (vrg.channel == chir.channel), 'Channels of physical susceptibility and Fermi-bose vertex not consistent'
     u_r = fp.get_ur(u=u, channel=chir.channel)
     niv = vrg.shape[-1] // 2
-    giw_grid = wn_slices(mat=giw, n_cut=niv, iw=chir.iw)
+    giw_grid = wn_slices(mat=giw, n_cut=niv, wn=chir.wn)
     # The u_r in the front stems from Fup = 1/2 * (Fd - Fm)
-    return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat_asympt[:, None]) - scal_const / chir.beta) * giw_grid,
+    return -u_r / 2. * np.sum((vrg * (1. - u_r * chir.mat[:, None]) - scal_const / chir.beta) * giw_grid,
                               axis=0)  # The -1./chir.beta is is canceled in the sum. This is only relevant for Fluctuation diagnostics.
 
 def local_sde_vertex(vertex=None, giw=None, u=None, beta=None):
     niv = vertex.shape[-1] // 2
     niw = vertex.shape[0] // 2
     iw = mf.wn(n=niw)
-    giw_grid = wn_slices(mat=giw, n_cut=niv, iw=iw)
+    giw_grid = wn_slices(mat=giw, n_cut=niv, wn=iw)
     gloc = mf.cut_v_1d(giw,niv_cut=niv)
     # 1/beta^2 is included in the vertex
     return -u/2 * np.sum(vertex*gloc[None,None,:] * giw_grid[:,None,:] * giw_grid[:,:,None], axis=(0,2))
@@ -41,7 +41,7 @@ def local_sde_vertex(vertex=None, giw=None, u=None, beta=None):
 
 def local_rpa_sde(chir: fp.LocalSusceptibility = None, niv_giw=None, giw=None, u=None):
     u_r = fp.get_ur(u=u, channel=chir.channel)
-    giw_grid = wn_slices(mat=giw, n_cut=niv_giw, iw=chir.iw)
+    giw_grid = wn_slices(mat=giw, n_cut=niv_giw, wn=chir.iw)
     return u_r**2 / (2. * chir.beta) * np.sum(chir.mat_asympt[:, None] * giw_grid, axis=0) # vrg = 1
     #return u_r**2 / (2. * chir.beta) * np.sum(u_r * chir.mat[:, None] * giw_grid, axis=0) # vrg = (1-u chi_u)/(1- u chi_asympt)
 

@@ -10,8 +10,7 @@ iw/iv : array of imaginary frequencies 1j * (2n + 1) * pi/beta
 
 Niv should always >= niw. Otherwise, weirds kinks appear at the boundary.
 
-Currently, I use a shifted grid for the bubble. I did not check if that created issues down
-the line. 
+I switched back to a non-shifted grid for chi0 
 
 We adopt the following notation for the different boxes: 
 

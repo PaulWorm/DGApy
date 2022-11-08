@@ -261,6 +261,7 @@ class KPath():
         self.ckp = self.corner_k_points()
         self.kpts, self.nkp = self.build_k_path()
         self.k_val = self.get_kpath_val()
+        self.k_points = self.get_kpoints()
 
     def get_kpath_val(self):
         k = [self.kx[self.kpts[:,0]],self.kx[self.kpts[:,1]],self.kx[self.kpts[:,2]]]
@@ -297,6 +298,13 @@ class KPath():
     @property
     def k_axis(self):
         return np.linspace(0,1,np.sum(self.nkp),endpoint=True)
+
+    @property
+    def nk_tot(self):
+        return np.sum(self.nkp)
+
+    def get_kpoints(self):
+        return np.array(self.k_val).T
 
     def corner_k_points(self):
         ckps = self.ckps

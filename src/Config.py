@@ -220,6 +220,8 @@ class MaxEntConfig(ConfigBase):
             return omesh.LorentzianOmegaMesh(omega_min=-self.wmax, omega_max=self.wmax, n_points=self.nwr, cut=self.cut)
         elif self.mesh_type == 'hyperbolic':
             return omesh.HyperbolicOmegaMesh(omega_min=-self.wmax, omega_max=self.wmax, n_points=self.nwr)
+        elif self.mesh_type == 'linear':
+            return np.linspace(-self.wmax, self.wmax, self.nwr)
         else:
             raise ValueError('Unknown omega mesh type.')
 
