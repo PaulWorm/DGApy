@@ -73,7 +73,11 @@ def plot_fourpoint_nu_nup(mat, vn, do_save=True, pdir='./', name='NoName', cmap=
                  pad=0.05)
     plt.tight_layout()
     if (do_save): plt.savefig(pdir + '/' + name + '.png')
-    plt.show()
+    try:
+        plt.show()
+    except:
+        plt.close()
+
 
 
 def plot_omega_dep(x, y, do_save=True, pdir='./', name='NoName', figsize=FIGSIZE):
@@ -295,7 +299,7 @@ class LocalBubble():
                  do_shell=True):
         self._wn = wn
         self._giw = giw
-        self._niv = niv
+        self.niv = niv
         self.is_inv = is_inv
         self._mat = self.get_gchi0()
         self.chi0_method = chi0_method

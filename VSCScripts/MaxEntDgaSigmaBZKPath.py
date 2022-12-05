@@ -1,13 +1,18 @@
- # ----------------------------------------------------------------------------------------------------
-# File: MaxEntDGA.py
-# Date: 07.11.2022
-# Author: Paul Worm
-# Short description: Interface for dga and the ana-cont package for analytic continuation.
-# ----------------------------------------------------------------------------------------------------
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH -J MaxEntBZKPathSigma
+#SBATCH --ntasks-per-node=48
+#SBATCH --partition=skylake_0096
+#SBATCH --qos=skylake_0096
+#SBATCH --time=00:30:00
+#SBATCH --mail-type=ALL                              # first have to state the type of event to occur
+#SBATCH --mail-user=<p.worm@a1.net>   # and then your email address
+
 
 import numpy as np
 import h5py
 import sys, os
+sys.path.append('/home/fs71282/wormEco3P/Programs/dga/src')
 import continuation as cont
 import matplotlib.pyplot as plt
 import Output as output
@@ -43,53 +48,20 @@ def plot_imag_data(iw,giw=None,plot_dir=None, fname=None,niv=-1):
 # ------------------------------------------------ PARAMETERS -------------------------------------------------
 
 # Set the path, where the input-data is located:
+path = './'
 
-base = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/'
-base = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.875/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk14400_Nq14400_core30_invbse30_vurange500_wurange30/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta7.5_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core30_invbse30_vurange250_wurange30/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.75/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.75/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.80/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
 # ------------------------------------------------- LOAD DATA --------------------------------------------------
 
-dga_sde = np.load(path + 'dga_sde.npy', allow_pickle=True).item()
+sigma = np.load(path + 'sigma.npy',allow_pickle=True)
+dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
 dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
 hartree = dmft_sde['hartree']
-sigma = dga_sde['sigma']
-dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
-beta = dga_conf['system']['beta']
-k_grid = dga_conf['grids']['k_grid']
-hr = dga_conf['system']['hr']
+
+beta = dga_conf.sys.beta
+k_grid = dga_conf.k_grid
+hr = dga_conf.sys.hr
 g_fac = tp.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
-n = dga_conf['system']['n']
+n = dga_conf.sys.n
 mu = g_fac.adjust_mu(n,mu0=0)
 gk = g_fac.generate_gk(mu=mu)
 niv = gk.niv
@@ -121,7 +93,7 @@ wmax = 15
 Nwr = 501
 nf = 60 # Number of frequencies to keep
 use_preblur = True
-bw = 0.1  # preblur width
+bw = 0.01  # preblur width
 aerr_g = 1e-3
 aerr_s = 1e-3
 if(w_grid_type == 'lin'):
@@ -197,26 +169,3 @@ except:
     pass
 
 print('Finished!')
-
-# try:
-#     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6,6))
-#     axes = axes.flatten()
-#     axes[0].plot(w, Gw.real, color='cornflowerblue', label='$ \Re G(\omega)$')
-#     axes[1].plot(w, -1/np.pi* Gw.imag, color='cornflowerblue', label='$ A(\omega)$')
-#     axes[2].plot(w, Gw.real, '-o',color='cornflowerblue', label='$ \Re G(\omega)$')
-#     axes[3].plot(w, -1/np.pi* Gw.imag,'-o', color='cornflowerblue', label='$ A(\omega)$')
-#     for ax in axes:
-#         ax.legend()
-#         ax.set_xlabel('$\omega$')
-#         ax.set_xlim(-15, 15)
-#     axes[2].set_xlim(-2, 2)
-#     axes[3].set_xlim(-2, 2)
-#     axes[0].set_ylabel('$ \Re G(\omega)$')
-#     axes[1].set_ylabel('$ A(\omega)$')
-#     axes[2].set_ylabel('$ \Re G(\omega)$')
-#     axes[3].set_ylabel('$ A(\omega)$')
-#     plt.tight_layout()
-#     plt.savefig(folder_out + 'ContinuedData.png')
-#     plt.show()
-# except:
-#     pass

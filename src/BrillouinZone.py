@@ -2,6 +2,7 @@
  Module to handle operations within the (irreduzible) Brilloun zone.
 '''
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_extent(kgrid=None):
     return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
@@ -77,6 +78,20 @@ def find_qpd_zeros(qpd=None,kgrid=None):
 
     ind = ind[::-1]
     return ind
+
+def get_fermi_surface_ind(qpd_fs):
+    nk = np.shape(qpd_fs)[0]
+    ind_kx = np.arange(nk)
+    cs1 = plt.contour(ind_kx, ind_kx, qpd_fs, cmap='RdBu', levels=[0, ])
+    paths = cs1.collections[0].get_paths()
+    plt.close()
+    ind = []
+    for path in paths:
+        ind_kx = np.array(np.round(path.vertices[:,0],0).astype(int))
+        ind_ky = np.array(np.round(path.vertices[:,1],0).astype(int))
+        ind.append(np.stack((ind_kx,ind_ky),axis=1))
+    return ind
+
 
 
 
@@ -317,8 +332,6 @@ class KPath():
 
         return ckp
 
-
-
     def build_k_path(self):
         k_path = []
         nkp = []
@@ -346,7 +359,9 @@ class KPath():
 
 def kpath_segment(k_start,k_end,nk):
     nkp = int(np.round(np.linalg.norm(k_start*nk-k_end*nk)))
-    k_segment = k_start[None,:]*nk + np.linspace(0,1,nkp,endpoint=True)[:,None] * ((k_end-k_start)*nk)[None,:]
+    k_segment = k_start[None,:]*nk + np.linspace(0,1,nkp,endpoint=False)[:,None] * ((k_end-k_start)*nk)[None,:]
+    # k_segment = k_start[None,:]*nk + np.linspace(0,1,nkp,endpoint=True)[:,None] * ((k_end-k_start)*nk)[None,:]
+    # print(k_segment)
     k_segment = np.round(k_segment).astype(int)
     return k_segment, nkp
 

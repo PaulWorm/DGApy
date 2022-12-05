@@ -250,6 +250,10 @@ def extract_coefficient_imaxis(siwk=None, iw=None, N=4, order=3):
 
     return poly_real[0], poly_imag[0], Z
 
+# def extrapolate_to_zero_frequency(data=None, N=2, order=1):
+#     ''' Single k-point data as input'''
+
+
 
 if __name__ == '__main__':
     input_path = '/mnt/c/users/pworm/Research/BEPS_Project/HoleDoping/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/LambdaDga_Nk6400_Nq6400_core32_urange32/'

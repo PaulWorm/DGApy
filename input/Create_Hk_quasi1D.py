@@ -12,21 +12,25 @@ import matplotlib.pyplot as plt
 
 # Define Paramters:
 # ----------------------------------
-kpoints = 200
+kpoints = 80
 Nkz = 1
 # t0  = -0.879
 
 # CaCuO2
-t = 0.504079
-tp = -0.051481/t
-tpp = 0.045622/t
-mu = 0.128290/t
+# t = 0.504079
+# tp = -0.051481/t
+# tpp = 0.045622/t
+# mu = 0.128290/t
 
 # LaNiO2
-t = 0.389093
-tp = -0.097869/t
-tpp = 0.046592/t
-mu = 0.267672/t
+# t = 0.389093
+# tp = -0.097869/t
+# tpp = 0.046592/t
+# mu = 0.267672/t
+mu = 0
+t = 1.0
+tp = -0.25
+tpp = 0.12
 # generate non-interacting 2d Hamiltonian
 # kmesh = np.linspace(-(kpoints)//2+1, kpoints//2, kpoints, endpoint=True)/float(kpoints)
 kmesh = np.linspace(0, kpoints, kpoints, endpoint=False) / float(kpoints)

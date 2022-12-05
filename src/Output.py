@@ -179,6 +179,54 @@ def max_ent_irrk_bw_range(comm=None, dga_conf: conf.DgaConfig = None, me_conf: c
                                         output_path=dga_conf.nam.output_path_ac,
                                         name='fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
 
+def max_ent_irrk_bw_range_sigma(comm=None, dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntConfig = None, bw_range=None,
+                          sigma=None, hartree = None, n_fit=None, name='', logger = None):
+    bw_range = np.atleast_1d(bw_range)
+    v_real = me_conf.mesh
+    irrk_distributor = mpiaux.MpiDistributor(ntasks=dga_conf.k_grid.nk_irr, comm=comm)
+    index_grid_keys = ('irrk',)
+    irrk_grid = ind.IndexGrids(grid_arrays=(dga_conf.k_grid.irrk_ind_lin,), keys=index_grid_keys,
+                               my_slice=irrk_distributor.my_slice)
+    ind_irrk = np.squeeze(
+        np.array(np.unravel_index(dga_conf.k_grid.irrk_ind[irrk_grid.my_indizes], shape=dga_conf.k_grid.nk))).T
+    if (np.size(ind_irrk.shape) > 1):
+        ind_irrk = [tuple(ind_irrk[i, :]) for i in np.arange(ind_irrk.shape[0])]
+    else:
+        ind_irrk = tuple(ind_irrk)
+
+    for bw in bw_range:
+        if (bw == 0):
+            use_preblur = False
+        else:
+            use_preblur = me_conf.use_preblur
+
+        sigma_cont = a_cont.do_max_ent_on_ind_T(mat=sigma-hartree, ind_list=ind_irrk, v_real=v_real,
+                                                beta=me_conf.beta,
+                                                n_fit=n_fit, err=me_conf.err, alpha_det_method=me_conf.alpha_det_method,
+                                                use_preblur=use_preblur, bw=bw, optimizer=me_conf.optimizer)
+        if(logger is not None): logger.log_cpu_time(task=' for {} MaxEnt done left are plots and gather '.format(name))
+        comm.Barrier()
+        sk_cont = irrk_distributor.allgather(rank_result=sigma_cont+hartree)
+        comm.Barrier()
+        if(logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
+        if (comm.rank == 0):
+            gk_cont_fbz = dga_conf.k_grid.irrk2fbz(mat=sk_cont)
+
+            plotting.plot_cont_fs(output_path=dga_conf.nam.output_path_ac,
+                                  name='swk_fermi_surface_' + name + '_cont_w0-bw{}'.format(bw),
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=dga_conf.k_grid, w_plot=0)
+            plotting.plot_cont_fs(output_path=dga_conf.nam.output_path_ac,
+                                  name='swk_fermi_surface_' + name + '_cont_w-0.1-bw{}'.format(bw),
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=dga_conf.k_grid, w_plot=-0.1 * me_conf.t)
+            plotting.plot_cont_fs(output_path=dga_conf.nam.output_path_ac,
+                                  name='swk_fermi_surface_' + name + '_cont_w0.1-bw{}'.format(bw),
+                                  gk=gk_cont_fbz, v_real=v_real, k_grid=dga_conf.k_grid, w_plot=0.1 * me_conf.t)
+            np.save(dga_conf.nam.output_path_ac + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), gk_cont_fbz,
+                    allow_pickle=True)
+            plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=dga_conf.k_grid,
+                                        output_path=dga_conf.nam.output_path_ac,
+                                        name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
+
 def load_and_construct_pairing_vertex(dga_conf:conf.DgaConfig = None, comm=None):
 
     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',

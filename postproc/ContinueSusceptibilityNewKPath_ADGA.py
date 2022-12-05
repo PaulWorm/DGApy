@@ -65,7 +65,7 @@ nw = 501
 use_preblur = False
 bw = 0.0
 sigma = 4.0
-ncut = -1
+ncut = 10
 lambda_add = 0.00
 alpha_det = 'chi2kink'
 channel = 'magn'
@@ -78,6 +78,9 @@ input_path = 'D:/Research/La2NiO4/TwoOrbital/1onSTO_n2.2/DGAHighT/'
 input_path = 'D:/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/HighT_nw75/'
 input_path = 'D:/Research/La2NiO4/TwoOrbital/4onLAO_n2.0/HighT_2/'
 input_path = 'D:/Research/La2NiO4/TwoOrbital/4onLAO_n2.2/HighT_nw50/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/scdga_invert/'
+input_path = '/mnt/d/Research/HubbardModel_tp-0.0_tpp0.0/2DSquare_U8_tp-0.0_tpp0.0_beta4_n0.85/scdga_kaufmann/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.0_tpp0.0/2DSquare_U8_tp-0.0_tpp0.0_beta4_n0.85/scdga_kaufmann/'
 # input_path = '/mnt/c/Users/pworm/Research/La2NiO4/TwoBand/1onSTO_n2.2/Nk32/'
 output_path = input_path
 output_folder = f'ChiCont_nw_{nw}_err_{err}_sigma_{sigma}_lambda_{lambda_add}'
@@ -89,6 +92,8 @@ if not os.path.exists(out_dir):
 fname = 'adga_Nkx100_Nky100_Nkz001_000.hdf5'
 fname = 'adga_Nkx064_Nky064_Nkz002_000.hdf5'
 fname = 'adga-008.hdf5'
+fname = 'adga-000.hdf5'
+fname = 'adga_sc_3.hdf5'
 hfile = h5py.File(name=input_path+fname)
 chi = hfile['susceptibility/nonloc/magn'][()]
 beta = hfile['input/beta']
@@ -148,7 +153,9 @@ for ib1 in range(n_band):
 
 
 
+np.save(out_dir + 'chi', s)
 
+np.save(out_dir + 'w', w)
 
 
 plt.figure()
@@ -166,11 +173,11 @@ plt.show()
 plt.close()
 
 fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(14, 8))
-pl0 = ax[0].pcolormesh(q_path.k_axis[::fac], w * tev, w[:, None] * s[1,1].T, shading='auto',
+pl0 = ax[0].pcolormesh(q_path.k_axis[::fac], w * tev, w[:, None] * s[0,0].T, shading='auto',
                        rasterized=True, cmap='terrain')
 plt.colorbar(pl0, ax=ax[0])
 ax[0].set_title('chi(q, w)')
-pl1 = ax[1].pcolormesh(q_path.k_axis[::fac], w * tev, np.log10(w[:, None] * s[1,1].T + 1e-8), vmin=-1.0, vmax=0,
+pl1 = ax[1].pcolormesh(q_path.k_axis[::fac], w * tev, np.log10(w[:, None] * s[0,0].T + 1e-8), vmin=-1.0, vmax=0,
                        shading='auto', rasterized=True, cmap='terrain')
 plt.colorbar(pl1, ax=ax[1])
 ax[1].set_title('log10 chi(q, w)')
@@ -250,9 +257,7 @@ plt.savefig(
 plt.show()
 plt.close()
 
-np.save(out_dir + 'chi', s)
 
-np.save(out_dir + 'w', w)
 
 # plt.figure()
 # plt.plot(q_grid.kx[q_path.ikx])

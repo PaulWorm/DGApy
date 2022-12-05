@@ -40,6 +40,7 @@ names.input_path = './'
 #names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta6.6666_n0.99/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
 names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
+names.input_path = '/mnt/d/Research/HoleDopedPalladates/2DSquare_U7_tp-0.184_tpp0.014_beta25_n0.80/'
 # names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
 # names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
 # names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
@@ -72,7 +73,7 @@ no_mu_adjust_fbz_cont = False
 
 # Create the real-space Hamiltonian:
 t = 0.25
-hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.0 * t, tpp=0.0 * t)
+hr = hr_mod.one_band_2d_t_tp_tpp(t=t, tp=-0.184 * t, tpp=0.014 * t)
 # hr = hr_mod.Ba2CuO4_plane()
 sys_param.hr = hr
 # Eliashberg config object:

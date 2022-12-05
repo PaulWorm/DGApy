@@ -62,7 +62,8 @@ err = 0.02
 w_max = 5
 nw = 501
 use_preblur = False
-ncut = -1
+ncut = 10
+nmin = 0
 bw = 0.0
 sigma = 2.0
 lambda_add = 0.0 #-0.7504336211373053
@@ -70,6 +71,7 @@ alpha_det = 'chi2kink'
 channel = 'magn'
 name = '_pipi'
 bz_k_path = 'Gamma-X-M2-Gamma'
+# bz_k_path = 'Gamma-X-M-Gamma'
 
 # input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.90/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60_2/'
 #input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.75/LambdaDgaPython/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
@@ -99,20 +101,42 @@ input_path = 'D:/Research/HubbardModel_tp-0.1_tpp0.0/2DSquare_U8_tp-0.1_tpp0.0_b
 # input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
 # input_path = '/mnt/c/users/pworm/Research/Susceptibility/La2NiO4/1onSTO/n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core100_invbse100_vurange250_wurange100/'
 # fname_chi0 = 'chi0_nk100_d_0.2_niv_340_niw_80.npy'
-input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U9_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_spch_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
-input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U9_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_spch_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.80/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
+# input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.875/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
+# input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.875/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.875/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core80_invbse80_vurange500_wurange80/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.0_tpp0.0/2DSquare_U10_tp-0.0_tpp0.0_beta25_n1.00/LambdaDga_lc_sp_Nk6400_Nq6400_core60_invbse60_vurange200_wurange60/'
+input_path = '/mnt/d/Research/HubbardModel_tp-0.0_tpp0.0/2DSquare_U8_tp-0.0_tpp0.0_beta25_n1.00/LambdaDga_lc_sp_Nk4096_Nq4096_core50_invbse50_vurange200_wurange50/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U9_tp-0.25_tpp0.12_beta75_n0.80/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U9_tp-0.25_tpp0.12_beta75_n0.90/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U9_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk14400_Nq14400_core100_invbse100_vurange500_wurange100/'
+# input_path = '/mnt/d/Research/U10_Nickelates/2DSquare_U10_tp-0.25_tpp0.12_beta75_n0.95/LambdaDga_lc_sp_Nk19600_Nq19600_core75_invbse75_vurange250_wurange75/'
+# input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.95/LambdaDgaPython/LambdaDga_lc_sp_Nk6400_Nq6400_core59_invbse60_vurange500_wurange59/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.3_tpp0.12/2DSquare_U8_tp-0.3_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.35_tpp0.12/2DSquare_U8_tp-0.35_tpp0.12_beta25_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+# input_path = '/mnt/d/Research/HubbardModel_tp-0.4_tpp0.12/2DSquare_U8_tp-0.4_tpp0.12_beta12.5_n0.95/LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
+
 output_path = input_path
 output_folder = f'ChiCont_nw_{nw}_err_{err}_sigma_{sigma}_lambda_{lambda_add}'
 output_path = output.uniquify(output_path + output_folder) + '/'
 
-result = 'old'
+result = ''
 
 if(result!='adga' and result!='fort'):
     config = np.load(input_path + 'config.npy', allow_pickle=True).item()
     chi_data = np.load(input_path + 'chi_lambda.npy', allow_pickle=True).item()
+    # chi_data = np.load(input_path + 'chi_ladder.npy', allow_pickle=True).item()
 if(result=='old'):
     chi = chi_data['chi_magn_lambda'].mat.real * t_scal
+    # chi = chi_data['chi_magn_ladder'].mat.real * t_scal
     beta = config['system']['beta'] * t_scal
     n = config['system']['n']
     u = config['system']['u'] / t_scal
@@ -120,7 +144,6 @@ if(result=='old'):
     nk = config['box_sizes']['nk']
     q_grid = bz.KGrid(nk=nk)
 elif(result=='chi0'):
-
     chi = np.load(input_path + fname_chi0, allow_pickle=True)
     beta = config.sys.beta
     n = config.sys.n
@@ -166,7 +189,8 @@ iw = mf.w(beta=beta, n=niw)
 #q_grid = config.q_grid
 
 # Cut negative frequencies:
-chi = chi[..., niw:niw+ncut]
+chi = chi[..., niw+nmin:niw+nmin+ncut]
+# chi[...,0] = chi[...,0] * 0.03
 
 # create q-path:
 q_path = bz.KPath(nk=nk,path=bz_k_path)
@@ -190,13 +214,13 @@ np.save(out_dir + 'q_path', q_dict,allow_pickle=True)
 np.savetxt(out_dir + 'q_path_string.txt', [bz_k_path], delimiter=" ", fmt="%s")
 
 chi_qpath = chi[q_path.ikx[::fac], q_path.iky[::fac], 0]
-w = w_max * np.tan(np.linspace(0., np.pi / 2.1, num=nw)) / np.tan(np.pi / 2.1)
-# w = np.linspace(0,w_max,num=nw)
+# w = w_max * np.tan(np.linspace(0., np.pi / 2.1, num=nw)) / np.tan(np.pi / 2.1)
+w = np.linspace(0,w_max,num=nw)
 s = np.zeros((len(q_path.ikx[::fac]), nw))
 bt = np.zeros((len(q_path.ikx[::fac]), ncut))
 for ik in range(len(q_path.ikx[::fac])):
     print(ik)
-    a, b = cont_k(iw[niw:niw+ncut], chi_qpath[ik, :], w, err,sigma=sigma, preblur=use_preblur, blur_width=bw, alpha_determination=alpha_det)
+    a, b = cont_k(iw[niw+nmin:niw+nmin+ncut], chi_qpath[ik, :], w, err,sigma=sigma, preblur=use_preblur, blur_width=bw, alpha_determination=alpha_det)
     s[ik] = a[:]
     bt[ik] = b[:]
 

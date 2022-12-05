@@ -34,6 +34,16 @@ def ek_3d(kgrid=None, hr=None):
     return ek
 
 
+def ek_3d_klist(kgrid=None, hr=None):
+    kx = kgrid[:,0]
+    ky = kgrid[:,1]
+    kz = kgrid[:,2]
+    ek = - 2.0 * (hr[0, 0] * np.cos(kx) + hr[0, 1] * np.cos(ky) + hr[0, 2] * np.cos(kz))
+    ek = ek - 2.0 * (hr[1, 0] * np.cos(kx + ky) + hr[1, 1] * np.cos(kx - ky))
+    ek = ek - 2.0 * (hr[2, 0] * np.cos(2. * kx) + hr[2, 1] * np.cos(2. * ky) + hr[2, 2] * np.cos(kz))
+    return ek
+
+
 # ==================================================================================================================
 def read_Hk_w2k(fname, spin_sym = True):
     """ Reads a Hamiltonian f$ H_{bb'}(k) f$ from a text file.

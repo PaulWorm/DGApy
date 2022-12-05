@@ -58,38 +58,27 @@ path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurang
 base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/'
 path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
 
+base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange200_wurange60_2/'
+
 base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.90/'
 path = base + 'LambdaDga_lc_sp_Nk14400_Nq14400_core30_invbse30_vurange500_wurange30/'
 
 base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta7.5_n0.90/'
 path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core30_invbse30_vurange250_wurange30/'
 
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange150_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.75/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.75/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.80/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
 # ------------------------------------------------- LOAD DATA --------------------------------------------------
 
-dga_sde = np.load(path + 'dga_sde.npy', allow_pickle=True).item()
+sigma = np.load(path + 'sigma.npy',allow_pickle=True)
+dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
 dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
 hartree = dmft_sde['hartree']
-sigma = dga_sde['sigma']
-dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
-beta = dga_conf['system']['beta']
-k_grid = dga_conf['grids']['k_grid']
-hr = dga_conf['system']['hr']
+
+beta = dga_conf.sys.beta
+k_grid = dga_conf.k_grid
+hr = dga_conf.sys.hr
 g_fac = tp.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
-n = dga_conf['system']['n']
+n = dga_conf.sys.n
 mu = g_fac.adjust_mu(n,mu0=0)
 gk = g_fac.generate_gk(mu=mu)
 niv = gk.niv
@@ -121,7 +110,7 @@ wmax = 15
 Nwr = 501
 nf = 60 # Number of frequencies to keep
 use_preblur = True
-bw = 0.1  # preblur width
+bw = 0.01  # preblur width
 aerr_g = 1e-3
 aerr_s = 1e-3
 if(w_grid_type == 'lin'):

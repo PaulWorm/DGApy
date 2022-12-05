@@ -169,6 +169,10 @@ class GreensFunction(object):
         return self.iv.shape[-1] // 2
 
     @property
+    def nk(self) -> int:
+        return np.array(self._gk.shape[:-1])
+
+    @property
     def gk(self):
         return self._gk
 

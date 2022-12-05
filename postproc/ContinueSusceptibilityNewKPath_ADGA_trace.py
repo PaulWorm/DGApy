@@ -28,18 +28,23 @@ import Output as output
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
-def cont_k(iw, data_1, w, err_val=0.002, sigma=2.0, verbose=False, preblur=False, blur_width=0.0, alpha_determination='chi2kink'):
+def cont_k(iw, data_1, w, err_val=0.002, sigma=2.0, verbose=False, preblur=False, blur_width=0.0, alpha_determination='chi2kink',model_type='flat'):
     #     model = np.ones_like(w)
     data_1 = np.squeeze(data_1)
-    model = np.exp(-w ** 2 / sigma ** 2)
-    model *= data_1[0].real / np.trapz(model, w)
+    if(model_type=='flat'):
+        model = np.ones_like(w)
+    else:
+        model = np.exp(-w ** 2 / sigma ** 2)
+
+    # model *= data_1[0].real / np.trapz(model, w)
+    model /= np.trapz(model, w)
     err = err_val * np.ones_like(iw)
     probl = cont.AnalyticContinuationProblem(re_axis=w, im_axis=iw,
                                              im_data=data_1, kernel_mode='freq_bosonic')
     sol, _ = probl.solve(method='maxent_svd', optimizer='newton', preblur=preblur, blur_width=blur_width,
                          alpha_determination=alpha_determination,
-                         model=model, stdev=err, interactive=False, verbose=verbose,
-                         alpha_start=1e12, alpha_end=1e-3, fit_position=2.)  # fit_psition smaller -> underfitting
+                         model=model, stdev=err, interactive=False, verbose=verbose)
+        #,                 alpha_start=1e12, alpha_end=1e-3, fit_position=2.)  # fit_psition smaller -> underfitting
 
     if (verbose):
         fig, ax = plt.subplots(ncols=3, nrows=1, figsize=(15, 4))
@@ -60,17 +65,19 @@ def add_lambda(chi,lambda_add):
 tev = 1.0
 t_scal = 1.0
 err = 0.01
-w_max = 5
+w_max = 15
 nw = 501
 use_preblur = False
 bw = 0.0
-sigma = 0.1
-ncut = -1
+sigma = 1.0 #0.1
+ncut = 20
+nmin = 0
 lambda_add = 0.00
 alpha_det = 'chi2kink'
 channel = 'magn'
 name = '_pipi'
 bz_k_path = 'Gamma-X-M2-Gamma'
+model_type = 'flat'
 
 
 input_path = '/mnt/d/Research/La2NiO4/TwoOrbital/1onSTO_n2.2/DGAHighT/'
@@ -89,6 +96,12 @@ input_path = 'D:/Research/La2NiO4/TwoOrbital/4onLAO_n2.2/Nk42_Nkz2_b10_nv30_nw15
 input_path = 'D:/Research/La2NiO4/TwoOrbital/4onLAO_n2.2/HighT/'
 input_path = 'D:/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/HighT_nw100/'
 input_path = 'D:/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/HighT/'
+input_path = '/mnt/d/Research/HubbardModel_tp-0.0_tpp0.0/2DSquare_U8_tp-0.0_tpp0.0_beta4_n0.85/scdga_kaufmann/'
+# input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/scdga_invert/'
+# input_path = '/mnt/d/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/ADGANk32/'
+# input_path = '/mnt/d/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/Nk32_Nkz1_b38_nv30_nw15/'
+# input_path = '/mnt/d/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/Nk64_Nkz2_b38_nv30_nw15/'
+# input_path = '/mnt/d/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/Nk64_Nkz2_b38_nv30_nw30/'
 # input_path = 'D:/Research/La2NiO4/1onSTO/U9_n1.0_b1_scDGA/'
 # input_path = 'D:/Research/La2NiO4/TwoOrbital/1onSTO_n2.0/HighT/'
 # input_path = 'D:/Research/La2NiO4/TwoOrbital/4onLAO_n2.0/HighT_2/'
@@ -106,6 +119,9 @@ if not os.path.exists(out_dir):
 
 # fname = 'adga_Nkx100_Nky100_Nkz001_000.hdf5'
 fname = 'adga_Nkx64_Nky64_Nkz2_000.hdf5'
+fname = 'adga_sc_3.hdf5'
+# fname = 'adga-000.hdf5'
+# fname = 'adga_lambda.hdf5'
 # fname = 'adga_Nkx064_Nky064_Nkz002_000.hdf5'
 # fname = 'adga-008.hdf5'
 # fname = 'adga-000.hdf5'
@@ -125,7 +141,7 @@ iw = mf.w(beta=beta, n=niw)
 
 # Cut negative frequencies:
 
-chi = chi[..., niw:niw+ncut]
+chi = chi[..., niw+nmin:niw+nmin+ncut]
 
 fig = plt.figure()
 plt.plot(chi[0,0,nk[0]//2,nk[1]//2,0,:].real)
@@ -163,7 +179,7 @@ bt = np.zeros((len(q_path.ikx[::fac]), ncut))
 for ik in range(len(q_path.ikx[::fac])):
     print(ik)
     try:
-        a, b = cont_k(iw[niw:niw+ncut], chi_qpath[ik,0, :], w, err,sigma=sigma, preblur=use_preblur, blur_width=bw, alpha_determination=alpha_det)
+        a, b = cont_k(iw[niw+nmin:niw+nmin+ncut], chi_qpath[ik,0, :], w, err,sigma=sigma, preblur=use_preblur, blur_width=bw, alpha_determination=alpha_det)
         s[ik] = a[:]
         bt[ik] = b[:]
     except:
@@ -204,8 +220,10 @@ ax[0].vlines([0.5,0.5+0.25 * np.sqrt(2.)],0,1.0,'k')
 ax[1].vlines([0.5,0.5+0.25 * np.sqrt(2.)],0,1.0,'k')
 ax[0].hlines([0.2],0,0.5+0.5 * np.sqrt(2.),'k')
 ax[1].hlines([0.2],0,0.5+0.5 * np.sqrt(2.),'k')
-ax[0].set_ylim(0., 0.5)
-ax[1].set_ylim(0., 0.5)
+# ax[0].set_ylim(0., 0.5)
+# ax[1].set_ylim(0., 0.5)
+ax[0].set_ylim(0., 1)
+ax[1].set_ylim(0., 1)
 plt.savefig(
     out_dir + 'chi_qpath_err{}_usepreblur_{}_bw{}_alpha_{}_.pdf'.format(err, use_preblur, bw, alpha_det),
     dpi=300)

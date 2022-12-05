@@ -222,6 +222,8 @@ class MaxEntConfig(ConfigBase):
             return omesh.HyperbolicOmegaMesh(omega_min=-self.wmax, omega_max=self.wmax, n_points=self.nwr)
         elif self.mesh_type == 'linear':
             return np.linspace(-self.wmax, self.wmax, self.nwr)
+        elif self.mesh_type == 'tan':
+            return np.tan(np.linspace(-np.pi/2.5,np.pi/2.5,num=self.nwr,endpoint=True))*self.wmax/np.tan(np.pi/2.5)
         else:
             raise ValueError('Unknown omega mesh type.')
 
