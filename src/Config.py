@@ -169,11 +169,12 @@ class Options(ConfigBase):
         self.sym_sing = True  # symmetrize the singlet vertex
         self.sym_trip = True  # symmetrize the triplet vertex
         self.analyse_spin_fermion_contributions = False  # Compute the contributions from Re(vrg) and Im(vrg) seperately
-        self.analyse_w0_contribution = False # Analyze how much stems from the w0 component.
+        self.analyse_w0_contribution = False  # Analyze how much stems from the w0 component.
         self.use_fbz = False  # Use the full Brillouin zone instead of the irreduzible one
         self.g2_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
         self.g1_input_type = 'w2dyn'  # Type of loading the g2 function as input. Available is ['w2dyn']
-        self.use_gloc_dmft = False # Use DMFT output local Greens function
+        self.use_gloc_dmft = False  # Use DMFT output local Greens function
+
 
 class SystemParamter(ConfigBase):
     '''
@@ -194,13 +195,13 @@ class MaxEntConfig(ConfigBase):
         Settings for the analytical continuation.
     '''
 
-    def __init__(self, t=1.0, beta=None, mesh_type='lorentzian', cut=0.04):
+    def __init__(self, t=1.0, beta=None, mesh_type='lorentzian', cut=0.04, nwr=501, wmax=15, err=1e-2):
         self.cut = cut  # Relevant for the lorentzian mesh
         self.t = t  # Unit of energy. Everything is scaled by this. We use t for this here.
-        self.nwr = 201  # Number of frequencies on the real axis
-        self.wmax = 15 * self.t  # frequency range on the real axis
+        self.nwr = nwr  # Number of frequencies on the real axis
+        self.wmax = wmax * self.t  # frequency range on the real axis
         self.use_preblur = True  # whether o not to use the pre-blur feature
-        self.err = 1e-2  # Error for the analytical continuation
+        self.err = err  # Error for the analytical continuation
         self.beta = beta  # Inverse Temperature
         self.alpha_det_method = 'chi2kink'  # alpha determination method
         self.optimizer = 'newton'  # alpha determination method
@@ -223,7 +224,7 @@ class MaxEntConfig(ConfigBase):
         elif self.mesh_type == 'linear':
             return np.linspace(-self.wmax, self.wmax, self.nwr)
         elif self.mesh_type == 'tan':
-            return np.tan(np.linspace(-np.pi/2.5,np.pi/2.5,num=self.nwr,endpoint=True))*self.wmax/np.tan(np.pi/2.5)
+            return np.tan(np.linspace(-np.pi / 2.5, np.pi / 2.5, num=self.nwr, endpoint=True)) * self.wmax / np.tan(np.pi / 2.5)
         else:
             raise ValueError('Unknown omega mesh type.')
 
@@ -249,7 +250,7 @@ class EliashbergConfig(ConfigBase):
         Contains the configuration parameters and flags for the Eliashberg routine.
     '''
 
-    def __init__(self, n_eig = 2, k_sym='d-wave'):
+    def __init__(self, n_eig=2, k_sym='d-wave'):
         self.gap0_sing = None  # Initial guess for the singlet gap function
         self.gap0_trip = None  # Initial guess for the triplet gap function
         self.n_eig = n_eig  # Number of eigenvalues to be computed
@@ -271,7 +272,7 @@ class EliashbergConfig(ConfigBase):
         self.set_gap0_trip()
 
     def set_gap0_sing(self):
-        if(self.k_sym != 'p-wave'):
+        if (self.k_sym != 'p-wave'):
             v_sym = 'even'
         else:
             v_sym = 'odd'
@@ -281,7 +282,7 @@ class EliashbergConfig(ConfigBase):
         }
 
     def set_gap0_trip(self):
-        if(self.k_sym != 'p-wave'):
+        if (self.k_sym != 'p-wave'):
             v_sym = 'odd'
         else:
             v_sym = 'even'
