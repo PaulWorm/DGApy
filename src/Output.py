@@ -223,6 +223,7 @@ def max_ent_irrk_bw_range_sigma(comm=None, dga_conf: conf.DgaConfig = None, me_c
                                   gk=gk_cont_fbz, v_real=v_real, k_grid=dga_conf.k_grid, w_plot=0.1 * me_conf.t)
             np.save(dga_conf.nam.output_path_ac + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), gk_cont_fbz,
                     allow_pickle=True)
+            np.save(dga_conf.nam.output_path_ac + 'me_config_' + name + '_bw{}.npy'.format(bw), me_conf, allow_pickle=True)
             plotting.plot_cont_edc_maps(v_real=v_real, gk_cont=gk_cont_fbz, k_grid=dga_conf.k_grid,
                                         output_path=dga_conf.nam.output_path_ac,
                                         name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
