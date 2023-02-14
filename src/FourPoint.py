@@ -11,7 +11,7 @@ import numpy as np
 import Indizes as ind
 import MatsubaraFrequencies as mf
 import Config as conf
-import jax.numpy as jnp
+import numpy as jnp
 import matplotlib.pyplot as plt
 
 
@@ -35,6 +35,10 @@ def get_ur(u=1.0, channel='dens'):
         sign = -1
     elif (channel == 'dens'):
         sign = 1
+    elif(channel == 'updo'):
+        sign = 1
+    elif (channel == 'upup'):
+        sign = -1
     else:
         raise ValueError
     return u * sign
@@ -487,14 +491,27 @@ def schwinger_dyson_F(F: LocalFourPoint = None, chi0: LocalBubble = None, giw=No
 
 
 def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None, u=None,
-                        do_tilde=True):
+                        do_tilde=True,scalfac = 1,scalfac_2 = 1,sign=None):
     ''' Sigma = U*n/2 + '''
-    u_r = get_ur(u, channel=chir_phys.channel)
+    if(sign is None):
+        u_r = get_ur(u, channel=chir_phys.channel)
+    else:
+        u_r = sign * u
     mat_grid = wn_slices(giw.mat, n_cut=vrg.niv, wn=vrg.wn)
     if (do_tilde):
-        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta - (1 - u_r * chir_phys.mat_tilde[:, None]) * vrg.mat_tilde) * mat_grid, axis=0)
+        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta*scalfac - (1*scalfac_2 - u_r * chir_phys.mat_tilde[:, None]) * vrg.mat_tilde) * mat_grid, axis=0)
     else:
-        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta - (1 - u_r * chir_phys.mat[:, None]) * vrg.mat) * mat_grid, axis=0)
+        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta*scalfac - (1*scalfac_2 - u_r * chir_phys.mat[:, None]) * vrg.mat) * mat_grid, axis=0)
+    return sigma_F
+
+def schwinger_dyson_vrg_updo(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None, u=None,
+                        do_tilde=True):
+    ''' Sigma = U*n/2 + '''
+    mat_grid = wn_slices(giw.mat, n_cut=vrg.niv, wn=vrg.wn)
+    if (do_tilde):
+        sigma_F = u**2 / 2 * jnp.sum(chir_phys.mat_tilde[:, None] * vrg.mat_tilde * mat_grid, axis=0)
+    else:
+        sigma_F = u**2 / 2 * jnp.sum(chir_phys.mat[:, None] * vrg.mat * mat_grid, axis=0)
     return sigma_F
 
 
@@ -532,7 +549,7 @@ def lam_from_chir(chir: LocalFourPoint = None, gchi0: LocalBubble = None, u=None
     # tilde = 1 / (1 - u * gchi0.shell[:, None]) * (lam + shell)
     shell = +u_r * gchi0.shell[:, None]  # + u * u_r * gchi0.shell[:, None]
     # tilde = 1 / (1 + u_r * gchi0.shell[:, None]) * (lam + shell)
-    tilde = (lam + shell)
+    tilde = (lam + shell) *  1 / (1 + u_r * gchi0.shell[:, None])
     # tilde =  (lam + shell)
     return LocalThreePoint(channel=chir.channel, matrix=lam, beta=chir.beta, wn=chir.wn, shell=shell, mat_tilde=tilde)
 
@@ -544,8 +561,22 @@ def chi_phys_tilde(chir: LocalFourPoint = None, gchi0: LocalBubble = None, lam: 
     chi_shell = - u_r * gchi0.shell ** 2  # - gchi0.shell * (1 - 2 *  u/chir.beta**2 * jnp.sum((lam.mat_tilde - 1) * gchi0.mat))#gchi0.shell- 2 * u_r * gchi0.shell * gchi0.chi0
     chi_tilde = 1 / (1 - (u * gchi0.shell) ** 2) * (chi_core.mat + chi_shell)
     chi_shell = gchi0.shell - u_r * gchi0.shell ** 2 - 2 * u_r * gchi0.shell * gchi0.chi0
-    chi_tilde = (chi_core.mat + chi_shell)
+    chi_tilde = (chi_core.mat + chi_shell) * 1 / (1 - (u * gchi0.shell) ** 2)
     return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell, mat_tilde=chi_tilde)
+
+
+def add_chi(chi1: LocalFourPoint = None,chi2: LocalFourPoint = None):
+    return LocalSusceptibility(matrix=chi1.mat+chi2.mat, channel='upup', beta=chi1.beta, wn=chi1.wn, shell=None, mat_tilde=chi1.mat_tilde+chi2.mat_tilde)
+
+def subtract_chi(chi1: LocalFourPoint = None,chi2: LocalFourPoint = None):
+    return LocalSusceptibility(matrix=chi1.mat-chi2.mat, channel='updo', beta=chi1.beta, wn=chi1.wn, shell=None, mat_tilde=chi1.mat_tilde-chi2.mat_tilde)
+
+
+def add_vrg(vrg1: LocalThreePoint = None,vrg2: LocalThreePoint = None):
+    return LocalThreePoint(matrix=vrg1.mat+vrg2.mat, channel='upup', beta=vrg1.beta, wn=vrg1.wn, shell=None, mat_tilde=vrg1.mat_tilde+vrg2.mat_tilde)
+
+def subtract_vrg(vrg1: LocalThreePoint = None,vrg2: LocalThreePoint = None):
+    return LocalThreePoint(matrix=vrg1.mat-vrg2.mat, channel='updo', beta=vrg1.beta, wn=vrg1.wn, shell=None, mat_tilde=vrg1.mat_tilde-vrg2.mat_tilde)
 
 
 def vrg_from_lam(chir: LocalSusceptibility = None, lam: LocalFourPoint = None, u=None, do_tilde=True):

@@ -257,13 +257,13 @@ class KPath():
         Currently assumed that the BZ grid is from (0,2*pi)
     '''
 
-    path_deliminator = '-'
-    def __init__(self,nk,path,kx=None,ky=None,kz=None):
+
+    def __init__(self,nk,path,kx=None,ky=None,kz=None,path_deliminator='-'):
         '''
             nk: number of points in each dimension (tuple)
             path: desired path in the Brillouin zone (string)
         '''
-
+        self.path_deliminator = path_deliminator
         self.path = path
         self.nk = nk
 
@@ -318,6 +318,10 @@ class KPath():
     def nk_tot(self):
         return np.sum(self.nkp)
 
+    @property
+    def nk_seg(self):
+        return np.diff(self.cind)
+
     def get_kpoints(self):
         return np.array(self.k_val).T
 
@@ -363,12 +367,26 @@ def kpath_segment(k_start,k_end,nk):
     # k_segment = k_start[None,:]*nk + np.linspace(0,1,nkp,endpoint=True)[:,None] * ((k_end-k_start)*nk)[None,:]
     # print(k_segment)
     k_segment = np.round(k_segment).astype(int)
+    for i,nki in enumerate(nk):
+        ind = np.where(k_segment[:,i] >= nki)
+        k_segment[ind,i] = k_segment[ind,i] - nki
     return k_segment, nkp
 
 def get_k_point_from_string(string):
     scoords = string.split(' ')
     coords = np.array([eval(sc) for sc in scoords])
     return coords
+
+def get_bz_masks(nk):
+    mask_1q = np.ones((nk, nk), dtype=int)
+    mask_2q = np.ones((nk, nk), dtype=int)
+    mask_3q = np.ones((nk, nk), dtype=int)
+    mask_4q = np.ones((nk, nk), dtype=int)
+    mask_3q[:nk // 2, :nk // 2] = 0
+    mask_1q[nk // 2:, :nk // 2] = 0
+    mask_2q[nk // 2:, nk // 2:] = 0
+    mask_4q[:nk // 2, nk // 2:] = 0
+    return [mask_1q, mask_2q, mask_3q, mask_4q]
 
 
 if __name__ == '__main__':

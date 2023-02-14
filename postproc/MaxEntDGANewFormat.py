@@ -41,30 +41,20 @@ def plot_imag_data(iw,giw=None,plot_dir=None, fname=None,niv=-1):
 # ------------------------------------------------ PARAMETERS -------------------------------------------------
 
 # Set the path, where the input-data is located:
+base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta90_n0.75/'
+# base = 'D:/Research/HubbardModel_tp-0.3_tpp0.12/2DSquare_U8_tp-0.3_tpp0.12_beta25_n0.95/'
+# base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta22.5_n0.85/'
+# base = 'D:/Research/ElectronDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n1.15/'
+ncore = 120
+nurange = 800
+path = base + f'LambdaDga_lc_sp_Nk19600_Nq19600_core{ncore}_invbse{ncore}_vurange{nurange}_wurange{ncore}/'
+# path = base + f'LambdaDga_lc_sp_Nk14400_Nq14400_core{ncore}_invbse{ncore}_vurange200_wurange{ncore}/'
+# path = base + f'LambdaDga_lc_sp_Nk19600_Nq19600_core{ncore}_invbse{ncore}_vurange500_wurange{ncore}/'
+# path = base + f'LambdaDga_lc_sp_Nk19600_Nq19600_core{ncore}_invbse{ncore}_vurange300_wurange{ncore}/'
+# path = base + f'LambdaDga_lc_sp_Nk19600_Nq19600_core{ncore}_invbse{ncore}_vurange600_wurange{ncore}/'
 
-base = '/mnt/d/Research/HubbardModel_tp-0.25_tpp0.12/2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.95/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.875/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.85/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.80/'
-path = base + 'LambdaDga_lc_sp_Nk10000_Nq10000_core60_invbse60_vurange500_wurange60/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core60_invbse60_vurange200_wurange60_2/'
-
-base = 'D:/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.90/'
-path = base + 'LambdaDga_lc_sp_Nk14400_Nq14400_core30_invbse30_vurange500_wurange30/'
+# path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core100_invbse100_vurange200_wurange100/'
+# path = base + 'LambdaDga_lc_sp_Nk19600_Nq19600_core90_invbse90_vurange200_wurange90/'
 
 # ------------------------------------------------- LOAD DATA --------------------------------------------------
 
@@ -92,11 +82,11 @@ fname_g = 'ContinuedG.hdf5'
 interactive = True
 w_grid_type = 'tan'
 alpha_det_method = "chi2kink"
-wmax = 15
-Nwr = 501
+wmax = 20
+Nwr = 1001
 nf = 100 # Number of frequencies to keep
 use_preblur = True
-bw = 0.1  # preblur width
+bw = 0.1# preblur width
 aerr_g = 1e-3
 aerr_s = 1e-3
 if(w_grid_type == 'lin'):
@@ -109,6 +99,7 @@ elif(w_grid_type == 'tan'):
 if nf > niv:
     nf = niv - 1
 
+print(f'{nf=}')
 # Cut frequency:
 # -----------------
 giw_cut = giw[niv:niv + nf]
@@ -179,3 +170,4 @@ try:
     plt.show()
 except:
     pass
+print('Finished!')

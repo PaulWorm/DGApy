@@ -136,10 +136,13 @@ class AnalyticContinuationProblem(object):
                                                  **kwargs)
 
         # detect peaks to get good spacing for b
-        spec_interp = interp.InterpolatedUnivariateSpline(self.re_axis, sol_noblur.A_opt, ext='zeros', k=4)
-        extrema = spec_interp.derivative().roots()
+        try:
+            spec_interp = interp.InterpolatedUnivariateSpline(self.re_axis, sol_noblur.A_opt, ext='zeros', k=4)
+            extrema = spec_interp.derivative().roots()
 
-        minimal_distance = np.amin(np.diff(extrema))
+            minimal_distance = np.amin(np.diff(extrema))
+        except:
+            minimal_distance = 0.01
         b_spacing = 1. / (15. / minimal_distance + 200. / (self.re_axis[-1] - self.re_axis[0]))
         if verbose:
             print('Found extrema at {}'.format(extrema))
@@ -175,7 +178,8 @@ class AnalyticContinuationProblem(object):
             plt.ylabel('chi2')
             plt.show()
 
-        return blur_solutions[-3], [sol_alphasearch, blur_solutions]
+        blur_sol = blur_solutions[-3] if(len(blur_solutions) > 3) else blur_solutions[0]
+        return blur_sol, [sol_alphasearch, blur_solutions]
 
 
 # This class defines a GreensFunction object. The main use of this

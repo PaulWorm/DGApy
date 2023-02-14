@@ -9,6 +9,7 @@ import MatsubaraFrequencies as mf
 path = './2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
 path = './2DSquare_U8_tp-0.2_tpp0.1_beta20_n0.85/'
 path = './2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.85/'
+path = './2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
 
 giw_file = w2dyn_aux.w2dyn_file(fname=path + '1p-data.hdf5')
 beta = giw_file.get_beta()
@@ -52,6 +53,7 @@ vrg_dens = []
 siw_dens = []
 
 siw_range = []
+siw_range_v2 = []
 siw_w_asympt = []
 siw_magn_range = []
 wn_2 = mf.wn(200)
@@ -116,7 +118,7 @@ plt.figure(dpi=300)
 vn_dmft = giw_obj.wn
 # plt.plot(vn_dmft, siw_dmft.imag, '-o', markeredgecolor='k', color='k', alpha=0.7)
 for i,siw in enumerate(siw_range):
-    plt.loglog(vn,np.abs(mf.cut_v_1d(siw_dmft.imag,niv)-siw.imag), '-o', markeredgecolor='k', color = colors[i], alpha = 0.7)
+    plt.semilogy(vn,np.abs(mf.cut_v_1d(siw_dmft.imag,niv)-siw.imag), '-o', markeredgecolor='k', color = colors[i], alpha = 0.7)
 plt.xlim(0,60)
 plt.show()
 
