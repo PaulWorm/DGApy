@@ -133,58 +133,15 @@ class GreensFunction(object):
         self.gk = self.get_gk()
 
     @property
-    def iv(self):
-        return self._iv
-
-    @iv.setter
-    def iv(self, iv):
-        self._iv = iv
-
-    @property
-    def beta(self):
-        return self._beta
-
-    @beta.setter
-    def beta(self, value):
-        self._beta = value
-
-    @property
-    def mu(self):
-        return self._mu
-
-    @mu.setter
-    def mu(self,value):
-        self._mu = value
-
-    @property
-    def sigma(self):
-        return self._sigma
-
-    @sigma.setter
-    def sigma(self, sigma):
-        self._sigma = sigma
-
-    @property
     def niv(self) -> int:
         return self.iv.shape[-1] // 2
 
     @property
-    def nk(self) -> int:
-        return np.array(self._gk.shape[:-1])
-
-    @property
-    def gk(self):
-        return self._gk
-
-    @gk.setter
-    def gk(self, value):
-        self._gk = value
+    def nk(self):
+        return np.array(self.gk.shape[:-1])
 
     def get_gk(self):
-        return 1. / (self._iv + self._mu - self._ek - self._sigma)
-
-    def get_giw(self):
-        return self._gk.mean(axis=(0, 1, 2))
+        return 1. / (self.iv + self.mu - self._ek - self.sigma)
 
     def cut_self_iv(self, niv_cut=0):
         self.iv = self.cut_iv(arr=self.iv, niv_cut=niv_cut)
