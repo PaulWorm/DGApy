@@ -2,7 +2,7 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import FourPoint as fp
-import TwoPoint as tp
+import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
 import w2dyn_aux
 import jax.scipy as jcp

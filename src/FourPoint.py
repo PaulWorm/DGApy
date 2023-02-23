@@ -5,7 +5,7 @@
 from scipy.stats import gaussian_kde
 
 import w2dyn_aux
-import TwoPoint as tp
+import TwoPoint_old as tp
 import copy
 import numpy as np
 import Indizes as ind
@@ -1427,7 +1427,7 @@ def save_and_plot_chi_lambda(dga_conf: conf.DgaConfig = None, chi_lambda=None, n
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import TwoPoint as twop
+    import TwoPoint_old as twop
     import Hr as hr_mod
     import BrillouinZone as bz
 

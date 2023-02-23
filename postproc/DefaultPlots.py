@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Plotting as plotting
 import BrillouinZone as bz
-import TwoPoint as twop
+import TwoPoint_old as twop
 import Hr as hr
 
 # Parameters:

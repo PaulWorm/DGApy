@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
-import TwoPoint as twop
+import TwoPoint_old as twop
 
 def load_dga(base, fname):
     config = np.load(base + fname + 'config.npy', allow_pickle=True).item()

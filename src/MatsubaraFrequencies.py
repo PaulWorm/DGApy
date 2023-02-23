@@ -4,10 +4,20 @@ import numpy as np
 def cen2lin(val=None, start=0):
     return val - start
 
-def wn_cen2lin(wn=0,niw=None):
-    return cen2lin(wn,-niw)
 
+def wn_cen2lin(wn=0, niw=None):
+    return cen2lin(wn, -niw)
 
+def wn_slices(mat=None, n_cut=None, wn=None):
+    n = mat.shape[-1] // 2
+    mat_grid = np.array([mat[n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
+    return mat_grid
+
+def cut_iv_fp(mat=None, niv_cut=10):
+    ''' Cut fermionic frequencies of four-point object'''
+    niv = mat.shape[-1] // 2
+    assert (mat.shape[-1] == mat.shape[-2]), 'Last two dimensions of the array are not consistent'
+    return mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
 def cut_v_1d(arr=None, niv_cut=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
@@ -15,16 +25,24 @@ def cut_v_1d(arr=None, niv_cut=0):
     if (niv_cut == -1): niv_cut = niv
     return arr[niv - niv_cut:niv + niv_cut]
 
+
+def cut_v_1d_pos(arr=None, niv_cut=0,niv_min=0):
+    assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
+    niv = arr.shape[0] // 2
+    if (niv_cut == -1): niv_cut = niv
+    return arr[niv+niv_min:niv+niv_min + niv_cut]
+
+
 def cut_v_1d_wn(arr=None, niw_cut=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
     niv = arr.shape[0] // 2
-    return arr[niv - niw_cut:niv + niw_cut+1]
+    return arr[niv - niw_cut:niv + niw_cut + 1]
 
 
 def cut_iv_2d(arr=None, niv_cut=0):
     assert np.size(np.shape(arr)) == 2, 'Array is not 2D.'
     niv = arr.shape[-1] // 2
-    if(niv_cut == -1): niv_cut = niv
+    if (niv_cut == -1): niv_cut = niv
     return arr[niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
 
@@ -35,45 +53,63 @@ def cut_v(arr=None, niv_cut=0, axes=(0,)):
         tmp = np.apply_along_axis(cut_v_1d, axis=axis, arr=tmp, niv_cut=niv_cut)
     return tmp
 
+
 def cut_v_1d_iwn(arr=None, niv_cut=0, iwn=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
     niv = arr.shape[0] // 2
-    return arr[niv - niv_cut-iwn:niv + niv_cut-iwn]
+    return arr[niv - niv_cut - iwn:niv + niv_cut - iwn]
 
 
 def wplus2wfull(mat=None, axis=-1):
     ''' iw dimension must either be first or last.'''
     if (axis == 0):
-        mat_full = np.concatenate((np.conj(np.flip(mat[1:, ...], axis=axis)), mat), axis = axis)
+        mat_full = np.concatenate((np.conj(np.flip(mat[1:, ...], axis=axis)), mat), axis=axis)
     elif (axis == -1):
-        mat_full = np.concatenate((np.conj(np.flip(mat[..., 1:], axis=axis)), mat), axis = axis)
+        mat_full = np.concatenate((np.conj(np.flip(mat[..., 1:], axis=axis)), mat), axis=axis)
     else:
         raise ValueError('axis mus be either first (0) or last (-1)')
     return mat_full
 
+
 def vplus2vfull(mat=None, axis=-1):
-    mat_full = np.concatenate((np.conj(np.flip(mat, axis=axis)), mat), axis = axis)
+    mat_full = np.concatenate((np.conj(np.flip(mat, axis=axis)), mat), axis=axis)
     return mat_full
 
-# ----------------------------------------------- FERMIONIC ------------------------------------------------------------
-def vn(n=10,shift=0):
-    return np.arange(-n+shift, n+shift)
 
-def vn_plus(n=10,n_min=0):
+def fermionic_full_nu_range(mat,axis=-1):
+    '''Build full Fermionic object from positive frequencies only along axis.'''
+    return np.concatenate((np.conj(np.flip(mat, axis)), mat), axis=axis)
+
+
+def concatenate_core_asmypt(core, asympt, axis=-1):
+    ''' Concatenate core and asympt arrays along axis. v has to be last axis.'''
+    niv_asympt = np.shape(asympt)[axis] // 2
+    return np.concatenate((asympt[...,:niv_asympt], core, asympt[...,niv_asympt:]), axis=axis)
+
+
+# ----------------------------------------------- FERMIONIC ------------------------------------------------------------
+def vn(n=10, shift=0):
+    return np.arange(-n + shift, n + shift)
+
+
+def vn_plus(n=10, n_min=0):
     return np.arange(n_min, n)
 
-def v(beta=1.0, n=10, shift=0):
-    return (vn(n=n,shift=shift) * 2 + 1) * np.pi / beta
 
-def v_plus(beta=1.0, n=10,n_min=0):
-    return (vn_plus(n=n,n_min=n_min) * 2 + 1) * np.pi / beta
+def v(beta=1.0, n=10, shift=0):
+    return (vn(n=n, shift=shift) * 2 + 1) * np.pi / beta
+
+
+def v_plus(beta=1.0, n=10, n_min=0):
+    return (vn_plus(n=n, n_min=n_min) * 2 + 1) * np.pi / beta
 
 
 def iv(beta=1.0, n=10, shift=0):
     return v(beta=beta, n=n, shift=shift) * 1j
 
-def iv_plus(beta=1.0, n=10,n_min=0):
-    return v_plus(beta=beta, n=n,n_min=n_min) * 1j
+
+def iv_plus(beta=1.0, n=10, n_min=0):
+    return v_plus(beta=beta, n=n, n_min=n_min) * 1j
 
 
 # ------------------------------------------------ BOSONIC -------------------------------------------------------------
@@ -130,7 +166,7 @@ if __name__ == '__main__':
     print(f'{iw_core}')
     print(f'{iw_outer}')
 
-    wnp = 1j*wn_plus(n=10)
+    wnp = 1j * wn_plus(n=10)
     wn_full = wplus2wfull(mat=wnp)
     print(f'{wn_full.imag=}')
 
@@ -139,6 +175,6 @@ if __name__ == '__main__':
     niw = 10
 
     wn = wn(niw)
-    iwn_lin = wn_cen2lin(iwn,niw)
+    iwn_lin = wn_cen2lin(iwn, niw)
     print(iwn_lin)
     print(wn[iwn_lin])

@@ -6,7 +6,7 @@
 import w2dyn_aux
 import copy
 import numpy as np
-import TwoPoint as twop
+import TwoPoint_old as twop
 import FourPoint as fp
 import Config as conf
 import MatsubaraFrequencies as mf

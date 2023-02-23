@@ -7,7 +7,7 @@
 import numpy as np
 import w2dyn_aux
 import MpiAux as mpiaux
-import TwoPoint as twop
+import TwoPoint_old as twop
 import FourPoint as fp
 import SDE as sde
 import RealTime as rt

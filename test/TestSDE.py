@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import FourPoint as fp
-import TwoPoint as tp
+import TwoPoint_old as tp
 import w2dyn_aux
 import MatsubaraFrequencies as mf
 

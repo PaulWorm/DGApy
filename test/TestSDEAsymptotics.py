@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import FourPoint as fp
-import TwoPoint as tp
+import TwoPoint_old as tp
 import w2dyn_aux
 import MatsubaraFrequencies as mf
 
@@ -174,7 +174,7 @@ plt.show()
 import SDE as sde
 
 niv_core = niv
-niv_urange = 200
+niv_urange = niv
 ind_comp = np.where(niv_urange == niv_array)[0][0]
 iw = wn
 # Extract gamma:
@@ -265,7 +265,7 @@ plt.plot(vn_dmft, siw_dmft.imag, '-o', markeredgecolor='k', color='k', alpha=0.7
 plt.plot(vn_urange,siw_old.imag, '-o', markeredgecolor='k', color ='firebrick', alpha = 0.7)
 plt.plot(vn,siw_range[ind_comp].imag, '-o', markeredgecolor='k', color = 'cornflowerblue', alpha = 0.7)
 plt.xlim(0,60)
-
+plt.savefig('./TestPlots/OldLocalEomRoutine.png')
 plt.show()
 
 # plt.figure()

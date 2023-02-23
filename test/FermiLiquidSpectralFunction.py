@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Hr as hr_mod
 import Hk as hk
-import TwoPoint as twop
+import TwoPoint_old as twop
 import BrillouinZone as bz
 
 def fermi_liquid_sigma(w=None,T=None, gamma=None, u=1.0):

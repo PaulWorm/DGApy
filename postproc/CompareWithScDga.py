@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import h5py
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import BrillouinZone as bz
-import TwoPoint as twop
+import TwoPoint_old as twop
 
 # Load SC-DGA data:
 path_sc = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.95/SCDGA/'

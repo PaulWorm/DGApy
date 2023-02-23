@@ -11,7 +11,7 @@ import sys, os
 import continuation as cont
 import matplotlib.pyplot as plt
 import Output as output
-import TwoPoint as tp
+import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
 
 def plot_imag_data(iw,giw=None,plot_dir=None, fname=None,niv=-1):

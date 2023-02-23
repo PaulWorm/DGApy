@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import AnalyticContinuation as a_cont
 from Plotting import plot_aw_loc
 import Output as output
-import TwoPoint as twop
+import TwoPoint_old as twop
 from mpi4py import MPI as mpi
 import MpiAux as mpiaux
 import Indizes as ind

@@ -11,7 +11,7 @@ import FourPoint as fp
 import OrnsteinZernickeFunction as ozfunc
 import MatsubaraFrequencies as mf
 import AnalyticContinuation as a_cont
-import TwoPoint as twop
+import TwoPoint_old as twop
 import MpiAux as mpiaux
 import Indizes as ind
 import PairingVertex as pv

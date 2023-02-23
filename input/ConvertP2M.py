@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import w2dyn_aux
 import MatsubaraFrequencies as mf
 import FourPoint as fp
-import TwoPoint as tp
+import TwoPoint_old as tp
 import sys, os
 import Output
 

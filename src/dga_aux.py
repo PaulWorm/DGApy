@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import TwoPoint as twop
+import TwoPoint_old as twop
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import AnalyticContinuation as anacont

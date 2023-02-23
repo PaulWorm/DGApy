@@ -16,7 +16,7 @@ sys.path.append('/home/fs71282/wormEco3P/Programs/dga/src')
 import continuation as cont
 import matplotlib.pyplot as plt
 import Output as output
-import TwoPoint as tp
+import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 

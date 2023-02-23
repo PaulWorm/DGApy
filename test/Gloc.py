@@ -6,7 +6,7 @@ import Input as input
 import Config as conf
 import Hk as hamk
 import Hr as hamr
-import TwoPoint as twop
+import TwoPoint_old as twop
 import BrillouinZone as bz
 import MatsubaraFrequencies as mf
 

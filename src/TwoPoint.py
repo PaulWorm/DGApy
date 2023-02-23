@@ -1,379 +1,337 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
-
+# Classes to handle self-energies and Green's functions.
+# For the self-energy tail fitting and asymptotic extrapolation is supported.
+# The Green's function routine can estimate the chemical potential and also support asymptotic extrapolation.
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
-
 import numpy as np
-import Hk as hk
-import ChemicalPotential as chempot
-import BrillouinZone as bz
 import MatsubaraFrequencies as mf
-
-# ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
-
-# ------------------------------------------------ OBJECTS -------------------------------------------------------------
+import scipy.linalg
+import scipy.optimize
 
 
+# -------------------------------------------- SELF ENERGY ----------------------------------------------------------
 
-# ----------------------------------------------------------------------------------------------------------------------
-# -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
+def get_smom0(u, n):
+    '''Return Hartree for the single-band SU(2) symmetric case'''
+    return u * n / 2
 
 
-# @property
-# def statistic(self) -> str:
-#     return self._statistic
-# @statistic.setter
-# def statistic(self, value):
-#     assert value in KNOWN_STATISTICS, f'Statistic with name {value} not known. Kown are {KNOWN_STATISTICS}.'
-#     self._statistic = value
+def get_smom1(u, n):
+    ''' return 1/ivu asymptotic prefactor of Im(Sigma) for the single-band SU(2) symmetric case'''
+    return -u ** 2 * n / 2 * (1 - n / 2)
 
-KNOWN_STATISTICS = ['fermi', 'boson']
 
-class LocalFermionicTwoPoint():
-    ''' Parent class for local two-point correlation functions.'''
+def fit_smom(iv=None, siwk=None, only_positive=True):
+    """Read or calculate self-energy moments"""
+    niv = siwk.shape[-1] // 2
+    if (not only_positive):
+        siwk = siwk[..., niv:]
 
-    def __init__(self,mat=None,beta=None):
-        self.mat = mat
+    n_freq_fit = int(0.2 * niv)
+    if n_freq_fit < 4:
+        n_freq_fit = 4
+    s_loc = np.mean(siwk, axis=(0, 1, 2))  # moments should not depend on momentum
+
+    iwfit = iv[niv - n_freq_fit:]
+    fitdata = s_loc[niv - n_freq_fit:]
+    mom0 = np.mean(fitdata.real)
+    mom1 = np.mean(fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
+
+    return mom0, mom1
+
+
+class SelfEnergy():
+    ''' class to handle self-energies'''
+
+    niv_core_min = 20
+
+    def __init__(self, sigma, beta, pos=True, smom0=None, smom1=None, err=5e-4):
+        assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
+        if (not pos):
+            niv = sigma.shape[-1] // 2
+            sigma = sigma[..., niv:]
+
+        self.sigma = sigma
         self.beta = beta
+        iv_plus = mf.iv_plus(beta, self.niv)
+        fit_mom0, fit_mom1 = fit_smom(iv_plus, sigma)
+
+        self.err = err
+
+        # Set the moments for the symptotic behaviour:
+        if (smom0 is None):
+            self.smom0 = fit_mom0
+        else:
+            self.smom0 = smom0
+
+        if (smom1 is None):
+            self.smom1 = fit_mom1
+        else:
+            self.smom1 = smom1
+
+        # estimate when the asymptotic behavior is sufficient:
+        self.niv_core = self.estimate_niv_core()
 
     @property
     def niv(self):
-        return self.mat.shape[0] // 2
-
-    @property
-    def wn(self):
-        return mf.vn(self.niv)
-
-class LocalGreensFunction(LocalFermionicTwoPoint):
-    ''' Container class for local Green's fucntions'''
-
-    def __init__(self,mat=None,beta=None,hf_denom=None):
-        '''
-            hf_denom: high-frequency denominator. Typically mu - hartree
-            ToDo: add high-frequency behaviour fitting if hf_denom is not supplied.
-        '''
-        super().__init__(mat=mat,beta=beta)
-        self.hf_denom = hf_denom
-
-    # @property
-    # def high_freq(self):
-    #     ''' High frequency denominator: mu - Hartree'''
-    #     return self.mu - self.hartree
-
-
-# ======================================================================================================================
-# ---------------------------------------------- TWO-POINT PARENT CLASS ------------------------------------------------
-# ======================================================================================================================
-
-class two_point():
-    ''' Parent function for two-point correlation function and derived quantities like self-energy'''
-
-    def __init__(self, beta=1.0, niv=0):
-        self.set_beta(beta)
-        self.set_niv(niv)
-        self.set_vn()
-        self.set_iv()
-
-    def set_beta(self, beta):
-        self._beta = beta
-
-    def set_niv(self, niv):
-        self._niv = niv
-
-    def set_vn(self):
-        self._vn = np.arange(-self._niv, self._niv)
-
-    def set_iv(self):
-        try:
-            self._vn
-        except:
-            self.set_vn()
-        self._iv = (self._vn * 2 + 1) * 1j * np.pi / self._beta
-
-
-def create_gk_dict(dga_conf=None, sigma=None, mu0=None, adjust_mu=True, niv_cut=None):
-    if (niv_cut is not None):
-        niv = sigma.shape[-1] // 2
-        sigma = sigma[..., niv - niv_cut:niv + niv_cut]
-
-    gk_dga_generator = GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.k_grid, hr=dga_conf.sys.hr,
-                                               sigma=sigma)
-    if (adjust_mu):
-        mu_dga = gk_dga_generator.adjust_mu(n=dga_conf.sys.n, mu0=mu0)
-    else:
-        mu_dga = mu0
-    n_dga = gk_dga_generator.get_fill(mu=mu_dga)
-    gk_dga = gk_dga_generator.generate_gk(mu=mu_dga)
-
-    gf_dict = {
-        'gk': gk_dga._gk,
-        'mu': gk_dga._mu,
-        'n': n_dga,
-        'iv': gk_dga._iv,
-        'beta': gk_dga._beta,
-        'niv': gk_dga.niv
-    }
-    return gf_dict
-
-
-# ======================================================================================================================
-# ----------------------------------------------------- GKIW CLASS -----------------------------------------------------
-# ======================================================================================================================
-
-class GreensFunction(object):
-    ''' Contains routines for the Matsubara one-particle Green's function'''
-
-    def __init__(self, iv=None, beta=1.0, mu=0, ek=None, sigma=None):
-        self.iv = iv
-        self.beta = beta
-        self.mu = mu
-        self._ek = ek
-        self.sigma = sigma
-        self.gk = self.get_gk()
-
-    @property
-    def niv(self) -> int:
-        return self.iv.shape[-1] // 2
+        return self.sigma.shape[-1]
 
     @property
     def nk(self):
-        return np.array(self.gk.shape[:-1])
+        return self.sigma.shape[:-1]
 
-    def get_gk(self):
-        return 1. / (self.iv + self.mu - self._ek - self.sigma)
-
-    def cut_self_iv(self, niv_cut=0):
-        self.iv = self.cut_iv(arr=self.iv, niv_cut=niv_cut)
-        self.sigma = self.cut_iv(arr=self.sigma, niv_cut=niv_cut)
-        self.gk = self.cut_iv(arr=self.gk, niv_cut=niv_cut)
-
-    def get_gk_cut_iv(self, niv_cut=0):
-        return self.cut_iv(arr=self.gk, niv_cut=niv_cut)
-
-    def cut_iv(self, arr=None, niv_cut=0):
-        niv = arr.shape[-1] // 2
-        return arr[..., niv - niv_cut:niv + niv_cut]
+    @property
+    def sigma_core(self):
+        return mf.fermionic_full_nu_range(self.sigma[..., :self.niv_core])
 
     def k_mean(self):
-        return self.gk.mean(axis=(0,1,2))
+        return np.mean(self.sigma, axis=(0, 1, 2))
 
-
-class GreensFunctionGenerator():
-    '''Class that takes the ingredients for a Green's function and return GreensFunction objects'''
-
-    def __init__(self, beta=1.0, kgrid: bz.KGrid =None, hr=None, sigma=None,set_smom=True):
-        self._beta = beta
-        self.k_grid = kgrid
-        self._hr = hr
-
-        # Add k-dimensions for local self-energy
-        if (len(sigma.shape) == 1):
-            self._sigma = sigma[None, None, None, :]
-            self._sigma_type = 'loc'
+    def estimate_niv_core(self):
+        '''check when the real and the imaginary part are within error margin of the asymptotic'''
+        asympt = self.get_asympt(niv_asympt=self.niv,n_min=0)
+        ind_real = np.argmax(np.abs(self.k_mean().real - asympt.real) < self.err)
+        ind_imag = np.argmax(np.abs(self.k_mean().imag - asympt.imag) < self.err)
+        niv_core = max(ind_real, ind_imag)
+        if (niv_core < self.niv_core_min):
+            return self.niv_core_min
         else:
-            self._sigma = sigma
-            self._sigma_type = 'nloc'
+            return niv_core
 
-        if(set_smom):
-            self.set_smom()
-
-    @property
-    def beta(self) -> float:
-        return self._beta
-
-    @property
-    def k_grid(self):
-        return self._k_grid
-
-    @k_grid.setter
-    def k_grid(self, value):
-        self._k_grid = value
-
-    @property
-    def hr(self):
-        return self._hr
-
-    @property
-    def sigma(self):
-        return self._sigma
-
-    @property
-    def smom(self):
-        return self._smom
-
-    @property
-    def niv_sigma(self):
-        return self._sigma.shape[-1] // 2
-
-    @property
-    def nkx(self):
-        return self.k_grid.nk[0]
-
-    @property
-    def nky(self):
-        return self.k_grid.nk[1]
-
-    @property
-    def nkz(self):
-        return self.k_grid.nk[2]
-
-    def generate_gk(self, mu=0, qiw=(0, 0, 0, 0), niv=-1, v_range='full'):
-        q = qiw[:3]
-        wn = int(qiw[-1])
-        niv = self.check_niv(niv=niv,wn=wn)
-        v_slice = self.get_v_slice(niv=niv, v_range=v_range)
-        iv = self.get_iv(niv=niv, wn=wn)[v_slice]
-        kgrid = self.add_q_to_kgrid(q=q)
-        ek = hk.ek_3d(kgrid=kgrid, hr=self.hr)
-        sigma = self.cut_sigma(niv_cut=niv, wn=wn)[...,v_slice]
-        if(self._sigma_type == 'nloc'):
-            sigma = self.shift_mat_by_q(mat=sigma,q=q)
-        return GreensFunction(iv=iv[None, None, None, :], beta=self.beta, mu=mu, ek=ek[:, :, :, None], sigma=sigma)
-
-    def get_ekpq(self,qiw=(0, 0, 0, 0)):
-        q = qiw[:3]
-        kgrid = self.add_q_to_kgrid(q=q)
-        return hk.ek_3d(kgrid=kgrid, hr=self.hr)
-
-    def get_v_slice(self,niv=None,v_range='full'):
-        if v_range in {'+','p','plus'}:
-            return slice(niv, None)
-        elif v_range in {'-','m','minus'}:
-            return slice(0,niv)
+    def get_siw(self, niv_core=None, niv_full=None):
+        if (niv_core is None):
+            niv_core = self.niv
+        if (niv_core <= self.niv and niv_full is None):
+            return mf.fermionic_full_nu_range(self.sigma[..., :niv_core])
         else:
-            return slice(0,None)
+            iv_asympt = mf.iv_plus(self.beta, n=niv_full, n_min=niv_core)
+            asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
+            sigma_asympt = np.concatenate((self.sigma[..., :niv_core], asympt), axis=-1)
+            return mf.fermionic_full_nu_range(sigma_asympt)
 
-    def check_niv(self, niv=None, wn=None):
-        if (niv == -1):
-            niv = self.niv_sigma - int(np.abs(wn))
-        return niv
-
-    def generate_gk_plus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        return self.generate_gk(mu=mu, qiw=qiw, niv=niv, v_range='+')
-
-    def generate_gk_minus(self, mu=0, qiw=[0, 0, 0, 0], niv=-1):
-        return self.generate_gk(mu=mu, qiw=qiw, niv=niv, v_range='-')
-
-    def get_iv(self, niv=0, wn=0):
-        niv = self.check_niv(niv=niv,wn=wn)
-        return 1j * ((np.arange(-niv, niv) - wn) * 2 + 1) * np.pi / self.beta
-
-    def cut_sigma(self, niv_cut=-1, wn=0):
-        niv = self.niv_sigma
-        if (niv_cut == -1):
-            niv_cut = niv - int(np.abs(wn))
-        return self.sigma[..., niv - niv_cut - wn:niv + niv_cut - wn]
-
-    def add_q_to_kgrid(self, q=(0,0,0)):
-        return self.k_grid.add_q_to_kgrid(q=q)
-
-    def shift_mat_by_q(self,mat=None,q=(0,0,0)):
-        return self.k_grid.shift_mat_by_q(mat=mat,q=q)
-
-    def set_smom(self):
-        iv = self.get_iv(niv=-1, wn=0)
-        smom = chempot.fit_smom(iv=iv, siwk=self.sigma)
-        self._smom = smom
-
-    def adjust_mu(self, n=None, mu0=0, verbose=False):
-        iv = self.get_iv(niv=-1, wn=0)
-        ek = hk.ek_3d(kgrid=self.k_grid.grid, hr=self.hr)
-        mu = chempot.update_mu(mu0=mu0, target_filling=n, iv=iv, hk=ek, siwk=self.sigma,
-                               beta=self.beta, smom0=self.smom[0], verbose=verbose)
-        return mu
-
-    def get_fill(self, mu=None, verbose=False):
-        iv = self.get_iv(niv=-1, wn=0)
-        ek = hk.ek_3d(kgrid=self.k_grid.grid, hr=self.hr)
-        hloc = np.mean(ek)
-        n, _ = chempot.get_fill(iv=iv, hk=ek, siwk=self.sigma, beta=self.beta, smom0=self.smom[0], hloc=hloc, mu=mu,
-                                verbose=verbose)
-        return n
+    def get_asympt(self, niv_asympt,n_min=None, pos=True):
+        if(n_min is None):
+            n_min = self.niv_core
+        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt+n_min, n_min=n_min)
+        asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
+        if (pos):
+            return asympt
+        else:
+            return mf.fermionic_full_nu_range(asympt)
 
 
-# ======================================================================================================================
-# ------------------------------------------ MultiOrbitalGreensFunctionModule ------------------------------------------
-# ======================================================================================================================
+# -------------------------------------------- SELF ENERGY ----------------------------------------------------------
+def get_gloc(iv=None, hk=None, siwk=None, mu_trial=None):
+    """
+    Calculate local Green's function by momentum integration.
+    The integration is done by trapezoid integration, which amounts
+    to a call of np.mean()
+    """
+    return np.mean(
+        1. / (
+                iv[None, None, None, :]
+                + mu_trial
+                - hk[:, :, :, None]
+                - siwk), axis=(0, 1, 2))
 
 
-# class MultiOrbGreensFunctionGenerator():
-#     ''' Multi-orbital Green's function generator'''
+# ==================================================================================================================
+def get_g_model(mu=None, iv=None, hloc=None, smom0=None):
+    """
+    Calculate a model Green's function, needed for
+    the calculation of the electron density by Matsubara summation.
+    References: w2dynamics code, Markus Wallerberger's thesis.
+    """
+    g_model = 1. / (iv
+                    + mu
+                    - hloc.real
+                    - smom0)
 
-# def get_gkw_multi_orbital(v=None, hk=None, sw=None, dc=None, mu=None):
-#     return jnp.linalg.inverse()
+    return g_model
+
+
+# ==================================================================================================================
+
+# ==================================================================================================================
+def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=None, verbose=False):
+    """
+    Calculate the filling from the density matrix.
+    The density matrix is obtained by frequency summation
+    under consideration of the model.
+    """
+    g_model = get_g_model(mu=mu, iv=iv, hloc=hloc, smom0=smom0)
+    gloc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
+    if (beta * (smom0 + hloc.real - mu) < 20):
+        rho_loc = 1. / (1. + np.exp(beta * (smom0 + hloc.real - mu)))
+    else:
+        rho_loc = np.exp(-beta * (smom0 + hloc.real - mu))
+    rho_new = rho_loc + np.sum(gloc.real - g_model.real, axis=0) / beta
+    n_el = 2. * rho_new
+    if (verbose): print(n_el, 'electrons at ', mu)
+    return n_el, rho_new
+
+
+# ==================================================================================================================
+
+# ==================================================================================================================
+def root_fun(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, verbose=False):
+    """Auxiliary function for the root finding"""
+    return get_fill(iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc, mu=mu, verbose=False)[0] - target_filling
+
+
+# ==================================================================================================================
+
+# ==================================================================================================================
+def update_mu(mu0=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, tol=1e-6, verbose=False):
+    """
+    Update internal chemical potential (mu) to fix the filling to the target filling with given precision.
+    :return:
+    """
+    if (verbose): print('Update mu...')
+    hloc = hk.mean()
+    mu = mu0
+    if (verbose): print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    try:
+        mu = scipy.optimize.newton(root_fun, mu, tol=tol,
+                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
+    except RuntimeError:
+        if (verbose): print('Root finding for chemical potential failed.')
+        if (verbose): print('Using old chemical potential again.')
+    if np.abs(mu.imag) < 1e-8:
+        mu = mu.real
+    else:
+        raise ValueError('In OneParticle.update_mu: Chemical Potential must be real.')
+    return mu
+
+
+# ==================================================================================================================
+
+def build_g(v, ek, mu, sigma):
+    ''' Build Green's function with [kx,ky,kz,v]'''
+    return 1 / (v[None, None, None, :] + mu - ek[..., None] - sigma)
+
+
+class GreensFunction():
+    '''Object to build the Green's function from hr and sigma'''
+    mu0 = 0
+    mu_tol = 1e-6
+
+    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None):
+        self.sigma = sigma
+        self.iv_core = mf.iv(sigma.beta, self.sigma.niv_core)
+        self.ek = ek
+        if (n is not None):
+            self.n = n
+            self.mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,
+                                tol=self.mu_tol)
+        elif (mu is not None):
+            self.mu = mu
+            self.n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek), mu=mu)
+        else:
+            raise ValueError('Either mu or n, but bot both, must be supplied.')
+
+        self.core = self.build_g_core()
+        self.asympt = None
+        self.niv_asympt = None
+        self.full = None
+
+    @property
+    def v_core(self):
+        return mf.v(self.beta,self.niv_core)
+
+    @property
+    def beta(self):
+        return self.sigma.beta
+
+    @property
+    def niv_core(self):
+        return self.sigma.niv_core
+
+    @property
+    def mem(self):
+        ''' returns the memory consumption of the Green's function'''
+        if(self.full is not None):
+            return self.full.size * self.full.itemsize * 1e-9
+        else:
+            return self.core.size * self.core.itemsize * 1e-9
+
+    @property
+    def g_full(self):
+        if (self.asympt is None):
+            return self.core
+        else:
+            return mf.concatenate_core_asmypt(self.core, self.asympt)
+
+    def build_g_core(self):
+        return build_g(self.iv_core, self.ek, self.mu, self.sigma.sigma_core)
+
+    def k_mean(self, range='core'):
+        if (range == 'core'):
+            return np.mean(self.core, axis=(0, 1, 2))
+        elif (range == 'full'):
+            if(self.full is None):
+                raise ValueError('Full Greens function has to be set first.')
+            return np.mean(self.full, axis=(0, 1, 2))
+        else:
+            raise ValueError('Range has to be core or full.')
+
+    def set_g_asympt(self, niv_asympt):
+        self.asympt = self.build_asympt(niv_asympt)
+        self.niv_asympt = niv_asympt
+        self.full = self.g_full
+
+    def build_asympt(self, niv_asympt):
+        sigma_asympt = self.sigma.get_asympt(niv_asympt)
+        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt+self.niv_core, n_min=self.niv_core)
+        return mf.fermionic_full_nu_range(build_g(iv_asympt, self.ek, self.mu, sigma_asympt))
 
 
 if __name__ == '__main__':
-    #input_path = '/mnt/c/users/pworm/Research/U2BenchmarkData/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
-    input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10_n0.85/KonvergenceAnalysis/'
-    path_dga = input_path + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange80_wurange27/'
-    fname_dmft = '1p-data.hdf5'
-
     import w2dyn_aux
-
-    # load contents from w2dynamics DMFT file:
-    f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
-    dmft1p = f1p.load_dmft1p_w2dyn()
-    f1p.close()
-
-    # Set up real-space Wannier Hamiltonian:
-    import Hr as hr
-
-    t = 1.0
-    tp = -0.20 * t
-    tpp = 0.10 * t
-    hr = hr.one_band_2d_t_tp_tpp(t=t, tp=tp, tpp=tpp)
-
-    # Define k-grid
-    nkf = 32
-    nqf = 32
-    nk = (nkf, nkf, 1)
-    nq = (nqf, nqf, 1)
-
-    # Generate k-meshes:
-    import BrillouinZone as bz
-
-    k_grid = bz.KGrid(nk=nk)
-    q_grid = bz.KGrid(nk=nq)
-
-    g_generator = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid, hr=hr,
-                                          sigma=dmft1p['sloc'])
-    print('check')
-    mu = g_generator.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
-    print('check')
-    gk = g_generator.generate_gk(mu=mu)
-    print('check')
-
     import matplotlib.pyplot as plt
+    import BrillouinZone as bz
+    import Hr as hamr
+    import Hk as hamk
 
-    ek = hk.ek_3d(kgrid=g_generator.k_grid.grid, hr=g_generator.hr)
+    path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
+    file = '1p-data.hdf5'
 
-    plt.imshow(ek[:,:,0], cmap='RdBu', origin='lower')
-    plt.colorbar()
-    plt.show()
+    dmft_file = w2dyn_aux.w2dyn_file(fname=path + file)
+    siw = dmft_file.get_siw()[0, 0, :][None, None, None, :]
+    beta = dmft_file.get_beta()
+    u = dmft_file.get_udd()
+    n = dmft_file.get_totdens()
+    mu_dmft = dmft_file.get_mu()
+    sigma_dmft = SelfEnergy(sigma=siw, beta=beta, pos=False)
+    giw_dmft = dmft_file.get_giw()[0, 0, :]
+    niv_dmft = dmft_file.get_niw()
 
-    plt.imshow(-gk.gk.imag[:,:,0,gk.niv], cmap='RdBu', origin='lower')
-    plt.colorbar()
-    plt.show()
+    # Build Green's function:
+    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    nk = (42, 42, 1)
+    k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid, hr)
 
-    sigma_nl = np.load(path_dga + 'sigma.npy', allow_pickle=True)
+    giwk = GreensFunction(sigma_dmft, ek, n=n)
+    niv_asympt = 2000
+    giwk.set_g_asympt(niv_asympt)
+    g_loc = giwk.k_mean(range='full')
 
-    g_generator_nl = GreensFunctionGenerator(beta=dmft1p['beta'], kgrid=k_grid, hr=hr,
-                                          sigma=sigma_nl)
-    mu_snl = g_generator_nl.adjust_mu(n=dmft1p['n'],mu0=dmft1p['mu'])
-    gk_snl = g_generator_nl.generate_gk(mu=mu_snl)
-    gk_snl_pi = g_generator_nl.generate_gk(mu=mu_snl,qiw=[np.pi,np.pi,0,0])
-    gk_p = g_generator_nl.generate_gk_plus(mu=mu_snl,qiw=[0,0,0,0])
-    gk_p_loc = gk_p.k_mean()
+    vn_core = mf.vn(giwk.niv_core)
+    vn_asympt = mf.vn(giwk.niv_core+giwk.niv_asympt)
 
-    plt.imshow(-gk_snl.gk.imag[:,:,0,gk_snl.niv], cmap='RdBu', origin='lower')
-    plt.colorbar()
-    plt.show()
-
-    plt.imshow(-gk_snl_pi.gk.imag[:,:,0,gk_snl_pi.niv], cmap='RdBu', origin='lower')
-    plt.colorbar()
-    plt.show()
-
-    plt.plot(gk_p_loc)
+    n_start = 800
+    n_plot = 50
+    fig, ax = plt.subplots(1,2,figsize=(7,3.5))
+    ax[0].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(g_loc,n_plot,n_start).real, '-o', color='cornflowerblue')
+    ax[0].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(giw_dmft,n_plot,n_start).real, '-', color='k')
+    ax[1].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(g_loc,n_plot,n_start).imag, '-o', color='cornflowerblue')
+    ax[1].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(giw_dmft,n_plot,n_start).imag, '-', color='k')
+    ax[0].set_xlabel(r'$\nu_n$')
+    ax[1].set_xlabel(r'$\nu_n$')
+    ax[0].set_ylabel(r'$\Re G$')
+    ax[1].set_ylabel(r'$\Im G$')
+    plt.tight_layout()
+    # plt.savefig(PLOT_PATH+'GreensFunction_TestAsymptotic_1.png')
     plt.show()

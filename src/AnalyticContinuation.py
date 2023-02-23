@@ -6,7 +6,7 @@ import numpy as np
 import PadeAux as pa
 import continuation as cont
 import MatsubaraFrequencies as mf
-import TwoPoint as twop
+import TwoPoint_old as twop
 import BrillouinZone as bz
 import Hk as hamk
 import gc

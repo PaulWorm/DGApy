@@ -15,7 +15,7 @@ import MatsubaraFrequencies as mf
 import OrnsteinZernickeFunction as ozfunc
 import BrillouinZone as bz
 import Config as conf
-import TwoPoint as twop
+import TwoPoint_old as twop
 import socket
 
 if(socket.gethostname() != 'DESKTOP-OEHIPTV'):

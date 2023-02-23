@@ -17,7 +17,7 @@ import PadeAux as pade_aux
 from Plotting import MidpointNormalize
 import Hk as hamk
 import Output as output
-import TwoPoint as twop
+import TwoPoint_old as twop
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import Plotting as plotting
 

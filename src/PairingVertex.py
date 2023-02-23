@@ -5,7 +5,7 @@
 
 import w2dyn_aux
 import numpy as np
-import TwoPoint as tp
+import TwoPoint_old as tp
 import FourPoint as fp
 import MatsubaraFrequencies as mf
 import sys,os

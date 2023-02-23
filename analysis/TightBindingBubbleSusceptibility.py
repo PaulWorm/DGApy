@@ -6,7 +6,7 @@ import Hr as hamr
 import Hk as hamk
 import BrillouinZone as bz
 import w2dyn_aux
-import TwoPoint as tp
+import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
 import FourPoint as fp
 import Indizes as ind

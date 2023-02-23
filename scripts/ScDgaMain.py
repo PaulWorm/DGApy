@@ -12,7 +12,7 @@ import Hk as hamk
 import Indizes as ind
 import Output as output
 import Input as input
-import TwoPoint as twop
+import TwoPoint_old as twop
 import Plotting as plotting
 from mpi4py import MPI as mpi
 import MpiAux as mpiaux
