@@ -130,7 +130,6 @@ class LocalBubble():
         fac1, fac2, fac3 = self.get_asympt_prefactors()
         for i,iwn in enumerate(self.wn):
             iws, iws2 = get_freq_shift(iwn,self.freq_notation)
-            print(iws,iws2)
             v_sum = v[niv-niv_sum+iws:niv+niv_sum+iws]
             vpw_sum = v[niv-niv_sum+iws2:niv+niv_sum+iws2]
             chi0_asympt_sum[i] += np.sum(v_sum*vpw_sum)

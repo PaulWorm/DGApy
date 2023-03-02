@@ -1,7 +1,7 @@
 # Contained routines to operate on four-point object which are centered around omega.
 import numpy as np
 import MatsubaraFrequencies as mf
-
+import Bubble as bub
 
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
@@ -249,7 +249,7 @@ def gamob2_from_chir_wn(chir=None, gchi0=None):
     return gam_r
 
 
-# def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
+# def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: bub.LocalBubble = None, u=None):
 #     u_r = get_ur(u, channel=gam.channel)
 #     vrg = np.array([vrg_from_gam_wn(gam.mat[iwn_lin], chi0_inv.mat[iwn_lin], gam.beta, u_r) for iwn_lin in gam.wn_lin])
 #     return LocalThreePoint(matrix=vrg, channel=gam.channel, beta=gam.beta, wn=gam.wn)
@@ -259,7 +259,7 @@ def gamob2_from_chir_wn(chir=None, gchi0=None):
 #     return 1 / beta * chi0_inv * np.sum(np.linalg.inv(np.diag(chi0_inv) + gam - u_r / beta ** 2), axis=-1)
 #
 #
-# def three_leg_from_F(F: LocalFourPoint = None, chi0: LocalBubble = None):
+# def three_leg_from_F(F: LocalFourPoint = None, chi0: bub.LocalBubble = None):
 #     ''' sg = \sum_k' F \chi_0 '''
 #     sg = 1 / F.beta * jnp.sum(F.mat * chi0.mat[:, None, :], axis=-1)
 #     return LocalThreePoint(matrix=sg, channel=F.channel, beta=F.beta, wn=F.wn)
@@ -302,7 +302,7 @@ def get_lam_tilde(lam_core: LocalThreePoint, chi0_shell, u):
     return LocalThreePoint(channel=lam_core.channel, matrix=lam_tilde, beta=lam_core.beta, wn=lam_core.wn)
 
 
-def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: LocalBubble, u, niv_core=-1, niv_shell=0):
+def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
     assert niv_core <= gchir.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({gchir.niv}).'
     if (niv_core == -1): niv_core = gchir.niv
     gchi0_core = chi0_gen.get_gchi0(niv_core)
@@ -347,7 +347,7 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 # # ==================================================================================================================
 #
 # # ==================================================================================================================
-# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
+# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: bub.LocalBubble = None, u=None):
 #     u_r = get_ur(u=u, channel=gammar.channel)
 #     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
 #                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
@@ -364,7 +364,7 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 #
 #
 # # ==================================================================================================================
-# def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None):
+# def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: bub.LocalBubble = None):
 #     vrg = 1. / gchi0.gchi0 * 1. / gchi0.beta * np.sum(gchi_aux.mat, axis=-1)
 #     return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, wn=gchi_aux.wn)
 #
@@ -385,7 +385,7 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 #     return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.wn)
 #
 #
-# def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None, niv_urange=-1):
+# def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: bub.LocalBubble = None, niv_urange=-1):
 #     vrg = local_fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
 #     vrg = local_fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
 #     return vrg
@@ -430,7 +430,7 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     return sigma_F
 
 
-def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: LocalBubble, u, niv_core=-1, niv_shell=0):
+def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
     assert niv_core <= g2.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({g2.niv}).'
     if (niv_core == -1): niv_core = g2.niv
     g2.cut_iv(niv_core)
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     g2_magn.cut_iv(niv)
     g2_dens_cent = to_centered(g2_dens)
     g2_magn_cent = to_centered(g2_magn)
-    bubble_gen = LocalBubble(wn=g2_magn_cent.wn, giw=g_loc, beta=beta)
+    bubble_gen = bub.LocalBubble(wn=g2_magn_cent.wn, giw=giwk,freq_notation='center')
     wn = mf.wn(np.size(g2_magn_cent.wn) // 2)
     vn_core = mf.vn(g2_magn_cent.niv)
     w_ind = np.size(g2_magn_cent.wn) // 2
@@ -570,8 +570,7 @@ if __name__ == '__main__':
     #
     # # %%
     niv_shell = 6000
-    chi0_full = bubble_gen.get_chi0(niv + niv_shell)
-    chi0_shell = chi0_full - chi0_core
+    chi0_shell = bubble_gen.get_chi0_shell(g2_dens_cent.niv,niv_shell,do_asmypt=False)
     lam_shell = u * (chi0_shell)
     #
     lam_dens_tilde = get_lam_tilde(lam_dens_core, chi0_shell, u)
@@ -667,15 +666,16 @@ if __name__ == '__main__':
 
     # %%
     wn_asympt = mf.wn_shell(giwk.niv_core,n_core=g2_magn_cent.wn.size//2)
-    bubble_gen_asypt = LocalBubble(wn=wn_asympt, giw=g_loc, beta=beta)
-    chi_asmypt = bubble_gen_asypt.get_chi0(niv=niv_asympt//2)
+    bubble_gen_asypt = bub.LocalBubble(wn=wn_asympt, giw=giwk,freq_notation='center')
+    chi_asmypt = bubble_gen_asypt.get_chi0(niv=niv_shell)
+    chi_asmypt = chi_asmypt + bubble_gen_asypt.get_chi0_shell(niv_shell,niv_shell+niv)
     print('--------------')
     print(f'Analytic sum: {n / 2 * (1 - n / 2)}')
     print(f'Numeric sum core: {1 / (2 * beta) * np.sum((chi_dens_core + chi_magn_core)).real}')
     # print(f'Numeric sum core: {1 / (2 * beta) * np.sum((chi_dens_core_centered + chi_magn_core_centered)).real}')
     print(f'Numeric sum tilde: {1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print(f'Numeric sum shell: {1 / (beta) * np.sum(chi_asmypt).real}')
-    print(f'Numeric sum full: {1 / (beta) * np.sum(chi_asmypt).real+1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
+    print(f'Numeric sum full: {1 / (2*beta) * np.sum(chi_asmypt).real+1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print('--------------')
 
     w_tmp = mf.w(beta,500)
