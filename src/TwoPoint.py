@@ -21,6 +21,10 @@ def get_smom1(u, n):
     ''' return 1/ivu asymptotic prefactor of Im(Sigma) for the single-band SU(2) symmetric case'''
     return -u ** 2 * n / 2 * (1 - n / 2)
 
+def get_sum_chiupup(n):
+    ''' return 1/ivu asymptotic prefactor of Im(Sigma) for the single-band SU(2) symmetric case'''
+    return  n / 2 * (1 - n / 2)
+
 
 def fit_smom(iv=None, siwk=None, only_positive=True):
     """Read or calculate self-energy moments"""
@@ -217,7 +221,7 @@ class GreensFunction():
     mu0 = 0
     mu_tol = 1e-6
 
-    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None):
+    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None,niv_asympt = 2000):
         self.sigma = sigma
         self.iv_core = mf.iv(sigma.beta, self.sigma.niv_core)
         self.ek = ek
@@ -235,6 +239,9 @@ class GreensFunction():
         self.asympt = None
         self.niv_asympt = None
         self.full = None
+        self.set_g_asympt(niv_asympt)
+        self.g_loc = None
+        self.set_gloc()
 
     @property
     def v_core(self):
@@ -276,10 +283,14 @@ class GreensFunction():
         else:
             raise ValueError('Range has to be core or full.')
 
+    def set_gloc(self):
+        self.g_loc = self.k_mean(range='full')
+
     def set_g_asympt(self, niv_asympt):
         self.asympt = self.build_asympt(niv_asympt)
         self.niv_asympt = niv_asympt
         self.full = self.g_full
+        self.set_gloc()
 
     def build_asympt(self, niv_asympt):
         sigma_asympt = self.sigma.get_asympt(niv_asympt)

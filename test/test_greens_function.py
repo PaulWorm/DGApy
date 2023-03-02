@@ -47,14 +47,15 @@ def local_dmft_consistency(giw_dmft, sigma_dmft, mu_dmft, ek, u,n, beta, count=1
 def greens_function_asymptotic(giw_dmft, sigma_dmft, ek, u,n, beta, count=1):
     sigma_dmft = tp.SelfEnergy(sigma_dmft[None, None, None, :], beta, pos=False, smom0=tp.get_smom0(u, n), smom1=tp.get_smom1(u, n))
     giwk = tp.GreensFunction(sigma_dmft, ek, n=n)
-    niv_asympt = 2000
+    niv_asympt = 20000
     giwk.set_g_asympt(niv_asympt)
     g_loc = giwk.k_mean(range='full')
 
     vn_asympt = mf.vn(giwk.niv_core + giwk.niv_asympt)
 
-    n_start = 800
-    n_plot = 50
+
+    n_start = giwk.niv_core-50
+    n_plot = 300
     fig, ax = plt.subplots(1, 2, figsize=(7, 3.5))
     ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(g_loc, n_plot, n_start).real, '-o', color='cornflowerblue')
     ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(giw_dmft, n_plot, n_start).real, '-', color='k')
@@ -117,13 +118,13 @@ def test_local_dmft_consistency_3():
 
 if __name__ == '__main__':
 
-    test_greens_function_asymptotic_1()
+    # test_greens_function_asymptotic_1()
     test_greens_function_asymptotic_2()
-    test_greens_function_asymptotic_3()
+    # test_greens_function_asymptotic_3()
 
-    test_local_dmft_consistency_1()
-    test_local_dmft_consistency_2()
-    test_local_dmft_consistency_3()
+    # test_local_dmft_consistency_1()
+    # test_local_dmft_consistency_2()
+    # test_local_dmft_consistency_3()
 
     # test_local_dmft_consistency_2()
     # test_greens_function_asymptotic_2()
