@@ -3,7 +3,7 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
-import w2dyn_aux
+import w2dyn_aux_dga
 import copy
 import numpy as np
 import TwoPoint_old as twop

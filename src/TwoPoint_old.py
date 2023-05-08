@@ -310,10 +310,10 @@ if __name__ == '__main__':
     path_dga = input_path + 'LambdaDga_lc_sp_Nk1024_Nq1024_core27_invbse27_vurange80_wurange27/'
     fname_dmft = '1p-data.hdf5'
 
-    import w2dyn_aux
+    import w2dyn_aux_dga
 
     # load contents from w2dynamics DMFT file:
-    f1p = w2dyn_aux.w2dyn_file(fname=input_path + fname_dmft)
+    f1p = w2dyn_aux_dga.w2dyn_file(fname=input_path + fname_dmft)
     dmft1p = f1p.load_dmft1p_w2dyn()
     f1p.close()
 

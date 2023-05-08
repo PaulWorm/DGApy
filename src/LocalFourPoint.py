@@ -1,6 +1,7 @@
 import numpy as np
 import MatsubaraFrequencies as mf
 import Bubble as bub
+import matplotlib.pyplot as plt
 
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
@@ -256,6 +257,10 @@ def get_lam_tilde(lam_core: LocalThreePoint, chi0_shell, u):
 def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
     assert niv_core <= gchir.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({gchir.niv}).'
     if (niv_core == -1): niv_core = gchir.niv
+    else:
+        import copy
+        gchir = copy.deepcopy(gchir)
+    gchir.cut_iv(niv_core)
     gchi0_core = chi0_gen.get_gchi0(niv_core)
     lam_core = lam_from_chir(gchir, gchi0_core)
     chir_core = gchir.contract_legs()

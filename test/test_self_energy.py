@@ -6,7 +6,7 @@ import TwoPoint as tp
 import TestData as td
 import MatsubaraFrequencies as mf
 import matplotlib.pyplot as plt
-import w2dyn_aux
+import w2dyn_aux_dga
 
 PLOT_PATH = './TestPlots/'
 

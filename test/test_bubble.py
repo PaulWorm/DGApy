@@ -87,9 +87,17 @@ def test_bubble_convergence_3():
     ek = hamk.ek_3d(k_grid.grid,hr=ddict['hr'])
     test_bubble_convergence(ddict['siw'],ek,ddict['beta'],ddict['u'],ddict['n'],count=3)
 
+def test_bubble_convergence_4():
+    ddict = td.get_data_set_4()
+    nk = (42,42,1)
+    k_grid = bz.KGrid(nk=nk,symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid,hr=ddict['hr'])
+    test_bubble_convergence(ddict['siw'],ek,ddict['beta'],ddict['u'],ddict['n'],count=4)
+
 if __name__ == '__main__':
     # test_bubble_convergence_1()
-    test_bubble_convergence_2()
+    # test_bubble_convergence_2()
+    test_bubble_convergence_4()
     # test_bubble_convergence_3()
     pass
 

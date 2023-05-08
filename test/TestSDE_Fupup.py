@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import FourPoint as fp
 import TwoPoint_old as tp
-import w2dyn_aux
+import w2dyn_aux_dga
 import MatsubaraFrequencies as mf
 
 
@@ -13,7 +13,7 @@ path = './2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
 path = './2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
 # path = './2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.70/'
 
-giw_file = w2dyn_aux.w2dyn_file(fname=path + '1p-data.hdf5')
+giw_file = w2dyn_aux_dga.w2dyn_file(fname=path + '1p-data.hdf5')
 beta = giw_file.get_beta()
 u = giw_file.get_udd()
 totdens = giw_file.get_totdens()
@@ -22,7 +22,7 @@ hartree = u*totdens/2
 giw = giw_file.get_giw()[0, 0, :]
 siw_dmft = giw_file.get_siw()[0, 0, :]
 giw_obj = tp.LocalGreensFunction(mat=giw, beta=beta, hf_denom=mu - u * totdens / 2)
-g2iw_file = w2dyn_aux.g4iw_file(fname=path + 'g4iw_sym.hdf5')
+g2iw_file = w2dyn_aux_dga.g4iw_file(fname=path + 'g4iw_sym.hdf5')
 niw = g2iw_file.get_niw(channel='dens')
 niv = niw + 1
 # niv = niw

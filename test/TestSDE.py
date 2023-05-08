@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import FourPoint as fp
 import TwoPoint_old as tp
-import w2dyn_aux
+import w2dyn_aux_dga
 import MatsubaraFrequencies as mf
 
 
@@ -13,7 +13,7 @@ path = './2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
 path = './2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
 # path = './2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.70/'
 
-giw_file = w2dyn_aux.w2dyn_file(fname=path + '1p-data.hdf5')
+giw_file = w2dyn_aux_dga.w2dyn_file(fname=path + '1p-data.hdf5')
 beta = giw_file.get_beta()
 u = giw_file.get_udd()
 totdens = giw_file.get_totdens()

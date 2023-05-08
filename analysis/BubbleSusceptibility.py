@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import Hr as hamr
 import Hk as hamk
 import BrillouinZone as bz
-import w2dyn_aux
+import w2dyn_aux_dga
 import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
 import FourPoint as fp

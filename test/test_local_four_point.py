@@ -10,8 +10,9 @@ import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import Hk as hamk
 import matplotlib.pyplot as plt
-import w2dyn_aux
+import w2dyn_aux_dga
 import matplotlib.colors as mc
+import Bubble as bub
 
 PLOT_PATH = './TestPlots/'
 
@@ -142,18 +143,15 @@ def plot_chi_sum_asymptotic(chi_dens_shell, chi_magn_shell, niv_for_shell, beta,
     plt.show()
 
 
-def test_chi_asymptotic(siw_dmft, ek, mu, n, u, beta, g2_file, niv_core, niv_shell, niv_for_shell=30, count=1):
+def test_chi_asymptotic(siw_dmft,g2_dens : lfp.LocalFourPoint,g2_magn : lfp.LocalFourPoint, ek, mu, n, u, beta, niv_core, niv_shell, niv_for_shell=30, count=1):
     sigma = tp.SelfEnergy(siw_dmft[None, None, None, :], beta, pos=False)
     giwk = tp.GreensFunction(sigma, ek, n=n)
     giwk.set_g_asympt(niv_asympt=np.max(niv_shell) + 1000)
-    g_loc = giwk.k_mean(range='full')
-    niw = g2_file.get_niw(channel='dens')
-    wn = mf.wn(niw)
-    g2_dens = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=wn), beta=beta, wn=wn, channel='dens')
-    g2_magn = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=wn), beta=beta, wn=wn, channel='magn')
+    g_loc = giwk.k_mean(iv_range='full')
+    wn = g2_dens.wn
     gchi_dens = lfp.gchir_from_g2(g2_dens, g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, g_loc)
-    chi0_gen = lfp.LocalBubble(wn, g_loc, beta)
+    chi0_gen = bub.LocalBubble(wn, giwk)
 
     # niv_core = np.arange(10, niw)[::10][::-1]
 
@@ -163,8 +161,8 @@ def test_chi_asymptotic(siw_dmft, ek, mu, n, u, beta, g2_file, niv_core, niv_she
     for niv in niv_core:
         gchi_dens.cut_iv(niv)
         gchi_magn.cut_iv(niv)
-        vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, chi0_gen, u, niv_core=niv)
-        vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, chi0_gen, u, niv_core=niv)
+        vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, chi0_gen, u, niv_core=niv, niv_shell = 1000)
+        vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, chi0_gen, u, niv_core=niv, niv_shell = 1000)
         chi_dens_core.append(chi_dens)
         chi_magn_core.append(chi_magn)
 
@@ -188,7 +186,7 @@ def test_chi_asymptotic(siw_dmft, ek, mu, n, u, beta, g2_file, niv_core, niv_she
         chi_magn_shell.append(chi_magn)
         vrg_dens_shell.append(vrg_dens)
         vrg_magn_shell.append(vrg_magn)
-    wn = mf.wn(niw)
+
     plot_chi_convergence(wn, chi_dens_core, chi_magn_core, chi_dens_shell, chi_magn_shell, niv_core, niv_shell, count=count)
     plot_chi_convergence_wn(wn, chi_dens_core, chi_magn_core, chi_dens_shell, chi_magn_shell, niv_core, niv_for_shell, niv_shell, count=count)
 
@@ -203,7 +201,7 @@ def test_chi_asymptotic_1():
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     niv_core = np.array([100, 95, 90, 80, 60, 50, 40, 30, 20, 10])
     niv_shell = np.array([10, 50, 100, 500, 1000, 2000])[::-1]
-    test_chi_asymptotic(ddict['siw'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], niv_core, niv_shell,
                         niv_for_shell=60, count=1)
 
 
@@ -214,7 +212,7 @@ def test_chi_asymptotic_2():
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     niv_core = np.array([60, 50, 40, 30, 20, 10])
     niv_shell = np.array([10, 50, 100, 500, 1000, 2000, 5000, 10000])[::-1]
-    test_chi_asymptotic(ddict['siw'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], niv_core, niv_shell,
                         niv_for_shell=10, count=2)
 
 def test_chi_asymptotic_22():
@@ -224,7 +222,7 @@ def test_chi_asymptotic_22():
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     niv_core = np.array([60, 50, 40, 30, 20, 10])
     niv_shell = np.array([10, 50, 100, 500, 1000, 2000, 5000, 10000])[::-1]
-    test_chi_asymptotic(ddict['siw'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
                         niv_for_shell=30, count=22)
 
 def test_chi_asymptotic_222():
@@ -233,8 +231,8 @@ def test_chi_asymptotic_222():
     k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     niv_core = np.array([60, 50, 40, 30, 20, 10])
-    niv_shell = np.array([10, 50, 100, 500, 1000, 2000, 5000, 10000])[::-1]
-    test_chi_asymptotic(ddict['siw'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
+    niv_shell = np.array([1000])[::-1]
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], niv_core, niv_shell,
                         niv_for_shell=60, count=222)
 
 
@@ -245,8 +243,28 @@ def test_chi_asymptotic_3():
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     niv_core = np.array([70, 60, 50, 40, 30, 20, 10])  # 100, 95, 90,
     niv_shell = np.array([10, 50, 100, 500, 1000, 2000])[::-1]
-    test_chi_asymptotic(ddict['siw'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'], ddict['g2_file'], niv_core, niv_shell,
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'],  niv_core, niv_shell,
                         niv_for_shell=30, count=3)
+
+def test_chi_asymptotic_4():
+    ddict = td.get_data_set_4(load_g2=True)
+    nk = (42, 42, 1)
+    k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
+    niv_core = np.array([50, 40, 30, 20, 10])  # 100, 95, 90,
+    niv_shell = np.array([1000,2000])[::-1]
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'],  niv_core, niv_shell,
+                        niv_for_shell=30, count=4)
+
+def test_chi_asymptotic_5():
+    ddict = td.get_data_set_5(load_g2=True)
+    nk = (42, 42, 1)
+    k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
+    niv_core = np.array([50, 40, 30, 20, 10])  # 100, 95, 90,
+    niv_shell = np.array([1000,2000])[::-1]
+    test_chi_asymptotic(ddict['siw'],ddict['g2_dens'],ddict['g2_magn'], ek, ddict['mu'], ddict['n'], ddict['u'], ddict['beta'],  niv_core, niv_shell,
+                        niv_for_shell=30, count=5)
 
 
 def test_vertex_frequency_convention(ddict, ek, count=1):
@@ -257,14 +275,14 @@ def test_vertex_frequency_convention(ddict, ek, count=1):
     sigma = tp.SelfEnergy(siw_dmft[None, None, None, :], beta, pos=False)
     giwk = tp.GreensFunction(sigma, ek, n=n)
     giwk.set_g_asympt(niv_asympt=1000)
-    g_loc = giwk.k_mean(range='full')
+    g_loc = giwk.k_mean(iv_range='full')
     niw = g2_file.get_niw(channel='dens')
     wn = mf.wn(niw)
     g2_dens = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=wn), beta=beta, wn=wn, channel='dens')
     g2_magn = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=wn), beta=beta, wn=wn, channel='magn')
     gchi_dens = lfp.gchir_from_g2(g2_dens, g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, g_loc)
-    chi0_gen = lfp.LocalBubble(wn, g_loc, beta)
+    chi0_gen = bub.LocalBubble(wn, giwk)
     gchi0_core = chi0_gen.get_gchi0(niv=gchi_dens.niv)
     F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
     F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
@@ -333,9 +351,12 @@ def test_vertex_frequency_convention_3():
 if __name__ == '__main__':
     # test_chi_asymptotic_1()
     # test_chi_asymptotic_2()
-    test_chi_asymptotic_22()
+    # test_chi_asymptotic_22()
     # test_chi_asymptotic_222()
-    test_chi_asymptotic_3()
+    # test_chi_asymptotic_4()
+    test_chi_asymptotic_5()
+    # test_chi_asymptotic_3()
+    # test_chi_asymptotic_3()
 
     # test_vertex_frequency_convention_3()
     # test_vertex_frequency_convention_2()

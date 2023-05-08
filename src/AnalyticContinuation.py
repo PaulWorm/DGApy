@@ -247,7 +247,6 @@ def extract_coefficient_imaxis(siwk=None, iw=None, N=4, order=3):
     coeff_imag_der = np.polyder(poly_imag)
     poly_imag_der = np.polyval(coeff_imag_der, xnew)
     Z = 1. / (1. - poly_imag_der[0])
-
     return poly_real[0], poly_imag[0], Z
 
 # def extrapolate_to_zero_frequency(data=None, N=2, order=1):

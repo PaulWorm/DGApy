@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import FourPoint as fp
-import w2dyn_aux
+import w2dyn_aux_dga
 import MatsubaraFrequencies as mf
 import PairingVertex as pv
 from FourPoint import  LocalFourPoint
@@ -61,7 +61,7 @@ u = dmft1p['u']
 f1p.close()
 
 # Load 2-particle stuff
-f2p = w2dyn_aux.g4iw_file(fname=path+fname2p)
+f2p = w2dyn_aux_dga.g4iw_file(fname=path + fname2p)
 niw_core = f2p.get_niw(channel='dens')
 niw_core = 50
 niv_invbse = niw_core

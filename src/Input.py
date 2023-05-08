@@ -5,7 +5,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import sys,os
 import h5py
-import w2dyn_aux
+import w2dyn_aux_dga
 import Config as conf
 import FourPoint as fp
 

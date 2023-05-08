@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------------------------------------------------
-# File: w2dyn_aux.py
+# File: w2dyn_aux_dga.py
 # Date: 29.06.2021
 # Author: Paul Worm
 # Short description: Contains auxilliary routines to read from w2dynamics file

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import w2dyn_aux
+import w2dyn_aux_dga
 import MatsubaraFrequencies as mf
 import FourPoint as fp
 import TwoPoint_old as tp
@@ -14,7 +14,7 @@ fname_1p = path + '1p-data.hdf5'
 fname_2p = path + 'g4iw_sym.hdf5'
 
 dmft_file = w2dyn_aux.w2dyn_file(fname=fname_1p)
-g2_file = w2dyn_aux.g4iw_file(fname=fname_2p)
+g2_file = w2dyn_aux_dga.g4iw_file(fname=fname_2p)
 
 convert_unit = 1.0
 # Extract system parameter:

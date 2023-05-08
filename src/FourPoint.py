@@ -4,7 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 from scipy.stats import gaussian_kde
 
-import w2dyn_aux
+import w2dyn_aux_dga
 import TwoPoint_old as tp
 import copy
 import numpy as np

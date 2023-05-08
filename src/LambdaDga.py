@@ -5,7 +5,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
-import w2dyn_aux
+import w2dyn_aux_dga
 import MpiAux as mpiaux
 import TwoPoint_old as twop
 import FourPoint as fp
@@ -464,7 +464,7 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     realt.create_file(fname=output_path + 'cpu_time_lambda_dga.txt')
 
     # -------------------------------------------LOAD G2 FROM W2DYN ----------------------------------------------------
-    g2_file = w2dyn_aux.g4iw_file(fname=path + fname_g2)
+    g2_file = w2dyn_aux_dga.g4iw_file(fname=path + fname_g2)
 
     g2_dens_loc = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=my_iw), giw=giw, channel='dens',
                                     beta=beta, iw=my_iw)

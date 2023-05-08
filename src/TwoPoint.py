@@ -45,12 +45,26 @@ def fit_smom(iv=None, siwk=None, only_positive=True):
     return mom0, mom1
 
 
+def sigma_const(beta,delta,nk,v):
+    sigma = np.ones(nk+(len(v),),dtype = complex)
+    sigma *= -1j * delta
+    return SelfEnergy(sigma,beta,pos=False)
+
 class SelfEnergy():
     ''' class to handle self-energies'''
 
     niv_core_min = 20
 
-    def __init__(self, sigma, beta, pos=True, smom0=None, smom1=None, err=5e-4):
+    def __init__(self, sigma, beta, pos=False, smom0=None, smom1=None, err=5e-4):
+        '''
+
+        :param sigma:
+        :param beta:
+        :param pos: If False sigma is expected in the full range (-niv,niv), otherwise only for positive frequencies.
+        :param smom0:
+        :param smom1:
+        :param err:
+        '''
         assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
         if (not pos):
             niv = sigma.shape[-1] // 2
@@ -103,15 +117,16 @@ class SelfEnergy():
         else:
             return niv_core
 
-    def get_siw(self, niv_core=None, niv_full=None):
-        if (niv_core is None):
-            niv_core = self.niv
-        if (niv_core <= self.niv and niv_full is None):
-            return mf.fermionic_full_nu_range(self.sigma[..., :niv_core])
+    def get_siw(self, niv = -1):
+        if (niv  == -1):
+            niv = self.niv
+        if (niv <= self.niv):
+            return mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
-            iv_asympt = mf.iv_plus(self.beta, n=niv_full, n_min=niv_core)
+            niv_asympt = niv-self.niv
+            iv_asympt = mf.iv_plus(self.beta, n=niv_asympt, n_min=self.niv)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
-            sigma_asympt = np.concatenate((self.sigma[..., :niv_core], asympt), axis=-1)
+            sigma_asympt = np.concatenate((self.sigma[..., :self.niv], asympt), axis=-1)
             return mf.fermionic_full_nu_range(sigma_asympt)
 
     def get_asympt(self, niv_asympt,n_min=None, pos=True):
@@ -248,12 +263,20 @@ class GreensFunction():
         return mf.v(self.beta,self.niv_core)
 
     @property
+    def v(self):
+        return mf.v(self.beta,self.niv_core+self.niv_asympt)
+
+    @property
     def beta(self):
         return self.sigma.beta
 
     @property
     def niv_core(self):
         return self.sigma.niv_core
+
+    @property
+    def niv_full(self):
+        return self.niv_core + self.niv_asympt
 
     @property
     def mem(self):
@@ -270,13 +293,14 @@ class GreensFunction():
         else:
             return mf.concatenate_core_asmypt(self.core, self.asympt)
 
+
     def build_g_core(self):
         return build_g(self.iv_core, self.ek, self.mu, self.sigma.sigma_core)
 
-    def k_mean(self, range='core'):
-        if (range == 'core'):
+    def k_mean(self, iv_range='core'):
+        if (iv_range == 'core'):
             return np.mean(self.core, axis=(0, 1, 2))
-        elif (range == 'full'):
+        elif (iv_range == 'full'):
             if(self.full is None):
                 raise ValueError('Full Greens function has to be set first.')
             return np.mean(self.full, axis=(0, 1, 2))
@@ -284,7 +308,7 @@ class GreensFunction():
             raise ValueError('Range has to be core or full.')
 
     def set_gloc(self):
-        self.g_loc = self.k_mean(range='full')
+        self.g_loc = self.k_mean(iv_range='full')
 
     def set_g_asympt(self, niv_asympt):
         self.asympt = self.build_asympt(niv_asympt)
@@ -299,7 +323,7 @@ class GreensFunction():
 
 
 if __name__ == '__main__':
-    import w2dyn_aux
+    import w2dyn_aux_dga
     import matplotlib.pyplot as plt
     import BrillouinZone as bz
     import Hr as hamr
@@ -308,7 +332,7 @@ if __name__ == '__main__':
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
     file = '1p-data.hdf5'
 
-    dmft_file = w2dyn_aux.w2dyn_file(fname=path + file)
+    dmft_file = w2dyn_aux_dga.w2dyn_file(fname=path + file)
     siw = dmft_file.get_siw()[0, 0, :][None, None, None, :]
     beta = dmft_file.get_beta()
     u = dmft_file.get_udd()
@@ -327,7 +351,7 @@ if __name__ == '__main__':
     giwk = GreensFunction(sigma_dmft, ek, n=n)
     niv_asympt = 2000
     giwk.set_g_asympt(niv_asympt)
-    g_loc = giwk.k_mean(range='full')
+    g_loc = giwk.k_mean(iv_range='full')
 
     vn_core = mf.vn(giwk.niv_core)
     vn_asympt = mf.vn(giwk.niv_core+giwk.niv_asympt)

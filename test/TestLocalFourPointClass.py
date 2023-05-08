@@ -1,6 +1,6 @@
 import numpy as np
 import jax.numpy as jnp
-import w2dyn_aux as aux
+import w2dyn_aux_dga as aux
 import FourPoint as fp
 import MatsubaraFrequencies as mf
 import matplotlib.pyplot as plt

@@ -268,6 +268,7 @@ class KGrid():
         return kgrid
 
 
+
 def grid_2d(nk=16, name='k'):
     kx = np.arange(0, nk) * 2 * np.pi / nk
     ky = np.arange(0, nk) * 2 * np.pi / nk

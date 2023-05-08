@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import FourPoint as fp
 import TwoPoint_old as tp
 import MatsubaraFrequencies as mf
-import w2dyn_aux
+import w2dyn_aux_dga
 import jax.scipy as jcp
 
 path = './2DSquare_U8_tp-0.25_tpp0.12_beta25_n0.85/'
