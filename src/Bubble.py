@@ -29,12 +29,28 @@ def get_gchi0(giw, niv, beta, iwn, freq_notation='minus'):
 
 
 # TODO: Find good way to generate giw(k+q). k-grid objects to that. Maybe pass it?
-def get_gchi0_q(giwk,giwkpq, niv, beta, iwn, freq_notation='minus'):
+def get_gchi0_q(giwk, niv, beta, iwn, q, freq_notation='minus'):
     ''' chi_0[w,v] = - beta G(v,k) * G(v-w,k-q) for minus'''
     niv_giw = np.shape(giwk)[0] // 2
     iws, iws2 = get_freq_shift(iwn, freq_notation)
-    giwkpq = bz
-    return - beta * giwk[niv_giw - niv + iws:niv_giw + niv + iws] * giwk[niv_giw - niv + iws2:niv_giw + niv + iws2]
+    giwkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+    return - beta * giwk[niv_giw - niv + iws:niv_giw + niv + iws] * giwkpq[niv_giw - niv + iws2:niv_giw + niv + iws2]
+
+
+def get_chi0_q(giwk, beta, niv, iwn, q, freq_notation='minus'):
+    ''' chi_0[w,v] = - beta G(v,k) * G(v-w,k-q) for minus'''
+    niv_giw = np.shape(giwk)[-1] // 2
+    iws, iws2 = get_freq_shift(iwn, freq_notation)
+    giwkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+    return - 1 / beta * np.sum(np.mean((giwk[..., niv_giw - niv + iws:niv_giw + niv + iws] *
+                                        giwkpq[..., niv_giw - niv + iws2:niv_giw + niv + iws2]), axis=(0, 1, 2)))
+
+
+def vec_get_chi0_q(giwk, beta, niv, wn, q_list, freq_notation='minus'):
+    chi0_q = np.zeros((len(q_list), len(wn)),dtype=complex)
+    for i, q in enumerate(q_list):
+        chi0_q[i, :] = np.array([get_chi0_q(giwk, beta,niv, iwn, q, freq_notation) for iwn in wn])
+    return chi0_q
 
 
 def vec_get_gchi0(giw, beta, niv, wn, freq_notation='minus'):
@@ -52,10 +68,9 @@ def vec_get_chi0_sum(giw, beta, niv, wn, freq_notation='minus'):
 
 
 class LocalBubble():
-    ''' Computes the local Bubble suszeptibility \chi_0 = - beta GG
+    ''' Computes the (local) Bubble suszeptibility \chi_0 = - beta GG
         Uses a Greens-function object which has knowledge about the moments of the self-energy and the
         kinetic Hamiltonian.
-
     '''
 
     def __init__(self, wn, giw: tp.GreensFunction, chi0_method='sum', freq_notation='minus'):
@@ -157,6 +172,19 @@ class LocalBubble():
         chi0_asympt[ind] = self.beta / 4 - self.beta ** 3 / 24 * fac2 - self.beta ** 3 / 48 * fac3
         return chi0_asympt
 
+    def get_chi0_single_q(self, niv, q=(0, 0, 0), freq_notation=None):
+        if (freq_notation is None):
+            freq_notation = self.freq_notation
+        if (self.chi0_method == 'sum'):
+            # return get_chi0_q(self.giw.full, self.beta, niv, self.wn, q, freq_notation)
+            return None
+
+    def get_chi0_q_list(self, niv, q_list, freq_notation=None):
+        if (freq_notation is None):
+            freq_notation = self.freq_notation
+        if (self.chi0_method == 'sum'):
+            return vec_get_chi0_q(self.giw.full, self.beta, niv, self.wn, q_list, freq_notation)
+
 
 # ======================================================================================================================
 # ---------------------------------------------- BUBBLE CLASS  ---------------------------------------------------
@@ -168,18 +196,18 @@ if __name__ == '__main__':
     import BrillouinZone as bz
     import Hk as hamk
 
-    ddict = td.get_data_set_2()
-    nk = (42, 42, 1)
+    ddict = td.get_data_set_5()
+    nk = (16, 16, 1)
     k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     ek_mom0 = np.mean(ek * ek)
-    niw_chi0 = 500
+    niw_chi0 = 20
     u, n, beta = ddict['u'], ddict['n'], ddict['beta']
     w = mf.w(ddict['beta'], niw_chi0)
     wn = mf.wn(niw_chi0)
     siwk = tp.SelfEnergy(ddict['siw'][None, None, None, :], beta, pos=False, smom0=tp.get_smom0(u, n), smom1=tp.get_smom1(u, n))
     giwk = tp.GreensFunction(siwk, ek, n=n)
-    niv_asympt = 10000
+    niv_asympt = 3000
     giwk.set_g_asympt(niv_asympt)
     bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
 
@@ -201,6 +229,23 @@ if __name__ == '__main__':
     plt.loglog(wn[ind_chi0], (chi0_asympt_axact[ind_chi0].real), '-h', color='navy', markeredgecolor='navy', alpha=0.8)
     plt.loglog(wn[ind_chi0], (chi0_asympt_sum2[ind_chi0].real), '-h', color='goldenrod', markeredgecolor='goldenrod', alpha=0.8)
     plt.show()
+
+    #%% Test non-local Bubble:
+    niv_core = 10
+    q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
+    q_list = q_grid.irrk_mesh_ind
+    niv_giw = np.shape(giwk.full)[-1] // 2
+    iws, iws2 = get_freq_shift(0, 'minus')
+    giwkpq = bz.shift_mat_by_ind(giwk.full, ind=[-iq for iq in q_list.T[0]])
+    print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
+                                        giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
+    chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
+    # chi0_q = bubble_gen.get_chi0_q_list(niv_core,q_list.T)
+    print('Finished!')
+
+    # chi0_q = vec_get_chi0_q(giwk.full, beta, niv_core, wn, q_list.T, freq_notation='minus')
+
+    # test = get_chi0_q(giwk.full, beta, niv=200, iwn=1, q=(1, 1, 1), freq_notation='minus')
 
     # plt.figure()
     # plt.plot(wn,chi0_asympt_axact.real-chi0_asympt_sum2.real)

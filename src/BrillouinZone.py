@@ -216,6 +216,20 @@ class KGrid():
         ''' meshgrid of {kx,ky,kz}'''
         return np.array(np.meshgrid(self.kx, self.ky, self.kz))
 
+    @property
+    def kmesh_ind(self):
+        ''' indizes of {kx,ky,kz}
+            Only works for meshes that go from 0 to 2pi
+        '''
+        return np.array(np.meshgrid(np.arange(0, self.nk[0]), np.arange(0, self.nk[1]), np.arange(0, self.nk[2])))
+
+    @property
+    def irrk_mesh_ind(self):
+        '''
+            indizes of {kx,ky,kz} in the irreducible BZ
+        '''
+        return np.array([self.map_fbz2irrk(self.kmesh_ind[0]) for i in range(3)])
+
     def set_ind_tuple(self):
         self.ind = np.squeeze(np.array(np.unravel_index(self.ind_lin, self.nk))).T
 
@@ -224,11 +238,20 @@ class KGrid():
         self.ky = np.linspace(0, 2 * np.pi, self.nk[1], endpoint=False)
         self.kz = np.linspace(0, 2 * np.pi, self.nk[2], endpoint=False)
 
-    def irrk2fbz(self, mat):
+    def map_irrk2fbz(self, mat):
         ''' First dimenstion has to be irrk'''
         old_shape = np.shape(mat)
         mat_fbz = mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
         return mat_fbz
+
+    def map_fbz2irrk(self, mat):
+        '''[kx,ky,kz,...]'''
+        new_shape = [-1]
+        new_shape.extend(np.shape(mat)[3:]) # flatten k-index
+        mat_flat = np.reshape(mat, [*new_shape])
+        return mat_flat[self.irrk_ind,...]
+
+
 
     def symmetrize_irrk(self, mat):
         '''Shape of mat has to be [kx,ky,kz,...]'''
@@ -237,7 +260,7 @@ class KGrid():
         reduced = np.zeros((self.nk_irr,) + shp[1:], dtype=mat_reshape.dtype)
         for i in range(self.nk_irr):
             reduced[i, ...] = np.mean(mat_reshape[self.fbz2irrk == self.irrk_ind[i], ...], axis=0)
-        return self.irrk2fbz(mat=reduced)
+        return self.map_irrk2fbz(mat=reduced)
 
     def shift_mat_by_pi(self, mat):
         mat_shift = np.roll(mat, self.nk[0] // 2, 0)
@@ -266,6 +289,7 @@ class KGrid():
         for i in range(np.size(q)):
             kgrid.append(self.grid[i] - q[i])
         return kgrid
+
 
 
 
@@ -446,6 +470,10 @@ def get_bz_masks(nk):
     mask_4q[:nk // 2, nk // 2:] = 0
     return [mask_1q, mask_2q, mask_3q, mask_4q]
 
+
+def shift_mat_by_ind(mat, ind=(0, 0, 0)):
+    ''' Structure of mat has to be {kx,ky,kz,...} '''
+    return np.roll(mat, ind, axis=(0, 1, 2))
 
 if __name__ == '__main__':
     nk = (16, 16, 1)
