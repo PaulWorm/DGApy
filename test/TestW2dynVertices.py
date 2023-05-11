@@ -12,8 +12,10 @@ import w2dyn_aux_dga as w2dyn_aux
 
 # Load the vertex:
 path = 'D:/Research/From_Simone/PrNiO2/0_GPa_d_0.18_beta_15/'
+path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
 fname = 'g4iw_sym.hdf5'
 fname_1p = '1p-data.hdf5'
+
 
 dmft_file = w2dyn_aux.w2dyn_file(fname=path+fname_1p)
 
@@ -33,6 +35,16 @@ wn = g2_dens.wn
 
 n_dmft = (1/beta*np.sum(giw_dmft.real)+0.5)*2
 print(n_dmft)
+
+# Load the susceptibility:
+fname_chi = 'chi.hdf5'
+chi_file = h5py.File(path+fname_chi,'r')
+chi_uu_w2dyn = chi_file['worm-001/ineq-001/p2iw-worm/00001/value'][()]
+chi_ud_w2dyn = chi_file['worm-001/ineq-001/p2iw-worm/00004/value'][()]
+chi_dens_w2dyn = chi_uu_w2dyn + chi_ud_w2dyn
+chi_dens_w2dyn[np.size(chi_dens_w2dyn)//2] -= (n / 2 - 1) ** 2 * beta *2
+chi_magn_w2dyn = chi_uu_w2dyn - chi_ud_w2dyn
+wn_chi = mf.wn(np.shape(chi_dens_w2dyn)[0]//2)
 #%%
 hr = hamr.one_band_2d_t_tp_tpp(1,-0.2,0.1)
 nk = (64,64,1)
@@ -77,15 +89,16 @@ gchi_magn.plot(0,pdir=path,name='Gchi_magn_wn0')
 gchi0_gen = bub.LocalBubble(wn=wn,giw=green)
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
-chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
+# chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
+chi0_shell = gchi0_gen.get_chi0_shell(niv_core,500)
 
 F_dens = lfp.Fob2_from_chir(gchi_dens,gchi0_core)
 F_magn = lfp.Fob2_from_chir(gchi_magn,gchi0_core)
 
-F_dens.plot(0,pdir=path,name='F_dens_wn0')
-F_dens.plot(0,pdir=path,name='F_dens_wn0_niv10',niv=10)
-F_magn.plot(0,pdir=path,name='F_magn_wn0_niv10',niv=10)
-F_magn.plot(0,pdir=path,name='F_magn_wn0')
+F_dens.plot(0,pdir=path,name='F_dens_wn0_w2dyn')
+F_dens.plot(0,pdir=path,name='F_dens_wn0_niv30_w2dyn',niv=30)
+F_magn.plot(0,pdir=path,name='F_magn_wn0_niv30_w2dyn',niv=30)
+F_magn.plot(0,pdir=path,name='F_magn_wn0_w2dyn')
 
 # lam_core_dens = lfp.lam_from_chir(gchi_dens,gchi0_core)
 # lam_tilde_dens = lfp.get_lam_tilde(lam_core_dens,chi0_shell=chi0_shell,u=u)
@@ -106,17 +119,48 @@ chi_magn_core = gchi_magn.contract_legs()
 # plt.legend()
 # plt.show()
 #
-# plt.figure()
-# plt.plot(g2_dens.wn,chi_magn.real,'-o',color='cornflowerblue',label='Tilde')
-# plt.plot(g2_dens.wn,chi_magn_core.real,'-p',color='firebrick',label='Core')
-# plt.legend()
-# plt.show()
+
 #%%
-niv_core = 100
-vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=0)
-vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=0)
+niv_core = 50
+niv_shell = 500
+vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
+vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
+
+gchi0_gen2 = bub.LocalBubble(wn_chi,green,freq_notation='center')
+chi0_core = gchi0_gen2.get_chi0(niv_shell)
+chi0_shell = gchi0_gen2.get_asymptotic_correction(niv_shell)
+chi0_shell = gchi0_gen2.get_chi0_shell(niv_shell,2*niv_shell)
+chi0_full = chi0_core+chi0_shell
+bubble_test = np.zeros((len(wn_chi),),dtype=complex)
+niv_dmft = np.size(giw_dmft)//2
+niv_sum = 500#niv_dmft-np.size(wn)
+for i,wn in enumerate(wn_chi):
+    bubble_test[i] = -1/beta * np.sum(giw_dmft[niv_dmft-niv_sum:niv_dmft+niv_sum] * giw_dmft[niv_dmft-niv_sum-wn:niv_dmft+niv_sum-wn])
+
+plt.figure()
+plt.semilogy(g2_dens.wn,chi_magn.real,'-',color='cornflowerblue',label='Tilde')
+plt.semilogy(g2_dens.wn,chi_magn_core.real,'-',color='firebrick',label='Core')
+plt.semilogy(wn_chi,chi0_full.real,'-',color='goldenrod',label='Chi0')
+plt.semilogy(wn_chi,chi0_core.real,'-',color='navy',label='Chi0')
+plt.semilogy(wn_chi,chi_magn_w2dyn.real,'-',color='forestgreen',label='Chi-sample')
+plt.semilogy(wn_chi,bubble_test.real,'-',color='tab:orange',label='Chi0-test')
+plt.legend()
+plt.show()
+
+#%%
+plt.figure()
+plt.semilogy(g2_dens.wn,chi_dens.real,'-',color='cornflowerblue',label='Tilde')
+plt.semilogy(g2_dens.wn,chi_dens_core.real,'-',color='firebrick',label='Core')
+plt.semilogy(g2_dens.wn,chi0_core.real+chi0_shell.real,'-',color='goldenrod',label='Chi0')
+plt.semilogy(wn_chi,chi_dens_w2dyn.real,'-',color='forestgreen',label='Chi-sample')
+plt.legend()
+plt.show()
+
+#%%
 siw_dens = lfp.schwinger_dyson_vrg(vrg_dens,chi_dens,green.g_loc,u)
 siw_magn = lfp.schwinger_dyson_vrg(vrg_magn,chi_magn,green.g_loc,u)
+
+
 
 siw_sde = siw_dens+siw_magn
 
@@ -125,7 +169,7 @@ plt.plot(mf.cut_v_1d(g2_dens.vn,niv_core),siw_sde.imag,'-o',color='cornflowerblu
 plt.plot(mf.vn(green.sigma.niv_core), green.sigma.sigma_core[0,0,0,:].imag,'-o',color='firebrick',label='Input',markeredgecolor='k',ms=1)
 plt.legend()
 plt.xlim(0,110)
-plt.savefig(path+f'sde_vs_input_niv_{niv_core}.png')
+plt.savefig(path+f'sde_vs_input_niv_{niv_core}_w2dyn.png')
 plt.show()
 
 
@@ -134,7 +178,7 @@ plt.semilogy(mf.cut_v_1d(g2_dens.vn,niv_core),np.abs(siw_sde.imag-mf.cut_v_1d(gr
 # plt.plot(mf.vn(green.sigma.niv_core), green.sigma.sigma_core[0,0,0,:].imag,'-o',color='firebrick',label='Input',markeredgecolor='k')
 plt.legend()
 plt.xlim(0,110)
-plt.savefig(path+f'sde_minus_input_{niv_core}.png')
+plt.savefig(path+f'sde_minus_input_{niv_core}_w2dyn.png')
 plt.show()
 
 

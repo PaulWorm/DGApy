@@ -82,6 +82,13 @@ def cut_v(arr=None, niv_cut=0, axes=(0,)):
         tmp = np.apply_along_axis(cut_v_1d, axis=axis, arr=tmp, niv_cut=niv_cut)
     return tmp
 
+def cut_w(arr=None, niw_cut=0,axes=(0,)):
+    axes = np.flip(np.sort(axes))
+    tmp = arr
+    for axis in axes:
+        tmp = np.apply_along_axis(cut_v_1d_wn, axis=axis, arr=tmp, niw_cut=niw_cut)
+    return tmp
+
 
 def cut_v_1d_iwn(arr=None, niv_cut=0, iwn=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'

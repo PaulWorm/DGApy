@@ -63,6 +63,19 @@ def test_bubble_convergence(siw,ek,beta,u,n,count=1):
     plt.tight_layout()
     plt.savefig(PLOT_PATH + f'BubbleConvergence_w0_{count}.png')
     plt.show()
+
+    iwnp = 30
+    plt.figure()
+    for i,chi0 in enumerate(chi0_list):
+        plt.plot(1/niv_sum[i],chi0[niw+iwnp].real,'o',color = colors[i],label=f'niv = {niv_sum[i]}')
+    plt.plot(0,chi0_full[niw+iwnp].real,'o',color = 'k',label=f'niv = asympt')
+    plt.plot(0,chi0_full2[niw+iwnp].real,'h',color = 'firebrick',label=f'niv = asympt',ms=4)
+    plt.legend()
+    plt.xlabel('1/niv')
+    plt.ylabel(r'$\chi^0(i\omega_n =1)$')
+    plt.tight_layout()
+    plt.savefig(PLOT_PATH + f'BubbleConvergence_w{iwnp}_{count}.png')
+    plt.show()
     # print(chi0_full[niw].real - chi0_full2[niw].real)
     # print(chi0_full[niw].real - chi0_list[-1][niw].real)
 

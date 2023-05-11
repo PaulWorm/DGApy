@@ -98,6 +98,10 @@ class LocalBubble():
         return np.mean(self.giw.ek ** 2)
 
     @property
+    def ek_mom1(self):
+        return np.mean(self.giw.ek)
+
+    @property
     def mu(self):
         return self.giw.mu
 
@@ -119,16 +123,18 @@ class LocalBubble():
         if (self.chi0_method == 'sum'):
             return vec_get_chi0_sum(self.g_loc, self.beta, niv, self.wn, freq_notation)
 
-    def get_chi0_shell(self, niv_core, niv_shell, do_asmypt=True):
+    def get_chi0_shell(self, niv_core, niv_shell, do_asmypt=True,freq_notation=None):
+        if(freq_notation is None):
+            freq_notation = self.freq_notation
         if (self.chi0_method == 'sum'):
             if (do_asmypt):
-                chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv_core, self.wn)
-                chi0_shell = vec_get_chi0_sum(self.g_loc, self.beta, niv_core + niv_shell, self.wn)
-                chi0_asmypt = self.get_asymptotic_correction(niv_core + niv_shell)
+                chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv_core, self.wn,freq_notation=freq_notation)
+                chi0_shell = vec_get_chi0_sum(self.g_loc, self.beta, niv_core + niv_shell, self.wn,freq_notation=freq_notation)
+                chi0_asmypt = self.get_asymptotic_correction(niv_core + niv_shell,freq_notation=freq_notation)
                 return chi0_shell - chi0_core + chi0_asmypt
             else:
-                chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv_core, self.wn)
-                chi0_full = vec_get_chi0_sum(self.g_loc, self.beta, niv_core + niv_shell, self.wn)
+                chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv_core, self.wn,freq_notation=freq_notation)
+                chi0_full = vec_get_chi0_sum(self.g_loc, self.beta, niv_core + niv_shell, self.wn,freq_notation=freq_notation)
                 return chi0_full - chi0_core
 
     def get_gchi0(self, niv, freq_notation=None):
@@ -136,24 +142,26 @@ class LocalBubble():
             freq_notation = self.freq_notation
         return vec_get_gchi0(self.g_loc, self.beta, niv, self.wn, freq_notation)
 
-    def get_asymptotic_correction(self, niv_core):
-        chi0_asmypt_sum = self.get_asympt_sum(niv_core)
+    def get_asymptotic_correction(self, niv_core,freq_notation=None):
+        chi0_asmypt_sum = self.get_asympt_sum(niv_core,freq_notation=freq_notation)
         chi0_asmypt_exact = self.get_exact_asymptotics()
         return chi0_asmypt_exact - chi0_asmypt_sum
 
     def get_asympt_prefactors(self):
         fac1 = (self.mu - self.smom0)
         fac2 = (self.mu - self.smom0) ** 2 + self.ek_mom2 - self.smom1
-        fac3 = (self.mu - self.smom0) ** 2
+        fac3 = (self.mu - self.smom0) ** 2 + self.ek_mom1**2 # ek_mom1 is zero
         return fac1, fac2, fac3
 
-    def get_asympt_sum(self, niv_sum):
+    def get_asympt_sum(self, niv_sum,freq_notation=None):
+        if(freq_notation is None):
+            freq_notation = self.freq_notation
         chi0_asympt_sum = np.zeros((self.niw), dtype=complex)
         v = 1 / (1j * mf.v(self.beta, n=niv_sum + self.niw))
         niv = v.size // 2
         fac1, fac2, fac3 = self.get_asympt_prefactors()
         for i, iwn in enumerate(self.wn):
-            iws, iws2 = get_freq_shift(iwn, self.freq_notation)
+            iws, iws2 = get_freq_shift(iwn, freq_notation)
             v_sum = v[niv - niv_sum + iws:niv + niv_sum + iws]
             vpw_sum = v[niv - niv_sum + iws2:niv + niv_sum + iws2]
             chi0_asympt_sum[i] += np.sum(v_sum * vpw_sum)
@@ -168,6 +176,8 @@ class LocalBubble():
         fac1, fac2, fac3 = self.get_asympt_prefactors()
         ind = self.wn != 0
         chi0_asympt[ind] = -self.beta / 2 * 1 / iw[ind] ** 2 * (fac2 - fac3)
+        # chi0_asympt[ind] = -1 / iw[ind] ** 2 #* (fac2 - fac3)
+        # chi0_asympt[ind] *= 0.5
         ind = self.wn == 0
         chi0_asympt[ind] = self.beta / 4 - self.beta ** 3 / 24 * fac2 - self.beta ** 3 / 48 * fac3
         return chi0_asympt

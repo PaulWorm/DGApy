@@ -225,15 +225,15 @@ def lam_from_chir(gchir: LocalFourPoint, gchi0):
 def vrg_from_lam(lam: LocalThreePoint, chir, u):
     u_r = get_ur(u, lam.channel)
     sign = get_sign(lam.channel)
-    vrg = (1 + sign * lam.mat) / (1 - u_r * chir[:, None])
+    vrg = (1 + sign* lam.mat) / (1 - u_r * chir[:, None])
     # vrg = (1 - sign * lam.mat) / (1 - u_r * chir[:, None])
     return LocalThreePoint(channel=lam.channel, matrix=vrg, beta=lam.beta, wn=lam.wn)
 
 
 def get_chir_shell(lam_tilde: LocalThreePoint, chi0_shell, gchi0_core, u):
     sign = get_sign(lam_tilde.channel)
-    chir_shell = -sign * u * chi0_shell ** 2 + chi0_shell * (
-            1 - 2 * u * 1 / lam_tilde.beta ** 2 * np.sum((lam_tilde.mat + sign) * gchi0_core, axis=-1))
+    chir_shell = -sign * u * chi0_shell ** 2 \
+                 + chi0_shell * (1 - 2 * u * 1 / lam_tilde.beta ** 2 * np.sum((lam_tilde.mat + sign) * gchi0_core, axis=-1))
     return chir_shell
 
 
@@ -243,14 +243,14 @@ def get_chir_tilde(lam_tilde: LocalThreePoint, chir_core, chi0_shell, gchi0_core
 
 
 def get_lam_shell(chi0_shell, u):
+    '''Unit of lam_shell is 1'''
     return u * chi0_shell
 
 
 def get_lam_tilde(lam_core: LocalThreePoint, chi0_shell, u):
     lam_shell = get_lam_shell(chi0_shell, u)
     sign = get_sign(lam_core.channel)
-    # lam_tilde = (lam_core.mat - lam_shell[:, None]) / (1 + sign * lam_shell[:, None])
-    lam_tilde = (lam_core.mat - lam_shell[:, None]) / (1 + sign* lam_shell[:, None])
+    lam_tilde = (lam_core.mat - lam_shell[:, None]) / (1 + sign*u*chi0_shell[:, None])
     return LocalThreePoint(channel=lam_core.channel, matrix=lam_tilde, beta=lam_core.beta, wn=lam_core.wn)
 
 
@@ -264,7 +264,6 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalB
     gchi0_core = chi0_gen.get_gchi0(niv_core)
     lam_core = lam_from_chir(gchir, gchi0_core)
     chir_core = gchir.contract_legs()
-    # chir_core = gchir.contract_legs_centered(np.size(gchir.wn)//2)
     if (niv_shell > 0):
         chi0_shell = chi0_gen.get_chi0_shell(niv_core, niv_shell)
         lam_tilde = get_lam_tilde(lam_core, chi0_shell, u)
@@ -300,8 +299,17 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 
 #
 #
-# # ==================================================================================================================
-#
+# ==================================================================================================================
+# -------------------------------------- ASYMPTOTIC AS PROPOSED BY MOTOHARU ----------------------------------------
+# ==================================================================================================================
+# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
+#     u_r = get_ur(u=u, channel=gammar.channel)
+#     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
+#                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
+#     return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
+
+
+
 # # ==================================================================================================================
 # def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
 #     u_r = get_ur(u=u, channel=gammar.channel)
@@ -412,9 +420,9 @@ def schwinger_dyson_F(F: LocalFourPoint, chi0, giw, u):
 
 def get_F_diag(chi_dens,chi_magn,channel='dens'):
     '''Ignore \chi_pp'''
-    if(channel=='dens'):
+    if(channel=='magn'):
         return 0.5*mf.w_to_vmvp(chi_dens) - 0.5 * mf.w_to_vmvp(chi_magn)
-    elif(channel=='magn'):
+    elif(channel=='dens'):
         return 0.5 * mf.w_to_vmvp(chi_dens) + 1.5 * mf.w_to_vmvp(chi_magn)
     else:
         raise NotImplementedError('Only Channel magn/dens implemented.')

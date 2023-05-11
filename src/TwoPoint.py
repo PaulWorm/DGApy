@@ -321,6 +321,12 @@ class GreensFunction():
         iv_asympt = mf.iv_plus(self.beta, n=niv_asympt+self.niv_core, n_min=self.niv_core)
         return mf.fermionic_full_nu_range(build_g(iv_asympt, self.ek, self.mu, sigma_asympt))
 
+    @property
+    def e_kin(self):
+        ekin = 1/self.beta * np.sum(np.mean(self.ek[...,None] * self.g_full, axis=(0,1,2)))
+        assert(np.abs(ekin.imag) < 1e-8)
+        return ekin.real
+
 
 if __name__ == '__main__':
     import w2dyn_aux_dga
