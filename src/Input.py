@@ -20,7 +20,7 @@ def load_1p_data(dga_conf: conf.DgaConfig = None):
 
     if(dga_conf.opt.g1_input_type == 'w2dyn'):
         # load contents from w2dynamics DMFT file:
-        f1p = w2dyn_aux.w2dyn_file(fname=dga_conf.nam.input_path  + dga_conf.nam.fname_dmft)
+        f1p = w2dyn_aux_dga.w2dyn_file(fname=dga_conf.nam.input_path  + dga_conf.nam.fname_dmft)
         dmft1p = f1p.load_dmft1p_w2dyn()
         f1p.close()
         if (dmft1p['n'] == 0.0): dmft1p['n'] = 1.0 # WARNING: This is kinda a hack to fix some certain inputs. In general this might lead to problems.
@@ -31,7 +31,7 @@ def load_1p_data(dga_conf: conf.DgaConfig = None):
 def extract_gamma_w2dyn(dga_conf: conf.DgaConfig = None, giw_dmft=None, channel=None):
 
 
-    g2_file = w2dyn_aux.g4iw_file(fname=dga_conf.nam.input_path + dga_conf.nam.fname_g2)
+    g2_file = w2dyn_aux_dga.g4iw_file(fname=dga_conf.nam.input_path + dga_conf.nam.fname_g2)
 
     # Load Green's function
     g2 = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel=channel, iw=dga_conf.box.wn_core),channel=channel,
@@ -49,6 +49,9 @@ def extract_gamma_w2dyn(dga_conf: conf.DgaConfig = None, giw_dmft=None, channel=
     gamma = fp.gammar_from_gchir(gchir=gchi, gchi0_urange=chi0_urange, u=dga_conf.sys.u)
 
     return gamma
+
+
+
 
 
 
@@ -74,3 +77,23 @@ def get_gamma_loc(dga_conf: conf.DgaConfig = None, giw_dmft=None):
     }
 
     return gamma_dmft
+
+# ----------------------------------------------- LOAD ED DATA ------------------------------------------------------------
+
+def load_1p_data_ed(path,fname_ed, fname_bath_fitting):
+    '''Load the single particle quantities from the ED calculation'''
+    f = h5py.File(path + fname_ed, 'r')
+    ddict = {}
+    ddict['giw'] = f['giw'][()]
+    ddict['iv_giw'] = f['iv_giw'][()]
+    ddict['n'] = f['/config/totdens'][()]
+    ddict['beta'] = f['/config/beta'][()]
+    ddict['u'] = f['/config/U'][()]
+    ddict['mu_dmft'] = f['/dmft/mu'][()]
+
+    f.close()
+    # Load bath fitting:
+    f_bath = h5py.File(path + fname_bath_fitting, 'r')
+    ddict['fiw'] = f_bath['fiw'][()]
+    ddict['iv_fiw'] = f_bath['iv_fiw'][()]
+

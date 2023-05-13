@@ -172,6 +172,41 @@ def get_g_model(mu=None, iv=None, hloc=None, smom0=None):
 
 # ==================================================================================================================
 
+def get_fill_primitive(g_loc,beta,verbose=False):
+    '''
+    Primitive way of computing the filling on the matsubara axis.
+    giwk: [kx,ky,kz,iv] - currently no easy extension to multi-orbital
+    '''
+    n = (1 / beta * np.sum(g_loc) + 0.5) * 2
+    if(verbose): print('n = ',n)
+    return n
+
+def root_fun_primitive(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, verbose=False):
+    """Auxiliary function for the root finding"""
+    g_loc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
+    return get_fill_primitive(g_loc,beta,verbose)[0] - target_filling
+
+def update_mu_primitive(mu0=0.0,target_filling=None, iv=None, hk=None, siwk=None, beta=None, smom0=None, tol=1e-6, verbose=False):
+    '''
+        Find mu to satisfy target_filling.
+    '''
+    if (verbose): print('Update mu...')
+    mu = mu0
+    hloc = None
+    if (verbose): print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    try:
+        mu = scipy.optimize.newton(root_fun_primitive, mu, tol=tol,
+                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
+    except RuntimeError:
+        if (verbose): print('Root finding for chemical potential failed.')
+        if (verbose): print('Using old chemical potential again.')
+    if np.abs(mu.imag) < 1e-8:
+        mu = mu.real
+    else:
+        raise ValueError('In OneParticle.update_mu: Chemical Potential must be real.')
+    return mu
+
+
 # ==================================================================================================================
 def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=None, verbose=False):
     """
@@ -241,12 +276,14 @@ class GreensFunction():
         self.iv_core = mf.iv(sigma.beta, self.sigma.niv_core)
         self.ek = ek
         if (n is not None):
-            self.n = n
-            self.mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,
+            self._n = n
+            self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,
                                 tol=self.mu_tol)
+            # self._mu = update_mu_primitive(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,)
         elif (mu is not None):
-            self.mu = mu
-            self.n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek), mu=mu)
+            self._mu = mu
+            self._n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek), mu=mu)
+            # self._n = get_fill_primitive(self.g_loc)
         else:
             raise ValueError('Either mu or n, but bot both, must be supplied.')
 
@@ -259,12 +296,24 @@ class GreensFunction():
         self.set_gloc()
 
     @property
+    def mu(self):
+        return self._mu
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
     def v_core(self):
         return mf.v(self.beta,self.niv_core)
 
     @property
     def v(self):
         return mf.v(self.beta,self.niv_core+self.niv_asympt)
+
+    @property
+    def vn(self):
+        return mf.vn(self.niv_core+self.niv_asympt)
 
     @property
     def beta(self):

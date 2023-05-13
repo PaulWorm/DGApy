@@ -11,120 +11,121 @@ import Hk as hamk
 import Hr as hamr
 import BrillouinZone as bz
 import w2dyn_aux_dga as w2dyn_aux
+import PlotSpecs as ps
 
-# Load the vertex:
+# Load the ED data:
 path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
-# path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
-# fname = 'EDFermion_GreenFunctions_nbath_3_niw_50_niv_49.hdf5'
-fname = 'EDFermion_GreenFunctions_nbath_3_new.hdf5'
-# fname = 'EDFermion_GreenFunctions_nbath_3_niw_200_niv_199.hdf5'
-fname = 'EDFermion_GreenFunctions_nbath_3_niw_250_niv_249.hdf5'
+
+# Load the single-particle quantities:
+n_bath = 3
+fname = f'EDFermion_GreenFunctions_nbath_{n_bath}_niv_10000.hdf5'
 file = h5py.File(path + fname, 'r')
 beta = file['config/beta'][()]
-giw_dmft = file['dmft/giw'][()]
-giw_ed = file['giw'][()]
 mu_dmft = file['dmft/mu'][()]
-iv_ed = mf.iv(beta, np.size(giw_ed) // 2)
-n_ed = (1 / beta * np.sum(giw_dmft.real - iv_ed) + 0.5) * 2
-print(n_ed)
-
-# % Load the Susceptibility:
-
-fname_chi = 'EDFermion_GreenFunctions_nbath_3_niw_4000_niv_49.hdf5'
-# fname_chi = 'EDFermion_GreenFunctions_nbath_chi_giw.hdf5'
-file_chi = h5py.File(path + fname_chi, 'r')
-chi_dens_ed = file_chi['chi_dens'][()]
-n = file['config/totdens'][()]
-chi_dens_ed[np.size(chi_dens_ed) // 2] -= (n / 2 - 1) ** 2 * beta * 2  # * 1.9964
-chi_magn_ed = file_chi['chi_magn'][()]
-wn_chi_ed = mf.wn(np.size(chi_dens_ed) // 2)
-
-# Load fiw:
-fname_fiw = h5py.File(path + 'bath_values_nbath_3.hdf5', 'r')
-fiw_ed = fname_fiw['fiw'][()]
-fiw_dmft = fname_fiw['fiw_input'][()]
-fname_fiw.close()
-# %%
-g0iw_ed = (1 / (iv_ed + mu_dmft - np.conj(fiw_ed)))
-# g0iw_ed = (1/(iv_ed + mu_dmft - np.conj(fiw_dmft)))
-plt.figure(dpi=200)
-plt.plot(iv_ed.imag, g0iw_ed.real, '-o', color='cornflowerblue', markeredgecolor='k', ms=12)
-plt.plot(iv_ed.imag, file['dmft/g0iw'][()].real, '-h', color='firebrick', markeredgecolor='k')
-plt.xlim(-2, 10)
-plt.show()
-
-plt.figure(dpi=200)
-plt.plot(iv_ed.imag, g0iw_ed.imag, '-o', color='cornflowerblue', markeredgecolor='k', ms=12)
-plt.plot(iv_ed.imag, file['dmft/g0iw'][()].imag, '-h', color='firebrick', markeredgecolor='k')
-plt.xlim(-2, 10)
-plt.show()
-# %%
-mu = file['dmft/mu'][()]
-wn = mf.wn(np.size(file['iw4'][()]) // 2)
-# wn_ed = mf.wn(np.size(file['iw4'][()]) // 2)
-
+giw_input = file['giw_hat'][()]
+siw_input = file['siw_hat'][()] # important to use the siw_hat since this is the one fitted in ED!!!!
+giw_bm = file['dmft/giw'][()]
+siw_bm = file['dmft/siw'][()]
+vn_bm = mf.vn(np.size(giw_bm) // 2)
 u = file['config/U'][()]
+n = file['config/totdens'][()]
+vn_input = mf.vn(np.size(giw_input) // 2)
+
+# Load the physical susceptibilities:
+fname_chi = 'EDFermion_ChiPhys_nbath_3_niw_10000.hdf5'
+file_chi = h5py.File(path + fname_chi, 'r')
+chi_dens_input = file_chi['chi_dens'][()]
+chi_magn_input= file_chi['chi_magn'][()]
+niw_chi_input = chi_dens_input.size//2
+wn_chi_input = mf.wn(np.size(chi_dens_input) // 2)
+
+# Load the two-particle quantities:
+fname_g4iw = 'EDFermion_GreenFunctions_nbath_3_niw_250_niv_249.hdf5'
+file_g4iw = h5py.File(path + fname_g4iw, 'r')
+niw_g2 = np.shape(file_g4iw['g4iw_dens'][()])[0]//2
+
+wn_g2 = mf.wn(niw_g2)
+
+g2_dens = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_dens'][()], beta=beta, wn=wn_g2, channel='dens')
+g2_magn = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_magn'][()], beta=beta, wn=wn_g2, channel='magn')
+
+niv_g2 = g2_dens.niv
+niv_shell = 2*niv_g2
+niv_full = niv_g2 + niv_shell
+# Build the Green's function:
 hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
 nk = (64, 64, 1)
 k_grid = bz.KGrid(nk=nk)
 ek = hamk.ek_3d(k_grid.grid, hr)
-# siw = 1 / file['dmft/g0iw'][()] - 1 / file['giw'][()]
-siw = 1 / g0iw_ed - 1 / file['giw'][()]
-sigma = twop.SelfEnergy(siw[None, None, None, :], beta)
-green = twop.GreensFunction(sigma, ek, n=n)
+sigma = twop.SelfEnergy(siw_input[None, None, None, :], beta)
+green = twop.GreensFunction(sigma, ek, mu=mu_dmft)
+n_giw = green.n
 n_test = (1 / beta * np.sum(green.g_loc.real) + 0.5) * 2
-print(green.e_kin)
-print(n_test)
-# %%
-# chi_dens_ed = file['chi_dens'][()]
 
-v_dmft = mf.v(beta, np.size(giw_dmft) // 2)
-v_ed = mf.v(beta, np.size(giw_ed) // 2)
-plt.figure(dpi=500)
-plt.plot(green.v, green.g_loc.imag, '-o', color='cornflowerblue', label='Test', ms=8)
-plt.plot(v_dmft, giw_dmft.imag, '-h', color='firebrick', label='DMFT', markeredgecolor='k', ms=6)
-plt.plot(v_ed, giw_ed.imag, '-p', color='goldenrod', label='ED', markeredgecolor='k', ms=4)
+print('------------------------')
+print('n_giw = ', n_giw)
+print('n_test = ', n_test)
+print('n_input = ', n)
+print('------------------------')
+
+#%%
+# Check the quality of the self-energy and the Green's function:
+import PlotSpecs as ps
+fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(7,5), dpi=500)
+axes = axes.flatten()
+
+axes[0].plot(green.vn, green.g_loc.real, label='Build')
+axes[0].plot(vn_input, giw_input.real, label='Input')
+axes[0].plot(vn_bm, giw_bm.real, label='BM')
+axes[0].set_ylabel('$\Re G(i\omega_n)$')
+
+axes[1].plot(green.vn, green.g_loc.imag, label='Build')
+axes[1].plot(vn_input, giw_input.imag, label='Input')
+axes[1].plot(vn_bm, giw_bm.imag, label='BM')
+axes[1].set_ylabel('$\Im G(i\omega_n)$')
+
+axes[2].plot(mf.vn(green.sigma.niv), green.sigma.get_siw()[0,0,0,:].real, label='Build')
+axes[2].plot(vn_input, siw_input.real, label='Input')
+axes[2].plot(vn_bm, siw_bm.real, label='BM')
+axes[2].set_ylabel('$\Re \Sigma(i\omega_n)$')
+
+axes[3].plot(mf.vn(green.sigma.niv), green.sigma.get_siw()[0,0,0,:].imag, label='Build')
+axes[3].plot(vn_input, siw_input.imag, label='Input')
+axes[3].plot(vn_bm, siw_bm.imag, label='BM')
+axes[3].set_ylabel('$\Im \Sigma(i\omega_n)$')
+
+for ax in axes:
+    ax.set_xlabel(r'$i\nu_n$')
+    ax.set_xlim(0,5+2*beta)
+
+    ax.vlines(0, ax.get_ylim()[0], ax.get_ylim()[1], linestyle='--', color='grey')
+
+axes[1].set_ylim(None,0)
+axes[3].set_ylim(None,0)
 plt.legend()
-plt.xlim(-10, 30)
-plt.savefig(path + 'Giw_imag.png')
-plt.close()
+plt.tight_layout()
+plt.savefig(path+f'Check_Giw_and_Siw_niv{np.size(vn_input)//2}_nbath_{n_bath}.png')
+plt.show()
 
-plt.figure(dpi=500)
-plt.plot(green.v, green.g_loc.real, '-o', color='cornflowerblue', label='Test', ms=8)
-plt.plot(v_dmft, giw_dmft.real, '-h', color='firebrick', label='DMFT', markeredgecolor='k', ms=6)
-plt.plot(v_ed, giw_ed.real, '-p', color='goldenrod', label='ED', markeredgecolor='k', ms=4)
-plt.legend()
-plt.xlim(-10, 30)
-plt.savefig(path + 'Giw_real.png')
-plt.close()
+#%% Plot the two-particle Green's function and vertices:
 
-# %%
-# Load the ED vertex:
-niw_core = 50
-g2_dens = lfp.LocalFourPoint(matrix=file['g4iw_dens'][()], beta=beta, wn=wn, channel='dens')
-g2_dens.mat = mf.cut_w(g2_dens.mat, niw_core, (0,))
-g2_dens.wn = mf.cut_w(g2_dens.wn, niw_core, (0,))
-g2_magn = lfp.LocalFourPoint(matrix=file['g4iw_magn'][()], beta=beta, wn=wn, channel='magn')
-g2_magn.mat = mf.cut_w(g2_magn.mat, niw_core, (0,))
-g2_magn.wn = mf.cut_w(g2_magn.wn, niw_core, (0,))
+g2_dens.plot(0, pdir=path, name='G2_dens')
+g2_dens.plot(max(niw_g2//2,10), pdir=path, name=f'G2_dens')
+g2_dens.plot(max(niw_g2,40), pdir=path, name=f'G2_dens')
 
-wn = mf.wn(niw_core)
-# g2_dens.plot(0,pdir=path,name='G2_dens_wn0')
-# g2_magn.plot(0,pdir=path,name='G2_magn_wn0')
-
-g2_dens.plot(10, pdir=path, name='G2_dens_wn10')
-g2_dens.plot(10, pdir=path, name='G2_dens_wn30')
-# g2_magn.plot(10,pdir=path,name='G2_magn_wn10')
+g2_magn.plot(0, pdir=path, name='G2_magn')
+g2_magn.plot(max(niw_g2//2,10), pdir=path, name=f'G2_magn')
+g2_magn.plot(max(niw_g2,40), pdir=path, name=f'G2_magn')
 
 # Compute the vertex:
 niv_core = g2_dens.niv
 gchi_dens = lfp.gchir_from_g2(g2_dens, green.g_loc)
 gchi_magn = lfp.gchir_from_g2(g2_magn, green.g_loc)
-# gchi_dens.plot(0,pdir=path,name='Gchi_dens_wn0')
-# gchi_magn.plot(0,pdir=path,name='Gchi_magn_wn0')
+gchi_dens.plot(0,pdir=path,name='Gchi_dens', niv=30)
+gchi_magn.plot(0,pdir=path,name='Gchi_magn', niv=30)
 
 
-gchi0_gen = bub.LocalBubble(wn=wn, giw=green)
+gchi0_gen = bub.LocalBubble(wn=wn_g2, giw=green)
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
 chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
@@ -132,133 +133,80 @@ chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
 F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
 F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
 
-F_dens.plot(0, pdir=path, name='F_dens_wn0')
-F_magn.plot(0, pdir=path, name='F_magn_wn0')
+F_dens.plot(0, pdir=path, name='F_dens')
+F_magn.plot(0, pdir=path, name='F_magn')
 
-F_dens.plot(0, pdir=path, name='F_dens_wn0_niv30', niv=30)
-F_magn.plot(0, pdir=path, name='F_magn_wn0_niv30', niv=30)
+F_dens.plot(0, pdir=path, name='F_dens', niv=30)
+F_magn.plot(0, pdir=path, name='F_magn', niv=30)
 
-F_dens.plot(-10, pdir=path, name='F_dens_wnm10')
-F_magn.plot(-10, pdir=path, name='F_magn_wnm10')
+F_dens.plot(-10, pdir=path, name='F_dens')
+F_magn.plot(-10, pdir=path, name='F_magn')
 
-# lam_core_dens = lfp.lam_from_chir(gchi_dens,gchi0_core)
-# lam_tilde_dens = lfp.get_lam_tilde(lam_core_dens,chi0_shell=chi0_shell,u=u)
-#
+#%%
+# Compute the Physical susceptibilities:
+
 chi_dens_core = gchi_dens.contract_legs()
 chi_magn_core = gchi_magn.contract_legs()
-# chi_dens_tilde = lfp.get_chir_tilde(lam_tilde_dens,chi0_core,chi0_shell, gchi0_core, u)
 
-# vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=g2_dens.niv, niv_shell=500)
-# vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=g2_dens.niv, niv_shell=500)
 
-# plt.figure()
-# colors_d = plt.cm.Blues(np.linspace(0.5, 1.0, 5))[::-1]
-# for i,niv_core in enumerate([10,20,30,40,50]):
-#     _, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=500)
-#     plt.semilogy(g2_dens.wn,chi_dens.real,'-o',color=colors_d[i],label='Tilde')
-# plt.semilogy(g2_dens.wn,chi_dens_core.real,'-p',color='firebrick',label='Core')
-# plt.legend()
-# plt.show()
-# %%
-niv_core = 50
-niv_shell = 500
-vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=500)
-vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=500)
-
-niw_shell = 400
-wn_shell = mf.wn(niw_shell)
-gchi0_gen2 = bub.LocalBubble(wn=wn_shell, giw=green, freq_notation='minus')
-chi0_core2 = gchi0_gen2.get_chi0(niv_shell, freq_notation='minus')
-# chi0_asympt = gchi0_gen2.get_chi0_shell(niv_shell,niv_shell+100,freq_notation='center')
-# chi0_asympt = gchi0_gen2.get_asymptotic_correction(niv_shell)
-chi0_asympt = gchi0_gen2.get_asympt_sum(10 * niv_shell) - gchi0_gen2.get_asympt_sum(niv_shell)
-chi0_asympt_exact = gchi0_gen2.get_chi0_shell(niv_shell, 2 * niv_shell, freq_notation='minus')
-chi0_full = chi0_core2 + chi0_asympt_exact
-chi_dens_full = (chi0_core2 + chi0_asympt_exact)  # /np.pi
-chi_dens_full[niw_shell - niw_core:niw_shell + niw_core + 1] = chi_dens  # *np.pi
-
-chi_magn_full = (chi0_core2 + chi0_asympt_exact)  # /np.pi
-chi_magn_full[niw_shell - niw_core:niw_shell + niw_core + 1] = chi_magn  # *np.pi
-
-chi_magn_rpa = (chi0_core2 + chi0_asympt) / (1 - u * (chi0_core2 + chi0_asympt))
-iv = mf.iv(beta, green.niv_full)
-f1, f2, f3 = gchi0_gen2.get_asympt_prefactors()
-g_asympt = 1 / (iv) - 1 / (iv ** 2) * f1 + 1 / (iv ** 3) * (f2)
-g_asympt_simple = 1 / (iv)
-import scipy
-
-tmp = scipy.signal.convolve(green.g_loc, green.g_loc, method='fft')
-tmp2 = scipy.signal.convolve(g_asympt, g_asympt, method='fft')
-wn_tmp = mf.wn(np.size(tmp) // 2)
-asympt_exact = gchi0_gen2.get_exact_asymptotics()
-asympt_correction = gchi0_gen2.get_asymptotic_correction(niv_shell * 10)
-asympt_sum = gchi0_gen2.get_asympt_sum(niv_shell * 10)
-
-# %% load and test primitive bubble:
-test_file = h5py.File(path + 'EDFermion_GreenFunctions_nbath_3_niw_50_niv_49.hdf5')
-# test_file = h5py.File(path+'EDFermion_GreenFunctions_nbath_chi_giw.hdf5')
-giw_test = test_file['giw'][()]
-vn_test = mf.vn(np.size(giw_test))
-plt.figure(dpi=500)
-
-bubble_test = np.zeros((len(wn_chi_ed),), dtype=complex)
-niv_dmft = np.size(giw_test) // 2
-niv_sum = 20000  # niv_dmft-np.size(wn)
-for i, wn in enumerate(wn_chi_ed):
-    bubble_test[i] = -1 / beta * np.sum(giw_test[niv_dmft - niv_sum:niv_dmft + niv_sum] * giw_test[niv_dmft - niv_sum - wn:niv_dmft + niv_sum - wn])
-
-plt.loglog(wn_chi_ed, chi_magn_ed.real, color='goldenrod')
-plt.loglog(wn_shell, chi_magn_full.real, color='cornflowerblue')
-plt.loglog(wn_chi_ed, bubble_test.real, color='firebrick')
-plt.loglog(wn_shell, chi0_full.real, color='seagreen')
-plt.loglog(wn_shell, np.real(1 / (mf.iw(beta, niw_shell)) ** 2 * green.e_kin) * 2, '--', color='tab:orange')
-# plt.semilogy(wn_shell,chi0_asympt.real,'seagreen')
-# plt.semilogy(wn_shell,chi0_asympt_exact.real,'firebrick')
-# plt.semilogy(wn_shell,chi_magn_rpa.real,color='brown')
-# plt.semilogy(wn_shell,chi0_core2 + chi0_asympt,color='k')
-# plt.semilogy(wn_shell,chi0_core2,color='gray')
-# plt.semilogy(wn_tmp,tmp/beta,color='gray')
-# plt.semilogy(wn_tmp,tmp2/beta,color='k')
-# plt.semilogy(wn_chi_ed,chi_magn_ed.real,color='navy')
-# plt.semilogy(wn_shell,asympt_exact.real,color='forestgreen')
-# plt.semilogy(wn_shell,asympt_correction.real,color='crimson')
-# plt.semilogy(wn_shell,asympt_sum.real,color='firebrick')
-# plt.semilogy(wn_shell,1/(wn_shell*2*np.pi/beta)**2,color='navy')
-# plt.semilogy(wn,chi0_shell.real)
-# plt.semilogy(wn,chi0_core.real+chi0_shell.real)
-plt.xlim(0, 1000)
-plt.show()
-
-# %%
-
-plt.figure()
-plt.semilogy(green.v, np.abs(green.g_loc.imag), color='cornflowerblue')
-plt.semilogy(green.v, np.abs(g_asympt.imag), color='firebrick')
-plt.xlim(0, None)
-plt.show()
-# %%
-plt.figure()
-plt.semilogy(green.v, np.abs(green.g_loc.imag - g_asympt.imag), color='cornflowerblue')
-plt.semilogy(green.v, np.abs(green.g_loc.real - g_asympt.real), color='firebrick')
-plt.semilogy(green.v, np.abs(green.g_loc.real - g_asympt_simple.real), color='goldenrod')
-plt.xlim(0, 1000)
-plt.show()
-# %%
 vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
 vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
-F_diag_dens = lfp.get_F_diag(chi_dens_ed, chi_magn_ed, channel='dens')
-F_diag_magn = lfp.get_F_diag(chi_dens_ed, chi_magn_ed, channel='magn')
 
 
+fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
+axes = axes.flatten()
 
-F_diag_dens = mf.cut_v(F_diag_dens, niv_shell, (0, 1))
-F_diag_magn = mf.cut_v(F_diag_magn, niv_shell, (0, 1))
+axes[0].plot(mf.wn(len(chi_dens_core)//2), chi_dens_core.real, label='Core')
+axes[0].plot(mf.wn(len(chi_dens)//2), chi_dens.real, label='Tilde')
+axes[0].plot(mf.wn(len(chi_dens_input)//2), chi_dens_input.real, label='Input')
+axes[0].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
+axes[0].legend()
 
-plt.figure()
-plt.pcolormesh(F_diag_magn.real, cmap='RdBu_r')
+axes[1].plot(mf.wn(len(chi_magn_core)//2), chi_magn_core.real, label='Core')
+axes[1].plot(mf.wn(len(chi_magn)//2), chi_magn.real, label='Tilde')
+axes[1].plot(mf.wn(len(chi_magn_input)//2), chi_magn_input.real, label='Input')
+axes[1].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
+axes[1].legend()
+
+axes[2].loglog(mf.wn(len(chi_dens_core)//2), chi_dens_core.real, label='Core',ms=0)
+axes[2].loglog(mf.wn(len(chi_dens)//2), chi_dens.real, label='Tilde',ms=0)
+axes[2].loglog(mf.wn(len(chi_dens_input)//2), chi_dens_input.real, label='Input',ms=0)
+axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(beta,niw_chi_input)+0.000001) ** 2 * green.e_kin) * 2,ls='--', label='Asympt',ms=0)
+axes[2].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
+axes[2].legend()
+
+axes[3].loglog(mf.wn(len(chi_magn_core)//2), chi_magn_core.real, label='Core',ms=0)
+axes[3].loglog(mf.wn(len(chi_magn)//2), chi_magn.real, label='Tilde',ms=0)
+axes[3].loglog(mf.wn(len(chi_magn_input)//2), chi_magn_input.real, label='Input',ms=0)
+axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(beta,niw_chi_input)+0.000001) ** 2 * green.e_kin) * 2,'--', label='Asympt',ms=0)
+axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
+axes[3].legend()
+
+axes[0].set_xlim(-1,10)
+axes[1].set_xlim(-1,10)
+plt.tight_layout()
+plt.savefig(path+f'chi_dens_magn_nbath{n_bath}.png')
+plt.show()
+
+#%% Check the Schwinger-Dyson equation:
+
+siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, green.g_loc, u, n, niv_shell=niv_shell)
+vn_full = mf.vn(niv_full)
+
+
+plt.figure(dpi=500)
+plt.plot(vn_full, siw_sde_full.imag, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+plt.plot(vn_full, green.sigma.get_siw(niv=niv_full)[0, 0, 0, :].imag, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+# plt.plot(vn_full, siw_shell_only.imag, '-h', color='forestgreen', label='Asympt', markeredgecolor='k', ms=1)
+plt.legend()
+plt.xlim(0, 100)
+# plt.ylim(None,0)
+plt.savefig(path + f'sde_vs_input_nbath{n_bath}_niv_{niv_core}.png')
 plt.show()
 
 
+
+#%%
 gchi0_core = gchi0_gen.get_gchi0(niv_shell)
 chi0_shell = gchi0_gen.get_chi0(niv_shell)
 prefac_magn = 1 / (1 - u * chi0_shell)
@@ -344,6 +292,8 @@ plt.plot(wn_chi_ed, chi_dens_ed.real, '-p', color='goldenrod', label='ED')
 # # p2_dens[np.size(p2_dens)//2] -= np.sum(ggv)*2*1/beta**2
 # plt.plot(g2_dens.wn,p2_dens.real*beta,'-p',color='forestgreen',label='ED-sum')
 plt.legend()
+plt.xlim(0,10)
+plt.savefig(path + 'chi_dens.png')
 plt.show()
 
 ggv = lfp.get_ggv(green.g_loc, g2_dens.niv)

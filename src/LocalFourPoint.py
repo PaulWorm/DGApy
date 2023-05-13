@@ -2,6 +2,7 @@ import numpy as np
 import MatsubaraFrequencies as mf
 import Bubble as bub
 import matplotlib.pyplot as plt
+import TwoPoint as twop
 
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
@@ -124,7 +125,7 @@ class LocalFourPoint():
         iwn_lin = self.wn_lin[self.wn == iwn][0]
         data = mf.cut_iv_2d(self.mat[iwn_lin], niv_cut=niv)
         vn = mf.cut_v_1d(self.vn, niv_cut=niv)
-        plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name, do_save=do_save)
+        plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name + f'_wn{iwn}_niv{niv}', do_save=do_save)
 
 
 def get_ggv(giw=None, niv_ggv=-1):
@@ -275,11 +276,14 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalB
         return vrg_core, chir_core
 
 
-# # ======================================================================================================================
-# # ------------------------------------- FREE FUNCTIONS THAT USE OBJECTS AS INPUT ---------------------------------------
-# # ======================================================================================================================
+
+
 #
-# # ==================================================================================================================
+#
+# ==================================================================================================================
+# -------------------------------------- ASYMPTOTIC AS PROPOSED BY MOTOHARU ----------------------------------------
+# ==================================================================================================================
+
 def gammar_from_gchir(gchir: LocalFourPoint, gchi0_urange, u):
     u_r = get_ur(u=u, channel=gchir.channel)
     gammar = np.array(
@@ -297,12 +301,7 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
     return -(core - chigr_inv - u / (beta * beta))
 
 
-#
-#
-# ==================================================================================================================
-# -------------------------------------- ASYMPTOTIC AS PROPOSED BY MOTOHARU ----------------------------------------
-# ==================================================================================================================
-# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
+# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: bub.LocalBubble = None, u=None):
 #     u_r = get_ur(u=u, channel=gammar.channel)
 #     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
 #                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
@@ -397,6 +396,17 @@ def schwinger_dyson_shell(chir_phys,giw,beta,u,n_shell,n_core,wn):
     mat_grid = mf.wn_slices_shell(giw, n_shell = n_shell,n_core=n_core, wn=wn)
     sigma_F = u**2 / 2 * 1 / beta * np.sum((chir_phys[:, None]) * mat_grid, axis=0)
     return sigma_F
+
+def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, chi_dens, chi_magn, giw, u, n, niv_shell=0):
+    siw_dens_core = schwinger_dyson_vrg(vrg_dens, chi_dens, giw, u)
+    siw_magn_core = schwinger_dyson_vrg(vrg_magn, chi_magn, giw, u)
+    hartree = twop.get_smom0(u,n)
+    if(niv_shell==0):
+        return siw_dens_core + siw_magn_core + hartree
+    else:
+        siw_magn_shell = schwinger_dyson_shell(chi_magn, giw, vrg_magn.beta, u, niv_shell, vrg_magn.niv, vrg_magn.wn)
+        siw_dens_shell = schwinger_dyson_shell(chi_dens, giw, vrg_dens.beta, u, niv_shell, vrg_dens.niv, vrg_dens.wn)
+        return hartree+mf.concatenate_core_asmypt(siw_dens_core + siw_magn_core, siw_magn_shell+siw_dens_shell)
 
 
 def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
