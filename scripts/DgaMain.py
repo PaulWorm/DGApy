@@ -1,5 +1,9 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
-# Warning: many of the files I prepared from Motoharu do not have smom stored.
+# This code performs a DGA calculation starting from DMFT quantities as input.
+# For the original paper look at: PHYSICAL REVIEW B 75, 045118 (2007)
+# For a detailed review of the procedure read my thesis: "Numerical analysis of many-body effects in cuprate and nickelate superconductors"
+# Asymptotics were adapted from Phys. Rev. B 106, 205101 (2022)
+# ----------------------------------------------------------------------------------------------------------------------
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import sys, os
@@ -37,14 +41,7 @@ box_sizes = conf.BoxSizes()
 
 # Define paths of datasets:
 names.input_path = './'
-#names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta6.6666_n0.99/'
-# names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta30_n0.90/'
-names.input_path = '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/LambdaDgaPython/'
 names.input_path = '/mnt/d/Research/HoleDopedPalladates/2DSquare_U7_tp-0.184_tpp0.014_beta25_n0.80/'
-# names.input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta15_n0.975/'
-# names.input_path = '/mnt/c/Users/pworm/Research/Ba2CuO4/Plane1/U3.0eV_n0.93_b040/'
-# names.input_path = '/mnt/d/Research/BenchmarkEliashberg/'
-# names.input_path = '/mnt/d/Research/HoleDopedNickelates/2DSquare_U8_tp-0.25_tpp0.12_beta50_n0.875/LambdaDgaPython/'
 names.output_path = names.input_path
 
 # Define names of input/output files:

@@ -241,7 +241,7 @@ if __name__ == '__main__':
     plt.show()
 
     #%% Test non-local Bubble:
-    niv_core = 10
+    niv_core = 100
     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
     q_list = q_grid.irrk_mesh_ind
     niv_giw = np.shape(giwk.full)[-1] // 2
@@ -250,8 +250,16 @@ if __name__ == '__main__':
     print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
                                         giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
     chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
-    # chi0_q = bubble_gen.get_chi0_q_list(niv_core,q_list.T)
+    #%%
+    chi0_q_fbz = q_grid.map_fbz2irrk(chi0_q)
+    chi0_loc = np.mean(chi0_q_fbz, axis=(0, 1, 2))
     print('Finished!')
+
+    #%%
+    plt.figure()
+    plt.plot(wn, chi0_loc.real,color='cornflowerblue')
+    plt.plot(wn, chi0_core.real,color='firebrick')
+    plt.show()
 
     # chi0_q = vec_get_chi0_q(giwk.full, beta, niv_core, wn, q_list.T, freq_notation='minus')
 

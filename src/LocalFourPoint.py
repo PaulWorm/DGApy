@@ -95,13 +95,25 @@ class LocalFourPoint():
     def __init__(self, channel=None, matrix=None, beta=None, wn=None):
         self.mat = matrix
         self.beta = beta
-        self.wn = wn
+        if(wn is None):
+            self.is_full_w = True
+            assert np.size(matrix.shape[0])%2 == 1, 'wn is not bosonic. Probably w is not the 0th dimension of the input matrix.'
+        else:
+            self._wn = wn
+            self.is_full_w = False
         assert channel in KNOWN_CHANNELS, f"Channel with name {channel} not known. Kown are {KNOWN_CHANNELS}."
         self.channel = channel  # dens/magn/trip/sing/bubb
 
     @property
     def wn_lin(self):
         return np.arange(0, self.wn.size)
+
+    @property
+    def wn(self):
+        if(self.is_full_w):
+            return mf.wn(self.mat.shape[0]//2)
+        else:
+            return self._wn
 
     @property
     def niv(self):
@@ -113,6 +125,10 @@ class LocalFourPoint():
 
     def cut_iv(self, niv_cut=None):
         self.mat = mf.cut_iv_fp(self.mat, niv_cut)
+
+    def cut_iw(self,niw_cut=None):
+        assert self.is_full_w, 'Full wn range has to be ensured.'
+        self.mat = mf.cut_w(self.mat, niw_cut, (0,))
 
     def contract_legs(self):
         return 1. / self.beta ** 2 * np.sum(self.mat, axis=(-2, -1))

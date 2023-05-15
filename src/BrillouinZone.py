@@ -228,7 +228,7 @@ class KGrid():
         '''
             indizes of {kx,ky,kz} in the irreducible BZ
         '''
-        return np.array([self.map_fbz2irrk(self.kmesh_ind[0]) for i in range(3)])
+        return np.array([self.kmesh_ind[i].flatten()[self.irrk_ind] for i in range(3)])
 
     def set_ind_tuple(self):
         self.ind = np.squeeze(np.array(np.unravel_index(self.ind_lin, self.nk))).T
@@ -246,10 +246,9 @@ class KGrid():
 
     def map_fbz2irrk(self, mat):
         '''[kx,ky,kz,...]'''
-        new_shape = [-1]
-        new_shape.extend(np.shape(mat)[3:]) # flatten k-index
-        mat_flat = np.reshape(mat, [*new_shape])
-        return mat_flat[self.irrk_ind,...]
+        new_shape = self.nk + mat.shape[1:]
+        mat_fbz = mat[self.irrk_inv, ...]
+        return np.reshape(mat_fbz, new_shape)
 
 
 

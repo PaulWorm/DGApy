@@ -45,6 +45,77 @@ class MidpointNormalize(colors.Normalize):
 # -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
+
+def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True):
+    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
+    axes = axes.flatten()
+    niw_chi_input = np.size(chi_dens)
+
+    axes[0].plot(mf.wn(len(chi_dens) // 2), chi_dens.real, label='Tilde')
+    axes[0].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
+    axes[0].legend()
+
+    axes[1].plot(mf.wn(len(chi_magn) // 2), chi_magn.real, label='Tilde')
+    axes[1].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
+    axes[1].legend()
+
+    axes[2].loglog(mf.wn(len(chi_dens) // 2), chi_dens.real, label='Tilde', ms=0)
+    axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, ls='--', label='Asympt', ms=0)
+    axes[2].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
+    axes[2].legend()
+
+    axes[3].loglog(mf.wn(len(chi_magn) // 2), chi_magn.real, label='Tilde', ms=0)
+    axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, '--', label='Asympt', ms=0)
+    axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
+    axes[3].legend()
+
+    axes[0].set_xlim(-1, 10)
+    axes[1].set_xlim(-1, 10)
+    plt.tight_layout()
+    if(do_plot): plt.savefig(plot_dir + f'/chi_dens_magn.png')
+    if(verbose):
+        plt.show()
+    else:
+        plt.close()
+
+def siw_sde_local_checks(siw_sde,siw_input,beta,output_dir,verbose=False,do_plot=True):
+    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
+    axes = axes.flatten()
+    vn_sde = mf.vn(np.size(siw_sde)//2)
+    vn_input = mf.vn(np.size(siw_input)//2)
+
+    axes[0].plot(vn_sde, siw_sde.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+    axes[0].plot(vn_input,siw_input.real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    axes[0].set_ylabel(r'$\Re \Sigma(i\nu_n)$')
+    axes[0].set_xlabel(r'$\nu_n$')
+
+    axes[1].plot(vn_sde, siw_sde.imag, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+    axes[1].plot(vn_input, siw_input.imag, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    axes[1].set_ylabel(r'$\Im \Sigma(i\nu_n)$')
+    axes[1].set_xlabel(r'$\nu_n$')
+
+    axes[2].loglog(vn_sde, siw_sde.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+    axes[2].loglog(vn_input, siw_input.real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    axes[2].set_ylabel(r'$\Re \Sigma(i\nu_n)$')
+    axes[2].set_xlabel(r'$\nu_n$')
+
+    axes[3].loglog(vn_sde, np.abs(siw_sde.imag), '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+    axes[3].loglog(vn_input, np.abs(siw_input.imag), '-p', color='firebrick', label='Input', markeredgecolor='k',
+                   ms=2)
+    axes[3].set_ylabel(r'$|\Im \Sigma(i\nu_n)|$')
+    axes[3].set_xlabel(r'$\nu_n$')
+
+    axes[0].set_xlim(0, 5 + 2 * beta)
+    axes[1].set_xlim(0, 5 + 2 * beta)
+    plt.legend()
+    axes[1].set_ylim(None, 0)
+    plt.tight_layout()
+    if(do_plot): plt.savefig(output_dir + f'/sde_vs_input.png')
+    if(verbose):
+        plt.show()
+    else:
+        plt.close()
+
 def plot_fourpoint_nu_nup(mat,vn,do_save = True, pdir = './', name='NoName',cmap='RdBu',figsize=(8, 4)):
     fig, axes = plt.subplots(ncols=2, figsize=figsize)
     axes = axes.flatten()
