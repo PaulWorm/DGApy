@@ -82,11 +82,15 @@ def get_gamma_loc(dga_conf: conf.DgaConfig = None, giw_dmft=None):
 
 FNAME1PEDFERMION = 'EDFermion_1p-data.hdf5'
 FNAME2PEDFERMION = 'EDFermion_g4iw_sym.hdf5'
-KNOWNINPUTTYPES = ['EDFermion']
+FNAME1PW2DYN = '1p-data.hdf5'
+FNAME2PW2DYN = 'g4iw_sym.hdf5'
+KNOWNINPUTTYPES = ['EDFermion','w2dyn']
 
 def load_1p_data(input_type,path):
     if(input_type == 'EDFermion'):
         return load_1p_data_ed(path)
+    elif(input_type == 'w2dyn'):
+        return load_1p_data_w2dyn(path)
     else:
         raise NotImplementedError(f'Requested input type format not yet implemented. Currently known is: {KNOWNINPUTTYPES}')
 
@@ -107,6 +111,26 @@ def load_1p_data_ed(path):
     ddict['g4iw_dens'] = f['g4iw_dens'][()]
     ddict['g4iw_magn'] = f['g4iw_magn'][()]
     f.close()
+
+    return ddict
+
+def load_1p_data_w2dyn(path):
+    '''Load the single particle quantities from a w2dynamics calculation'''
+    ddict = {}
+    # Load the single particle Data:
+    file = w2dyn_aux_dga.w2dyn_file(fname=path+FNAME1PW2DYN)
+    ddict['giw'] = file.get_giw()[0,0,:]
+    ddict['siw'] = file.get_siw()[0,0,:]
+    ddict['n'] = file.get_totdens()
+    ddict['beta'] = file.get_beta()
+    ddict['u'] = file.get_udd()
+    ddict['mu_dmft'] = file.get_mu()
+    file.close()
+
+    file = w2dyn_aux_dga.g4iw_file(fname=path + FNAME2PW2DYN)
+    ddict['g4iw_dens'] = file.read_g2_full(channel='dens')
+    ddict['g4iw_magn'] = file.read_g2_full(channel='magn')
+    file.close()
 
     return ddict
 

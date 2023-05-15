@@ -46,7 +46,7 @@ class MidpointNormalize(colors.Normalize):
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True):
+def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True,name=''):
     fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
     axes = axes.flatten()
     niw_chi_input = np.size(chi_dens)
@@ -72,7 +72,7 @@ def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True):
     axes[0].set_xlim(-1, 10)
     axes[1].set_xlim(-1, 10)
     plt.tight_layout()
-    if(do_plot): plt.savefig(plot_dir + f'/chi_dens_magn.png')
+    if(do_plot): plt.savefig(plot_dir + f'/chi_dens_magn_'+name+'.png')
     if(verbose):
         plt.show()
     else:

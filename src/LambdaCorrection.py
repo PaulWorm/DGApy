@@ -15,17 +15,16 @@ def get_lambda_start(chi: fp.LadderSusceptibility = None):
     return -np.min(1. / (chi.mat.flatten()[is_w0].real))
 
 
-def lambda_correction_single(lambda_start=0, chir: fp.LadderSusceptibility = None,
+def lambda_correction_single(beta,lambda_start=0, chir: fp.LadderSusceptibility = None,
                              chi_loc_sum=None,
-                             maxiter=1000, eps=1e-7, delta=0.1, nq=None, mask=None):
-    beta = chir.beta
+                             maxiter=1000, eps=1e-7, delta=0.1):
     lambda_old = lambda_start + delta
     lambda_ = lambda_old
 
     for i in range(maxiter):
-        chir_sum = 1. / (beta * nq) * np.sum(1. / (1. / chir.mat[..., mask] + lambda_))
+        chir_sum = 1. / (beta) * np.mean(np.sum(1. / (1. / chir + lambda_),axis=-1))
         f_lam = chir_sum - chi_loc_sum
-        fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat[..., mask] + lambda_)) ** 2.)
+        fp_lam = -1. / (beta) * np.mean(np.sum((1. / (1. / chir + lambda_)) ** 2.,axis=-1))
         lambda_ = lambda_old - np.real(f_lam / fp_lam)
         print('Lambda: ',lambda_,'f_lam: ', f_lam,'fp_lam: ', fp_lam)
         if (np.abs(f_lam.real) < eps):
@@ -39,35 +38,8 @@ def lambda_correction_single(lambda_start=0, chir: fp.LadderSusceptibility = Non
             lambda_old = lambda_
     return lambda_
 
+def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None,chi_dmft=None):
 
-def lambda_correction_single_use_rpa(lambda_start=0, chir: fp.LadderSusceptibility = None,
-                                     chir_rpa: fp.LadderSusceptibility = None, chi_loc_sum=None,
-                                     maxiter=1000, eps=1e-7, delta=0.1, nq=None, mask=None):
-    beta = chir.beta
-    lambda_old = lambda_start + delta
-    lambda_ = lambda_old
-
-    for i in range(maxiter):
-        chir_sum = 1. / (beta * nq) * np.sum(1. / (1. / chir.mat[..., mask] + lambda_))
-        chir_sum += 1. / (beta * nq) * np.sum(1. / (1. / chir_rpa.mat + lambda_))
-        f_lam = chir_sum - chi_loc_sum
-        fp_lam = -1. / (beta * nq) * np.sum((1. / (1. / chir.mat[..., mask] + lambda_)) ** 2.)
-        fp_lam += -1. / (beta * nq) * np.sum((1. / (1. / chir_rpa.mat + lambda_)) ** 2.)
-        lambda_ = lambda_old - np.real(f_lam / fp_lam)
-        print(lambda_)
-        if (np.abs(f_lam.real) < eps):
-            break
-
-        if (lambda_ < lambda_old):
-            delta = delta / 2.
-            lambda_old = lambda_start + delta
-            lambda_ = lambda_old
-        else:
-            lambda_old = lambda_
-    return lambda_
-
-
-def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None, chi_rpa=None, chi_dmft=None, chi_rpa_loc=None):
     if (dga_conf.opt.lc_use_only_positive):
         mask_dens_loc = chi_dmft['dens'].mat_asympt > 0
         mask_magn_loc = chi_dmft['magn'].mat_asympt > 0
@@ -88,31 +60,14 @@ def lambda_correction(dga_conf: conf.DgaConfig = None, chi_ladder=None, chi_rpa=
     chi_dens_ladder_sum = 1. / (beta * dga_conf.q_grid.nk_tot) * np.sum(chi_ladder['dens'].mat[...,mask_dens_loc])
     chi_magn_ladder_sum = 1. / (beta * dga_conf.q_grid.nk_tot) * np.sum(chi_ladder['magn'].mat[...,mask_magn_loc])
 
-    if (dga_conf.opt.use_urange_for_lc):
-        chi_dens_loc_sum = chi_dens_loc_sum + 1. / beta * np.sum(chi_rpa_loc['dens'].mat)
-        lambda_dens_single = lambda_correction_single_use_rpa(lambda_start=lambda_dens_start, chir=chi_ladder['dens'],
-                                                              chir_rpa=chi_rpa['dens'], chi_loc_sum=chi_dens_loc_sum,
-                                                              nq=nq, mask=mask_dens_loc)
+    lambda_dens_single = lambda_correction_single(lambda_start=lambda_dens_start, chir=chi_ladder['dens'],
+                                                  chi_loc_sum=chi_dens_loc_sum, nq=nq, mask=mask_dens_loc)
+    lambda_magn_single = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
+                                                  chi_loc_sum=chi_magn_loc_sum, nq=nq, mask=mask_magn_loc)
 
-        chi_magn_loc_sum = chi_magn_loc_sum + 1. / beta * np.sum(chi_rpa_loc['magn'].mat)
-        lambda_magn_single = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
-                                                              chir_rpa=chi_rpa['magn'], chi_loc_sum=chi_magn_loc_sum,
-                                                              nq=nq, mask=mask_magn_loc)
-
-        chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum - 1. / (beta * nq) * np.sum(
-            chi_rpa['dens'].mat)
-        lambda_magn_totdens = lambda_correction_single_use_rpa(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
-                                                               chir_rpa=chi_rpa['magn'], chi_loc_sum=chi_sum, nq=nq,
-                                                               mask=mask_magn_loc)
-    else:
-        lambda_dens_single = lambda_correction_single(lambda_start=lambda_dens_start, chir=chi_ladder['dens'],
-                                                      chi_loc_sum=chi_dens_loc_sum, nq=nq, mask=mask_dens_loc)
-        lambda_magn_single = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
-                                                      chi_loc_sum=chi_magn_loc_sum, nq=nq, mask=mask_magn_loc)
-
-        chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum
-        lambda_magn_totdens = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
-                                                       chi_loc_sum=chi_sum, nq=nq, mask=mask_magn_loc)
+    chi_sum = chi_dens_loc_sum + chi_magn_loc_sum - chi_dens_ladder_sum
+    lambda_magn_totdens = lambda_correction_single(lambda_start=lambda_magn_start, chir=chi_ladder['magn'],
+                                                   chi_loc_sum=chi_sum, nq=nq, mask=mask_magn_loc)
 
     if (dga_conf.opt.lambda_correction_type == 'spch'):
         lambda_dens = lambda_dens_single

@@ -14,17 +14,17 @@ import w2dyn_aux_dga as w2dyn_aux
 import PlotSpecs as ps
 
 # Load the ED data:
-path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+path = './2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
 
 # Define the frequency grid range:
-niw_core = 30
-niv_core = 60
+niw_core = 15
+niv_core = 15
 niv_shell = 2*niv_core
 niv_full = niv_core + niv_shell
 
 # Load the single-particle quantities:
 n_bath = 3
-fname = f'EDFermion_GreenFunctions_nbath_{n_bath}_niv_10000.hdf5'
+fname = f'EDFermion_1p-data.hdf5'
 file = h5py.File(path + fname, 'r')
 beta = file['config/beta'][()]
 mu_dmft = file['dmft/mu'][()]
@@ -38,7 +38,7 @@ n = file['config/totdens'][()]
 vn_input = mf.vn(np.size(giw_input) // 2)
 
 # Load the physical susceptibilities:
-fname_chi = 'EDFermion_ChiPhys_nbath_3_niw_10000.hdf5'
+fname_chi = 'EDFermion_chi.hdf5'
 file_chi = h5py.File(path + fname_chi, 'r')
 chi_dens_input = file_chi['chi_dens'][()]
 chi_magn_input= file_chi['chi_magn'][()]
@@ -46,19 +46,15 @@ niw_chi_input = chi_dens_input.size//2
 wn_chi_input = mf.wn(np.size(chi_dens_input) // 2)
 
 # Load the two-particle quantities:
-fname_g4iw = 'EDFermion_GreenFunctions_nbath_3_niw_250_niv_249.hdf5'
+fname_g4iw = 'EDFermion_g4iw_sym.hdf5'
 file_g4iw = h5py.File(path + fname_g4iw, 'r')
-niw_g2 = np.shape(file_g4iw['g4iw_dens'][()])[0]//2
 
-wn_g2 = mf.wn(niw_g2)
 
-g2_dens = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_dens'][()], beta=beta, wn=wn_g2, channel='dens')
-g2_magn = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_magn'][()], beta=beta, wn=wn_g2, channel='magn')
+g2_dens = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_dens'][()], beta=beta, wn=None, channel='dens')
+g2_magn = lfp.LocalFourPoint(matrix=file_g4iw['g4iw_magn'][()], beta=beta, wn=None, channel='magn')
 
-g2_dens.mat = mf.cut_w(g2_dens.mat, niw_core, (0,))
-g2_dens.wn = mf.cut_w(g2_dens.wn, niw_core, (0,))
-g2_magn.mat = mf.cut_w(g2_magn.mat, niw_core, (0,))
-g2_magn.wn = mf.cut_w(g2_magn.wn, niw_core, (0,))
+g2_dens.cut_iw(niw_core)
+g2_magn.cut_iw(niw_core)
 
 g2_dens.cut_iv(niv_core)
 g2_magn.cut_iv(niv_core)

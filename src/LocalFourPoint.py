@@ -217,6 +217,14 @@ def gamob2_from_chir_wn(chir=None, gchi0=None):
     return gam_r
 
 
+def gchir_from_gamob2(gammar: LocalFourPoint,gchi0):
+    ''' chi_r = ( chi_0^-1 + 1/beta^2 Gamma_r)^(-1) '''
+    chi_r = np.array([gchir_from_gamob2_wn(gammar.mat[iwn_lin], gchi0[iwn_lin]) for iwn_lin in gammar.wn_lin])
+    return LocalFourPoint(matrix=chi_r, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
+
+def gchir_from_gamob2_wn(gammar,gchi0):
+    return np.linalg.inv(np.diag(1/gchi0) + gammar)
+
 # def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
 #     u_r = get_ur(u, channel=gam.channel)
 #     vrg = np.array([vrg_from_gam_wn(gam.mat[iwn_lin], chi0_inv.mat[iwn_lin], gam.beta, u_r) for iwn_lin in gam.wn_lin])
