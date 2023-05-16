@@ -241,15 +241,11 @@ class KGrid():
     def map_irrk2fbz(self, mat):
         ''' First dimenstion has to be irrk'''
         old_shape = np.shape(mat)
-        mat_fbz = mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
-        return mat_fbz
+        return  mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
 
     def map_fbz2irrk(self, mat):
         '''[kx,ky,kz,...]'''
-        new_shape = self.nk + mat.shape[1:]
-        mat_fbz = mat[self.irrk_inv, ...]
-        return np.reshape(mat_fbz, new_shape)
-
+        return  mat.reshape((-1,*np.shape(mat)[3:]))[self.irrk_ind, ...]
 
 
     def symmetrize_irrk(self, mat):

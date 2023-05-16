@@ -251,7 +251,6 @@ def vrg_from_lam(lam: LocalThreePoint, chir, u):
     u_r = get_ur(u, lam.channel)
     sign = get_sign(lam.channel)
     vrg = (1 + sign* lam.mat) / (1 - u_r * chir[:, None])
-    # vrg = (1 - sign * lam.mat) / (1 - u_r * chir[:, None])
     return LocalThreePoint(channel=lam.channel, matrix=vrg, beta=lam.beta, wn=lam.wn)
 
 
@@ -411,7 +410,6 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     ''' Sigma = U*n/2 + '''
     u_r = get_ur(u, channel=vrg.channel)
-    # mat_grid = mf.wn_slices(giw, n_cut=vrg.niv, wn=vrg.wn)
     mat_grid = mf.wn_slices(giw, n_cut=vrg.niv, wn=vrg.wn)
     sigma_F = u_r / 2 * 1 / vrg.beta * np.sum((1 - (1 - u_r * chir_phys[:, None]) * vrg.mat) * mat_grid, axis=0)
     return sigma_F

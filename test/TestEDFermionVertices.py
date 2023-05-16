@@ -64,7 +64,10 @@ wn_g2 = mf.wn(niw_g2)
 
 # Build the Green's function:
 hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
-nk = (64, 64, 1)
+nk = (8, 8, 1)
+nq = nk
+symmetries = bz.two_dimensional_square_symmetries()
+q_grid = bz.KGrid(nk=nq,symmetries=symmetries)
 k_grid = bz.KGrid(nk=nk)
 ek = hamk.ek_3d(k_grid.grid, hr)
 sigma = twop.SelfEnergy(siw_input[None, None, None, :], beta)
@@ -138,7 +141,8 @@ gchi_magn.plot(0,pdir=path,name='Gchi_magn', niv=30)
 gchi0_gen = bub.LocalBubble(wn=wn_g2, giw=green)
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
-chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
+# chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
+chi0_shell = gchi0_gen.get_chi0_shell(niv_core,niv_shell)
 
 F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
 F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
@@ -237,8 +241,53 @@ plt.tight_layout()
 plt.savefig(path + f'sde_vs_input_nbath{n_bath}_niv_{niv_core}.png')
 plt.show()
 
+#%% Test non-local part:
+q_list =  q_grid.irrk_mesh_ind.T
+q_list = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
+chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
+chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q,niv_core,niv_shell,q_list)
 
+#%%
+# chi0_q = q_grid.map_irrk2fbz(chi0_q)
+# chi0_q_full = chi0_q + q_grid.map_irrk2fbz(chi0_q_shell)
+chi0_q = chi0_q
+chi0_q_full = chi0_q + chi0_q_shell
+#%%
+# chi0_sum_core = np.mean(chi0_q,axis=(0,1,2))
+# chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,1,2))
+chi0_sum_core = np.mean(chi0_q,axis=(0,))
+chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,))
+wn_core = gchi0_gen.wn
 
+fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
+axes = axes.flatten()
+
+axes[0].plot(wn_core,chi0_sum_core.real,label='sum')
+axes[0].plot(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+axes[0].plot(wn_core,chi0_core.real,label='loc-core')
+axes[0].plot(wn_core,(chi0_core+chi0_shell).real,label='loc-tilde')
+
+axes[1].loglog(wn_core,chi0_sum_core.real,label='sum')
+axes[1].loglog(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+axes[1].loglog(wn_core,chi0_core.real,label='loc-core')
+axes[1].loglog(wn_core,(chi0_core+chi0_shell).real,label='loc-tilde')
+
+axes[3].loglog(wn_core,np.abs(chi0_sum_core.real-chi0_core.real),label='diff-core')
+axes[3].loglog(wn_core,np.abs(chi0_sum_tilde.real-chi0_core.real-chi0_shell.real),label='diff-tilde')
+plt.legend()
+
+plt.show()
+
+#%%
+ekpq = gchi0_gen.get_ek_ekpq(q_list)
+
+fac1,fac2,fac3 = gchi0_gen.get_asympt_prefactors_q(q_list)
+_,_,fac3_loc = gchi0_gen.get_asympt_prefactors()
+
+fac3 = q_grid.map_irrk2fbz(fac3)
+
+print(np.mean(fac3))
+print(fac3_loc)
 # #%%
 # gchi0_core = gchi0_gen.get_gchi0(niv_shell)
 # chi0_shell = gchi0_gen.get_chi0(niv_shell)

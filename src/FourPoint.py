@@ -14,9 +14,56 @@ import numpy as np
 import LocalFourPoint as lfp
 import Bubble as bub
 import matplotlib.pyplot as plt
+import TwoPoint as twop
+import BrillouinZone as bz
 
 
 # ----------------------------------------------- REFACTOR CODE ---------------------------------------------------------
+
+def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_point_duplicity, wn, nqtot):
+    ''' '''
+    u_r = get_ur(u, channel=channel)
+    niv_vrg = np.shape(vrg)[-1] // 2
+    sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * niv_vrg], dtype=complex)
+    for i, q in enumerate(q_list):
+        gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+        mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv_vrg, wn=wn)
+        sigma_F += 1 / nqtot * u_r / 2 * 1 / beta * np.sum((1 - (1 - u_r * chir_phys[i, :, None, None, None, None]) *
+                                                            vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * q_point_duplicity[i]
+    return sigma_F
+
+
+def schwinger_dyson_dc(gchiq_Fupdo,giwk,u,q_list,q_point_duplicity,wn,nqtot):
+    '''
+        two beta prefactors are contained in F. Additional minus sign from usign gchi0_q
+    '''
+    niv_core = np.shape(gchiq_Fupdo)[-1] // 2
+    sigma_dc = np.zeros([*np.shape(giwk)[:3], 2 * niv_core], dtype=complex)
+    niv_giwk = np.shape(giwk)[-1]//2
+    for iq,q in enumerate(q_list):
+        for iw,iwn in enumerate(wn):
+            gkpq = bz.shift_mat_by_ind(giwk[...,niv_giwk - niv_core - iwn:niv_giwk + niv_core - iwn], ind=[-iq for iq in q])
+            # sigma_dc += - u * 1/(nq_tot) * q_point_duplicity[iq] * np.sum(np.diag(gchi0_q[iq,iw]) * F_updo[iw],axis=-1)[None,None,None,:] * gkpq
+            sigma_dc += + u * 1/(nqtot) * q_point_duplicity[iq] * gchiq_Fupdo[iq,iw,None,None,None,:] * gkpq
+    return sigma_dc
+
+def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn):
+    mat_grid = mf.wn_slices_shell(giw, n_shell=n_shell, n_core=n_core, wn=wn)
+    sigma_F = u ** 2 / 2 * 1 / beta * np.sum((chir_phys[:, None]) * mat_grid, axis=0)
+    return sigma_F
+
+
+def schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, giw, u, n, niv_shell=0):
+    siw_dens_core = schwinger_dyson_vrg(vrg_dens, chi_dens, giw, u)
+    siw_magn_core = schwinger_dyson_vrg(vrg_magn, chi_magn, giw, u)
+    hartree = twop.get_smom0(u, n)
+    if (niv_shell == 0):
+        return siw_dens_core + siw_magn_core + hartree
+    else:
+        siw_magn_shell = schwinger_dyson_shell(chi_magn, giw, vrg_magn.beta, u, niv_shell, vrg_magn.niv, vrg_magn.wn)
+        siw_dens_shell = schwinger_dyson_shell(chi_dens, giw, vrg_dens.beta, u, niv_shell, vrg_dens.niv, vrg_dens.wn)
+        return hartree + mf.concatenate_core_asmypt(siw_dens_core + siw_magn_core, siw_magn_shell + siw_dens_shell)
+
 
 def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
     '''
@@ -28,7 +75,7 @@ def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
     chir = np.zeros([nq, *gammar.mat.shape], dtype=complex)
     for iq in range(nq):
         for iwn in range(nw):
-            chir[iq,iwn, ...] = np.linalg.inv(np.diag(1 / gchi0[iq, iwn]) + gammar.mat[iwn])
+            chir[iq, iwn, ...] = np.linalg.inv(np.diag(1 / gchi0[iq, iwn]) + gammar.mat[iwn])
     return chir
 
 
@@ -43,20 +90,23 @@ def lam_tilde(lam_core, chi0q_shell, u, channel):
     u_r = lfp.get_ur(u, channel)
     return (lam_core - u * chi0q_shell[..., None]) / (1 + u_r * chi0q_shell[..., None])
 
-def get_chir_shell(lam_tilde, chi0_shell, gchi0_core, beta,u,channel):
+
+def get_chir_shell(lam_tilde, chi0q_shell, gchi0q_core, beta, u, channel):
     sign = get_sign(channel)
-    chir_shell = -sign * u * chi0_shell ** 2 \
-                 + chi0_shell * (1 - 2 * u * 1 / beta ** 2 * np.sum((lam_tilde + sign) * gchi0_core, axis=-1))
+    chir_shell = -sign * u * chi0q_shell ** 2 \
+                 + chi0q_shell * (1 - 2 * u * 1 / beta ** 2 * np.sum((lam_tilde + sign) * gchi0q_core, axis=-1))
     return chir_shell
 
-def chir_tilde(chir_core, lam_tilde,chi0q_shell,gchi0q_core, beta,u, channel):
-    chir_shell = get_chir_shell(lam_tilde,chi0q_shell,gchi0q_core,beta,u,channel)
-    return (chir_core + chir_shell)  / (1 - (u * chi0q_shell) ** 2)
 
-def vrg_q_tilde(lam_tilde,chir_q_tilde,u,channel):
+def chir_tilde(chir_core, lam_tilde, chi0q_shell, gchi0q_core, beta, u, channel):
+    chir_shell = get_chir_shell(lam_tilde, chi0q_shell, gchi0q_core, beta, u, channel)
+    return (chir_core + chir_shell) / (1 - (u * chi0q_shell) ** 2)
+
+
+def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
     u_r = get_ur(u, channel)
     sign = get_sign(channel)
-    return  (1 + sign* lam_tilde) / (1 - u_r * chir_q_tilde[..., None])
+    return (1 + sign * lam_tilde) / (1 - u_r * chir_q_tilde[..., None])
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------

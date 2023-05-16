@@ -24,6 +24,12 @@ def wn_slices(mat=None, n_cut=None, wn=None):
     mat_grid = np.array([mat[n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
     return mat_grid
 
+def wn_slices_gen(mat=None, n_cut=None, wn=None):
+    n = mat.shape[-1] // 2
+    mat_grid = np.array([mat[...,n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
+    return mat_grid
+
+
 def wn_slices_plus(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2
     mat_grid = np.array([mat[n - n_cut + iwn:n + n_cut + iwn] for iwn in wn])

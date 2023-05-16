@@ -17,6 +17,7 @@ import BrillouinZone as bz
 import Config as conf
 import TwoPoint_old as twop
 import socket
+import PlotSpecs as ps
 
 if(socket.gethostname() != 'DESKTOP-OEHIPTV'):
     matplotlib.use('agg') # non GUI backend since VSC has no display
@@ -45,30 +46,59 @@ class MidpointNormalize(colors.Normalize):
 # -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
+def plot_kx_ky(mat,kx,ky,do_save=True,pdir='./',name='',cmap='RdBu',figsize=ps.FIGSIZE,verbose=False):
+    fig, axes = plt.subplots(ncols=2, figsize=figsize, dpi=500)
+    axes = axes.flatten()
+    im1 = axes[0].pcolormesh(kx, ky, mat.real, cmap=cmap)
+    im2 = axes[1].pcolormesh(kx, ky, mat.imag, cmap=cmap)
+    axes[0].set_title('$\Re$')
+    axes[1].set_title('$\Im$')
+    for ax in axes:
+        ax.set_xlabel(r'$k_x$')
+        ax.set_ylabel(r'$k_y$')
+        ax.set_aspect('equal')
+    fig.suptitle(name)
+    fig.colorbar(im1, ax=(axes[0]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    fig.colorbar(im2, ax=(axes[1]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    plt.tight_layout()
+    if (do_save): plt.savefig(pdir + '/' + name + '.png')
+    if (verbose):
+        plt.show()
+    else:
+        plt.close()
 
-def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True,name=''):
+
+
+
+def chi_checks(chi_dens,chi_magn,labels,green,plot_dir,verbose=False,do_plot=True,name=''):
     fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
     axes = axes.flatten()
-    niw_chi_input = np.size(chi_dens)
+    niw_chi_input = np.size(chi_dens[0])
 
-    axes[0].plot(mf.wn(len(chi_dens) // 2), chi_dens.real, label='Tilde')
+    for i,cd in enumerate(chi_dens):
+        axes[0].plot(mf.wn(len(cd) // 2), cd.real, label=labels[i])
     axes[0].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
     axes[0].legend()
 
-    axes[1].plot(mf.wn(len(chi_magn) // 2), chi_magn.real, label='Tilde')
+
+    for i,cd in enumerate(chi_magn):
+        axes[1].plot(mf.wn(len(cd) // 2), cd.real, label=labels[i])
     axes[1].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
     axes[1].legend()
 
-    axes[2].loglog(mf.wn(len(chi_dens) // 2), chi_dens.real, label='Tilde', ms=0)
+    for i,cd in enumerate(chi_dens):
+        axes[2].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i],ms=0)
     axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, ls='--', label='Asympt', ms=0)
     axes[2].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
     axes[2].legend()
 
-    axes[3].loglog(mf.wn(len(chi_magn) // 2), chi_magn.real, label='Tilde', ms=0)
+    for i,cd in enumerate(chi_magn):
+        axes[3].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i],ms=0)
     axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, '--', label='Asympt', ms=0)
     axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
     axes[3].legend()
-
     axes[0].set_xlim(-1, 10)
     axes[1].set_xlim(-1, 10)
     plt.tight_layout()
@@ -78,30 +108,31 @@ def chi_checks(chi_dens,chi_magn,green,plot_dir,verbose=False,do_plot=True,name=
     else:
         plt.close()
 
-def siw_sde_local_checks(siw_sde,siw_input,beta,output_dir,verbose=False,do_plot=True):
+def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,name=''):
     fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
     axes = axes.flatten()
-    vn_sde = mf.vn(np.size(siw_sde)//2)
-    vn_input = mf.vn(np.size(siw_input)//2)
 
-    axes[0].plot(vn_sde, siw_sde.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-    axes[0].plot(vn_input,siw_input.real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    for i,siw in enumerate(siw_arr):
+        vn = mf.vn(np.size(siw) // 2)
+        axes[0].plot(vn, siw.real, label=labels[i])
     axes[0].set_ylabel(r'$\Re \Sigma(i\nu_n)$')
     axes[0].set_xlabel(r'$\nu_n$')
 
-    axes[1].plot(vn_sde, siw_sde.imag, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-    axes[1].plot(vn_input, siw_input.imag, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    for i,siw in enumerate(siw_arr):
+        vn = mf.vn(np.size(siw) // 2)
+        axes[1].plot(vn, siw.imag, label=labels[i])
     axes[1].set_ylabel(r'$\Im \Sigma(i\nu_n)$')
     axes[1].set_xlabel(r'$\nu_n$')
 
-    axes[2].loglog(vn_sde, siw_sde.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-    axes[2].loglog(vn_input, siw_input.real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+    for i,siw in enumerate(siw_arr):
+        vn = mf.vn(np.size(siw) // 2)
+        axes[2].loglog(vn, siw.real, label=labels[i])
     axes[2].set_ylabel(r'$\Re \Sigma(i\nu_n)$')
     axes[2].set_xlabel(r'$\nu_n$')
 
-    axes[3].loglog(vn_sde, np.abs(siw_sde.imag), '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-    axes[3].loglog(vn_input, np.abs(siw_input.imag), '-p', color='firebrick', label='Input', markeredgecolor='k',
-                   ms=2)
+    for i,siw in enumerate(siw_arr):
+        vn = mf.vn(np.size(siw) // 2)
+        axes[3].loglog(vn, np.abs(siw.imag), label=labels[i])
     axes[3].set_ylabel(r'$|\Im \Sigma(i\nu_n)|$')
     axes[3].set_xlabel(r'$\nu_n$')
 
@@ -110,7 +141,7 @@ def siw_sde_local_checks(siw_sde,siw_input,beta,output_dir,verbose=False,do_plot
     plt.legend()
     axes[1].set_ylim(None, 0)
     plt.tight_layout()
-    if(do_plot): plt.savefig(output_dir + f'/sde_vs_input.png')
+    if(do_plot): plt.savefig(output_dir + f'/sde_'+name+'_check.png')
     if(verbose):
         plt.show()
     else:

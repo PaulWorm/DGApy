@@ -169,7 +169,7 @@ class LocalBubble():
     def get_asympt_prefactors_q(self,q_list):
         fac1 = (self.mu - self.smom0)
         fac2 = (self.mu - self.smom0) ** 2 + self.ek_mom2 - self.smom1
-        fac3 = (self.mu - self.smom0) ** 2 + self.get_ek_ekpq(q_list) # ek_mom1 is zero
+        fac3 = (self.mu - self.smom0) ** 2 + 0*self.get_ek_ekpq(q_list) # ek_mom1 is zero
         return fac1, fac2, fac3
 
     def get_ek_ekpq(self,q_list):
@@ -177,7 +177,7 @@ class LocalBubble():
         for q in q_list:
             ekpq = bz.shift_mat_by_ind(self.ek, ind=[-iq for iq in q])
             fac_q.append(np.mean(self.ek*ekpq))
-        return fac_q
+        return np.array(fac_q)
 
     def get_asympt_sum(self, niv_sum, freq_notation=None):
         if (freq_notation is None):
@@ -212,7 +212,7 @@ class LocalBubble():
         chi0_asympt_sum = np.zeros((len(q_list),self.niw), dtype=complex)
         v = 1 / (1j * mf.v(self.beta, n=niv_sum + self.niw))
         niv = v.size // 2
-        fac1, fac2, fac3 = self.get_asympt_prefactors()
+        fac1, fac2, fac3 = self.get_asympt_prefactors_q(q_list)
         for i, iwn in enumerate(self.wn):
             iws, iws2 = get_freq_shift(iwn, freq_notation)
             v_sum = v[niv - niv_sum + iws:niv + niv_sum + iws]
@@ -226,11 +226,11 @@ class LocalBubble():
     def get_exact_asymptotics_q(self,q_list):
         chi0q_asympt = np.zeros((len(q_list),self.niw), dtype=complex)
         iw = self.wn * 2 * np.pi / self.beta * 1j
-        fac1, fac2, fac3 = self.get_asympt_prefactors()
+        fac1, fac2, fac3 = self.get_asympt_prefactors_q(q_list)
         ind = self.wn != 0
-        chi0q_asympt[:,ind] = -self.beta / 2 * 1 / iw[ind] ** 2 * (fac2 - fac3)
+        chi0q_asympt[:,ind] = -self.beta / 2 * 1 / iw[None,ind] ** 2 * (fac2 - fac3[:,None])
         ind = self.wn == 0
-        chi0q_asympt[:,ind] = self.beta / 4 - self.beta ** 3 / 24 * fac2 - self.beta ** 3 / 48 * fac3
+        chi0q_asympt[:,ind] = self.beta / 4 - self.beta ** 3 / 24 * fac2 - self.beta ** 3 / 48 * fac3[:,None]
         return chi0q_asympt
 
     def get_asymptotic_correction_q(self, niv_core, q_list,freq_notation=None):
