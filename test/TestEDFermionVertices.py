@@ -167,7 +167,7 @@ vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, 
 vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
 
 
-fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
+fig, axes = plt.subplots(ncols=2,nrows=3, figsize=(8,9), dpi=500)
 axes = axes.flatten()
 
 axes[0].plot(mf.wn(len(chi_dens_core)//2), chi_dens_core.real, label='Core')
@@ -195,6 +195,14 @@ axes[3].loglog(mf.wn(len(chi_magn_input)//2), chi_magn_input.real, label='Input'
 axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(beta,niw_chi_input)+0.000001) ** 2 * green.e_kin) * 2,'--', label='Asympt',ms=0)
 axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
 axes[3].legend()
+
+axes[4].loglog(1+mf.wn(len(chi_dens_core)//2), np.abs(chi_dens.real-mf.cut_w(chi_dens_input,niw_core)), label='Core',ms=0)
+axes[4].set_ylabel('$Diff \Re \chi(i\omega_n)_{dens}$')
+axes[4].legend()
+
+axes[5].loglog(1+mf.wn(len(chi_magn_core)//2), np.abs(chi_magn.real-mf.cut_w(chi_magn_input,niw_core)), label='Core',ms=0)
+axes[5].set_ylabel('$Diff \Re \chi(i\omega_n)_{magn}$')
+axes[5].legend()
 
 axes[0].set_xlim(-1,10)
 axes[1].set_xlim(-1,10)

@@ -108,7 +108,9 @@ def chi_checks(chi_dens,chi_magn,labels,green,plot_dir,verbose=False,do_plot=Tru
     else:
         plt.close()
 
-def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,name=''):
+def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,name='',xmax=None):
+    if(xmax is None):
+        xmax = 5+2*beta
     fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
     axes = axes.flatten()
 
@@ -136,8 +138,8 @@ def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,n
     axes[3].set_ylabel(r'$|\Im \Sigma(i\nu_n)|$')
     axes[3].set_xlabel(r'$\nu_n$')
 
-    axes[0].set_xlim(0, 5 + 2 * beta)
-    axes[1].set_xlim(0, 5 + 2 * beta)
+    axes[0].set_xlim(0, xmax)
+    axes[1].set_xlim(0, xmax)
     plt.legend()
     axes[1].set_ylim(None, 0)
     plt.tight_layout()

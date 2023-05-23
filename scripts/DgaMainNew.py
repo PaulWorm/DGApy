@@ -32,19 +32,19 @@ comm = mpi.COMM_WORLD
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 
 # Momentum and frequency grids:
-niw_core = 50
-niv_core = 50
-niv_shell = 100
-lambda_correction_type = 'spch' # lambda-correction options not yet implemented
-nk = (24, 24, 1)
-nq = (24, 24, 1)
+niw_core = 30
+niv_core = 30
+niv_shell = 2 * niv_core
+lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
+nk = (16, 16, 1)
+nq = nk
 symmetries = bz.two_dimensional_square_symmetries()
 hr = hamr.one_band_2d_t_tp_tpp(1.0, -0.2, 0.1)
 
 # Input and output directories:
 input_type = 'EDFermion'  # 'w2dyn'
 # input_type = 'w2dyn'#'w2dyn'
-input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
+input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
 output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk), np.prod(nq),
                                                                                      niw_core, niv_core, niv_shell)
 output_dir = out.uniquify(output_dir)
@@ -198,10 +198,11 @@ chi_lad_magn = q_grid.map_irrk2fbz(chi_lad_magn)
 
 # %%
 
-if(comm.rank == 0):
-    chi_lad_dens_loc = np.mean(chi_lad_dens,axis=(0,1,2))
-    chi_lad_magn_loc = np.mean(chi_lad_magn,axis=(0,1,2))
-    plotting.chi_checks([chi_dens,chi_lad_dens_loc], [chi_magn,chi_lad_magn_loc],['loc','ladder-sum'], giwk_dmft, output_dir, verbose=False, do_plot=True,name='lad_q_tilde')
+if (comm.rank == 0):
+    chi_lad_dens_loc = np.mean(chi_lad_dens, axis=(0, 1, 2))
+    chi_lad_magn_loc = np.mean(chi_lad_magn, axis=(0, 1, 2))
+    plotting.chi_checks([chi_dens, chi_lad_dens_loc], [chi_magn, chi_lad_magn_loc], ['loc', 'ladder-sum'], giwk_dmft, output_dir, verbose=False,
+                        do_plot=True, name='lad_q_tilde')
 
     plotting.plot_kx_ky(chi_lad_dens[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_ladder_dens_kz0')
     plotting.plot_kx_ky(chi_lad_magn[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_ladder_magn_kz0')
@@ -219,7 +220,9 @@ lambda_magn = lc.lambda_correction_single(dmft_input['beta'], lambda_start=lambd
 # lambda_magn = 0.04744789138280935
 chi_lad_magn = 1 / (1 / chi_lad_magn + lambda_magn)
 
-chiq_lam_sum = 1 / dmft_input['beta'] * np.mean(np.sum(chi_lad_dens+chi_lad_magn, axis=-1))
+np.savetxt(output_dir + '/lambda.txt', np.array([f'Lambda-dens: {lambda_dens}', f'Lambda-dens: {lambda_magn}']), fmt='%s')
+
+chiq_lam_sum = 1 / dmft_input['beta'] * np.mean(np.sum(chi_lad_dens + chi_lad_magn, axis=-1))
 chi_loc_sum = 1 / dmft_input['beta'] * np.sum(chi_dens) + 1 / dmft_input['beta'] * np.sum(chi_magn)
 print(f'sum chi_q: {chiq_lam_sum}')
 print(f'sum chi_loc: {chi_loc_sum}')
@@ -242,6 +245,37 @@ q_dupl = np.ones((np.shape(full_q_list)[0]))
 
 vrg_q_dens = q_grid.map_irrk2fbz(vrg_q_dens).reshape((-1, *vrg_q_dens.shape[1:]))
 vrg_q_magn = q_grid.map_irrk2fbz(vrg_q_magn).reshape((-1, *vrg_q_magn.shape[1:]))
+# %%
+if (comm.rank == 0):
+    vrg_q_dens_sum = np.mean(vrg_q_dens, axis=0)
+    vrg_q_magn_sum = np.mean(vrg_q_magn, axis=0)
+
+    plotting.plot_kx_ky(vrg_q_dens.reshape(q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir,
+                        name='Vrg_dens_w0')
+    plotting.plot_kx_ky(vrg_q_magn.reshape(q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir,
+                        name='Vrg_magn_w0')
+
+    iwn_plot = niv_core
+    vn_core = mf.vn(niv_core)
+    fig, axes = plt.subplots(2, 2, dpi=500, figsize=(8, 8))
+    axes = axes.flatten()
+    axes[0].plot(vn_core, vrg_q_dens_sum[iwn_plot].real)
+    axes[0].plot(vn_core, vrg_dens.mat[iwn_plot].real)
+
+    axes[1].plot(vn_core, vrg_q_dens_sum[iwn_plot].imag)
+    axes[1].plot(vn_core, vrg_dens.mat[iwn_plot].imag)
+
+    axes[2].plot(vn_core, vrg_q_magn_sum[iwn_plot].real)
+    axes[2].plot(vn_core, vrg_magn.mat[iwn_plot].real)
+
+    axes[3].plot(vn_core, vrg_q_magn_sum[iwn_plot].imag)
+    axes[3].plot(vn_core, vrg_magn.mat[iwn_plot].imag)
+    for ax in axes:
+        ax.set_xlim(0, None)
+    plt.legend()
+    plt.savefig(output_dir + f'/TestVrg_loc_wn{iwn_plot}.png')
+    plt.show()
+# %%
 gchi0_q_core = q_grid.map_irrk2fbz(gchi0_q_core).reshape((-1, *gchi0_q_core.shape[1:]))
 
 chi_lad_dens = chi_lad_dens.reshape((-1, *chi_lad_dens.shape[3:]))
@@ -258,14 +292,14 @@ F_updo = 0.5 * (F_dens.mat - F_magn.mat)
 # %%
 chi0q_shell = q_grid.map_irrk2fbz(chi0q_shell).reshape((-1, *chi0q_shell.shape[1:]))
 qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_core[:, :, None, :] * F_magn.mat[None, ...], axis=-1) + 1 / dmft_input['beta'] \
-              * chi0q_shell[:, :,None] * dmft_input['u']
+              * chi0q_shell[:, :, None] * dmft_input['u']
 siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full, dmft_input['u'], full_q_list, q_dupl, g2_dens.wn, np.prod(q_grid.nk))
 
 # %%
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
-siw_dga = hartree + (siw_dga_dens + siw_dga_magn)
+# siw_dga = hartree + (siw_dga_dens + siw_dga_magn)
 # siw_dga = hartree + (siw_dga_dens + 3 * siw_dga_magn) - siw_dc
-siw_dga =  hartree + (siw_dga_dens + 3*siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full,niv_core) + mf.cut_v(dmft_input['siw'],niv_core)
+siw_dga = hartree + (1 * siw_dga_dens + 3 * siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full, niv_core) + mf.cut_v(dmft_input['siw'], niv_core)
 
 if (comm.rank == 0):
     plotting.plot_kx_ky(siw_dga[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_kz0')
@@ -273,7 +307,10 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(siw_dga_dens[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_magn_kz0')
     plotting.plot_kx_ky(siw_dga_magn[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_dens_kz0')
 
+    siw_dga_dens_loc = hartree + 2*np.mean(siw_dga_dens, axis=(0, 1, 2))
+    siw_dga_magn_loc = hartree + 2*np.mean(siw_dga_magn, axis=(0, 1, 2))
     siw_dga_loc = np.mean(siw_dga, axis=(0, 1, 2))
     siw_dc_loc = np.mean(siw_dc + hartree, axis=(0, 1, 2))
-    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dc_loc], ['SDE-loc', 'DGA-loc', 'DC-loc'], dmft_input['beta'],
-                              output_dir, verbose=False, do_plot=True, name='dga_loc')
+    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dc_loc, siw_dga_dens_loc, siw_dga_magn_loc],
+                              ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
+                              output_dir, verbose=False, do_plot=True, name='dga_loc', xmax=niv_shell)

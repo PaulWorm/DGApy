@@ -4,6 +4,7 @@ import Bubble as bub
 import matplotlib.pyplot as plt
 import TwoPoint as twop
 
+
 def get_ur(u=1.0, channel='dens'):
     if (channel == 'magn'):
         sign = -1
@@ -95,9 +96,9 @@ class LocalFourPoint():
     def __init__(self, channel=None, matrix=None, beta=None, wn=None):
         self.mat = matrix
         self.beta = beta
-        if(wn is None):
+        if (wn is None):
             self.is_full_w = True
-            assert np.size(matrix.shape[0])%2 == 1, 'wn is not bosonic. Probably w is not the 0th dimension of the input matrix.'
+            assert np.size(matrix.shape[0]) % 2 == 1, 'wn is not bosonic. Probably w is not the 0th dimension of the input matrix.'
         else:
             self._wn = wn
             self.is_full_w = False
@@ -110,8 +111,8 @@ class LocalFourPoint():
 
     @property
     def wn(self):
-        if(self.is_full_w):
-            return mf.wn(self.mat.shape[0]//2)
+        if (self.is_full_w):
+            return mf.wn(self.mat.shape[0] // 2)
         else:
             return self._wn
 
@@ -126,7 +127,7 @@ class LocalFourPoint():
     def cut_iv(self, niv_cut=None):
         self.mat = mf.cut_iv_fp(self.mat, niv_cut)
 
-    def cut_iw(self,niw_cut=None):
+    def cut_iw(self, niw_cut=None):
         assert self.is_full_w, 'Full wn range has to be ensured.'
         self.mat = mf.cut_w(self.mat, niw_cut, (0,))
 
@@ -217,13 +218,15 @@ def gamob2_from_chir_wn(chir=None, gchi0=None):
     return gam_r
 
 
-def gchir_from_gamob2(gammar: LocalFourPoint,gchi0):
+def gchir_from_gamob2(gammar: LocalFourPoint, gchi0):
     ''' chi_r = ( chi_0^-1 + 1/beta^2 Gamma_r)^(-1) '''
     chi_r = np.array([gchir_from_gamob2_wn(gammar.mat[iwn_lin], gchi0[iwn_lin]) for iwn_lin in gammar.wn_lin])
     return LocalFourPoint(matrix=chi_r, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
 
-def gchir_from_gamob2_wn(gammar,gchi0):
-    return np.linalg.inv(np.diag(1/gchi0) + gammar)
+
+def gchir_from_gamob2_wn(gammar, gchi0):
+    return np.linalg.inv(np.diag(1 / gchi0) + gammar)
+
 
 # def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
 #     u_r = get_ur(u, channel=gam.channel)
@@ -250,7 +253,7 @@ def lam_from_chir(gchir: LocalFourPoint, gchi0):
 def vrg_from_lam(lam: LocalThreePoint, chir, u):
     u_r = get_ur(u, lam.channel)
     sign = get_sign(lam.channel)
-    vrg = (1 + sign* lam.mat) / (1 - u_r * chir[:, None])
+    vrg = (1 + sign * lam.mat) / (1 - u_r * chir[:, None])
     return LocalThreePoint(channel=lam.channel, matrix=vrg, beta=lam.beta, wn=lam.wn)
 
 
@@ -263,7 +266,7 @@ def get_chir_shell(lam_tilde: LocalThreePoint, chi0_shell, gchi0_core, u):
 
 def get_chir_tilde(lam_tilde: LocalThreePoint, chir_core, chi0_shell, gchi0_core, u):
     chi_r_shell = get_chir_shell(lam_tilde, chi0_shell, gchi0_core, u)
-    return (chir_core + chi_r_shell)  / (1 - (u * chi0_shell) ** 2)
+    return (chir_core + chi_r_shell) / (1 - (u * chi0_shell) ** 2)
 
 
 def get_lam_shell(chi0_shell, u):
@@ -274,13 +277,14 @@ def get_lam_shell(chi0_shell, u):
 def get_lam_tilde(lam_core: LocalThreePoint, chi0_shell, u):
     lam_shell = get_lam_shell(chi0_shell, u)
     sign = get_sign(lam_core.channel)
-    lam_tilde = (lam_core.mat - lam_shell[:, None]) / (1 + sign*u*chi0_shell[:, None])
+    lam_tilde = (lam_core.mat - lam_shell[:, None]) / (1 + sign * u * chi0_shell[:, None])
     return LocalThreePoint(channel=lam_core.channel, matrix=lam_tilde, beta=lam_core.beta, wn=lam_core.wn)
 
 
 def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
     assert niv_core <= gchir.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({gchir.niv}).'
-    if (niv_core == -1): niv_core = gchir.niv
+    if (niv_core == -1):
+        niv_core = gchir.niv
     else:
         import copy
         gchir = copy.deepcopy(gchir)
@@ -297,8 +301,6 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalB
     else:
         vrg_core = vrg_from_lam(lam_core, chir_core, u)
         return vrg_core, chir_core
-
-
 
 
 #
@@ -319,9 +321,60 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
     full = u / (beta * beta) + np.diag(1. / gchi0_urange)
     inv_full = np.linalg.inv(full)
     inv_core = mf.cut_v(inv_full, niv_core, axes=(-2, -1))
+    # inv_core = mf.cut_iv_2d(inv_full, niv_core)
     core = np.linalg.inv(inv_core)
     chigr_inv = np.linalg.inv(gchir)
     return -(core - chigr_inv - u / (beta * beta))
+
+
+def chi_phys_urange(chir_aux, chi0_core, chi0_urange, u, channel):
+    ''' u-range form of the susceptibility '''
+    u_r = get_ur(u, channel)
+    return 1. / (1. / (chir_aux + chi0_urange - chi0_core) + u_r)
+
+def chi_phys_asympt(chir_urange, chi0_urange, chi0_asympt):
+    ''' asymptotic form of the susceptibility '''
+    return chir_urange + chi0_asympt - chi0_urange
+
+
+def gchi_aux_core(gchir: LocalFourPoint, u):
+    u_r = get_ur(u, gchir.channel)
+    mat = np.array([np.linalg.inv((np.linalg.inv(gchir.mat[i]) - u_r / gchir.beta ** 2)) for i in gchir.wn_lin])
+    return LocalFourPoint(matrix=mat, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
+
+
+def gchi_aux_core_from_gammar(gammar: LocalFourPoint, gchi0_core, u):
+    u_r = get_ur(u, gammar.channel)
+    mat = np.array([np.linalg.inv(np.diag(1. / gchi0_core[i]) + gammar.mat[i] - u_r / gammar.beta ** 2) for i in gammar.wn_lin])
+    return LocalFourPoint(matrix=mat, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
+
+
+def gchi_aux_asympt(gchi_aux: LocalFourPoint, chi_urange, chi_asympt, u):
+    u_r = get_ur(u, gchi_aux.channel)
+    u_mat = np.ones_like(gchi_aux.mat) * u
+    mat = gchi_aux.mat + gchi_aux.mat @ u_mat @ gchi_aux.mat * (-(1 - u_r * chi_urange) + (1 - u_r * chi_urange) ** 2 / (1 - u_r * chi_asympt))
+    return LocalFourPoint(matrix=mat, channel=gchi_aux.channel, beta=gchi_aux.beta, wn=gchi_aux.wn)
+
+
+def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core=None, u=None):
+    u_r = get_ur(u=u, channel=gammar.channel)
+    gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core[wn],
+                                                       beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
+    return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
+
+
+def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
+    gchi0_inv = np.diag(1. / gchi0)
+    chi_aux_inv = gchi0_inv + gammar - u / (beta * beta)
+    return np.linalg.inv(chi_aux_inv)
+
+
+def vrg_from_gchi_aux(gchir_aux: LocalFourPoint, gchi0_core, chir_urange, chir_asympt, u):
+    '''Note: 1/beta is here included in vrg compared to the old code'''
+    u_r = get_ur(u, channel=gchir_aux.channel)
+    vrg = np.array([1 / gchi0_core[iwn] * np.sum(gchir_aux.mat[iwn], axis=-1)
+                    * (1 - u_r * chir_urange[iwn]) / (1 - u_r * chir_asympt[iwn]) for iwn in gchir_aux.wn_lin])
+    return LocalThreePoint(channel=gchir_aux.channel, matrix=vrg, beta=gchir_aux.beta, wn=gchir_aux.wn)
 
 
 # def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: bub.LocalBubble = None, u=None):
@@ -331,19 +384,8 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
 #     return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
 
 
-
 # # ==================================================================================================================
-# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: LocalBubble = None, u=None):
-#     u_r = get_ur(u=u, channel=gammar.channel)
-#     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
-#                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
-#     return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
-#
-#
-# def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
-#     gchi0_inv = np.diag(1. / gchi0)
-#     chi_aux_inv = gchi0_inv + gammar - u / (beta * beta)
-#     return np.linalg.inv(chi_aux_inv)
+
 #
 #
 # # ==================================================================================================================
@@ -414,21 +456,23 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     sigma_F = u_r / 2 * 1 / vrg.beta * np.sum((1 - (1 - u_r * chir_phys[:, None]) * vrg.mat) * mat_grid, axis=0)
     return sigma_F
 
-def schwinger_dyson_shell(chir_phys,giw,beta,u,n_shell,n_core,wn):
-    mat_grid = mf.wn_slices_shell(giw, n_shell = n_shell,n_core=n_core, wn=wn)
-    sigma_F = u**2 / 2 * 1 / beta * np.sum((chir_phys[:, None]) * mat_grid, axis=0)
+
+def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn):
+    mat_grid = mf.wn_slices_shell(giw, n_shell=n_shell, n_core=n_core, wn=wn)
+    sigma_F = u ** 2 / 2 * 1 / beta * np.sum((chir_phys[:, None]) * mat_grid, axis=0)
     return sigma_F
+
 
 def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, chi_dens, chi_magn, giw, u, n, niv_shell=0):
     siw_dens_core = schwinger_dyson_vrg(vrg_dens, chi_dens, giw, u)
     siw_magn_core = schwinger_dyson_vrg(vrg_magn, chi_magn, giw, u)
-    hartree = twop.get_smom0(u,n)
-    if(niv_shell==0):
+    hartree = twop.get_smom0(u, n)
+    if (niv_shell == 0):
         return siw_dens_core + siw_magn_core + hartree
     else:
         siw_magn_shell = schwinger_dyson_shell(chi_magn, giw, vrg_magn.beta, u, niv_shell, vrg_magn.niv, vrg_magn.wn)
         siw_dens_shell = schwinger_dyson_shell(chi_dens, giw, vrg_dens.beta, u, niv_shell, vrg_dens.niv, vrg_dens.wn)
-        return hartree+mf.concatenate_core_asmypt(siw_dens_core + siw_magn_core, siw_magn_shell+siw_dens_shell)
+        return hartree + mf.concatenate_core_asmypt(siw_dens_core + siw_magn_core, siw_magn_shell + siw_dens_shell)
 
 
 def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
@@ -450,14 +494,15 @@ def schwinger_dyson_F(F: LocalFourPoint, chi0, giw, u):
     return sigma_F
 
 
-def get_F_diag(chi_dens,chi_magn,channel='dens'):
+def get_F_diag(chi_dens, chi_magn, channel='dens'):
     '''Ignore \chi_pp'''
-    if(channel=='magn'):
-        return 0.5*mf.w_to_vmvp(chi_dens) - 0.5 * mf.w_to_vmvp(chi_magn)
-    elif(channel=='dens'):
+    if (channel == 'magn'):
+        return 0.5 * mf.w_to_vmvp(chi_dens) - 0.5 * mf.w_to_vmvp(chi_magn)
+    elif (channel == 'dens'):
         return 0.5 * mf.w_to_vmvp(chi_dens) + 1.5 * mf.w_to_vmvp(chi_magn)
     else:
         raise NotImplementedError('Only Channel magn/dens implemented.')
+
 
 if __name__ == '__main__':
     import sys, os
@@ -479,7 +524,7 @@ if __name__ == '__main__':
     nk = (42, 42, 1)
     k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
     ek = hamk.ek_3d(k_grid.grid, hr=hr)
-    siwk = tp.SelfEnergy(siw, beta, pos=False)#,smom1=tp.get_smom1(u,n),smom0=tp.get_smom0(u,n))
+    siwk = tp.SelfEnergy(siw, beta, pos=False)  # ,smom1=tp.get_smom1(u,n),smom0=tp.get_smom0(u,n))
     # siwk.niv_core = siw.size//2
     giwk = tp.GreensFunction(siwk, ek, n=n)
     g_loc = giwk.g_loc
@@ -515,15 +560,15 @@ if __name__ == '__main__':
     F_magn = Fob2_from_chir(gchi_magn, gchi0_core)
     F_updo = LocalFourPoint(channel='updo', matrix=0.5 * (F_dens.mat - F_magn.mat), beta=F_dens.beta, wn=F_dens.wn)
 
-    F_magn.plot(10,'../test/TestPlots/', name='F_magn_plot_10')
+    F_magn.plot(10, '../test/TestPlots/', name='F_magn_plot_10')
     # gchi_dens.cut_iv(niw)
     # gchi_magn.cut_iv(niw)
     chi_dens_core = gchi_dens.contract_legs()
     chi_magn_core = gchi_magn.contract_legs()
     # chi_dens_core = gchi_dens.contract_legs_centered(gchi_dens.niv-niw//2-1)
     # chi_magn_core = gchi_magn.contract_legs_centered(gchi_dens.niv-niw//2-1)
-    chi_dens_core_centered = gchi_dens.contract_legs_centered(niv_sum=gchi_dens.niv-niw//2-1)
-    chi_magn_core_centered = gchi_magn.contract_legs_centered(niv_sum=gchi_magn.niv-niw//2-1)
+    chi_dens_core_centered = gchi_dens.contract_legs_centered(niv_sum=gchi_dens.niv - niw // 2 - 1)
+    chi_magn_core_centered = gchi_magn.contract_legs_centered(niv_sum=gchi_magn.niv - niw // 2 - 1)
 
     # %%
     # fig, ax = plt.subplots(1, 2, figsize=(7, 3), dpi=500)
@@ -556,7 +601,7 @@ if __name__ == '__main__':
 
     # %%
     niv_shell = 1000
-    chi0_shell = bubble_gen.get_chi0_shell(niv,niv_shell)
+    chi0_shell = bubble_gen.get_chi0_shell(niv, niv_shell)
     lam_shell = u * (chi0_shell)
 
     lam_dens_tilde = get_lam_tilde(lam_dens_core, chi0_shell, u)
@@ -597,11 +642,11 @@ if __name__ == '__main__':
     siw_dens_tilde = schwinger_dyson_vrg(vrg_dens_tilde, chi_dens_tilde, g_loc, u)
     siw_magn_tilde = schwinger_dyson_vrg(vrg_magn_tilde, chi_magn_tilde, g_loc, u)
     n_shell_giw = 200
-    siw_dens_shell = schwinger_dyson_shell(chi_dens_tilde,g_loc,beta,u,n_shell_giw,vrg_dens_tilde.niv,vrg_dens_tilde.wn)
-    siw_magn_shell = schwinger_dyson_shell(chi_magn_tilde,g_loc,beta,u,n_shell_giw,vrg_dens_tilde.niv,vrg_dens_tilde.wn)
+    siw_dens_shell = schwinger_dyson_shell(chi_dens_tilde, g_loc, beta, u, n_shell_giw, vrg_dens_tilde.niv, vrg_dens_tilde.wn)
+    siw_magn_shell = schwinger_dyson_shell(chi_magn_tilde, g_loc, beta, u, n_shell_giw, vrg_dens_tilde.niv, vrg_dens_tilde.wn)
     siw_tilde = hartree + siw_magn_tilde + siw_dens_tilde
     siw_shell = hartree + siw_dens_shell + siw_magn_shell
-    siw_tilde = mf.concatenate_core_asmypt(siw_tilde,siw_shell)
+    siw_tilde = mf.concatenate_core_asmypt(siw_tilde, siw_shell)
     siw_tilde_m = hartree + siw_magn_tilde * 2
 
     vrg_magn_2, chi_magn_2 = get_vrg_and_chir_tilde_from_chir(gchi_magn, bubble_gen, u, niv_core=niv, niv_shell=niv_shell)
@@ -676,26 +721,24 @@ if __name__ == '__main__':
     # plt.tight_layout()
     # plt.show()
 
-
-
     # %%
-    wn_asympt = mf.wn_shell(giwk.niv_core,n_core=niw)
+    wn_asympt = mf.wn_shell(giwk.niv_core, n_core=niw)
     bubble_gen_asypt = bub.LocalBubble(wn=wn_asympt, giw=giwk)
     chi_asmypt = bubble_gen_asypt.get_chi0(niv=niv_shell)
-    chi_asmypt = chi_asmypt + bubble_gen_asypt.get_chi0_shell(niv_shell,niv_shell+niv)
+    chi_asmypt = chi_asmypt + bubble_gen_asypt.get_chi0_shell(niv_shell, niv_shell + niv)
     print('--------------')
     print(f'Analytic sum: {n / 2 * (1 - n / 2)}')
     print(f'Numeric sum core: {1 / (2 * beta) * np.sum((chi_dens_core + chi_magn_core)).real}')
     # print(f'Numeric sum core: {1 / (2 * beta) * np.sum((chi_dens_core_centered + chi_magn_core_centered)).real}')
     print(f'Numeric sum tilde: {1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print(f'Numeric sum shell: {1 / (beta) * np.sum(chi_asmypt).real}')
-    print(f'Numeric sum full: {1 / (2*beta) * np.sum(chi_asmypt).real+1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
+    print(f'Numeric sum full: {1 / (2 * beta) * np.sum(chi_asmypt).real + 1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print('--------------')
 
-    plt.loglog(wn,(chi_dens_tilde + chi_magn_tilde).real,'-o',color='firebrick')
-    plt.loglog(wn_asympt,chi_asmypt.real/1,'-o',color='cornflowerblue')
-    plt.xlim(30,500)
-    plt.ylim(-0.02,0.02)
+    plt.loglog(wn, (chi_dens_tilde + chi_magn_tilde).real, '-o', color='firebrick')
+    plt.loglog(wn_asympt, chi_asmypt.real / 1, '-o', color='cornflowerblue')
+    plt.xlim(30, 500)
+    plt.ylim(-0.02, 0.02)
     plt.show()
 
     print('bla')
@@ -706,7 +749,8 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(1, 2, figsize=(7, 3.5), dpi=500)
     ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(dmft_input_1['siw'], n_plot, n_start).real, '-p', color='k')
-    ax[0].plot(mf.cut_v_1d_pos(vn, siw_sde.size//2, n_start), mf.cut_v_1d_pos(siw_sde, siw_sde.size//2, n_start).real, 'o', color='cornflowerblue', ms=4,
+    ax[0].plot(mf.cut_v_1d_pos(vn, siw_sde.size // 2, n_start), mf.cut_v_1d_pos(siw_sde, siw_sde.size // 2, n_start).real, 'o',
+               color='cornflowerblue', ms=4,
                markeredgecolor='k', alpha=0.8)
     # ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_sde_m, n_plot, n_start).real, 'o', color='indigo',ms=3,markeredgecolor='k',alpha=0.8)
     ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).real, 'h', color='firebrick', ms=3,
@@ -715,7 +759,8 @@ if __name__ == '__main__':
     # ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_F, n_plot, n_start).real, 'h', color='firebrick', ms=4)
 
     ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(dmft_input_1['siw'], n_plot, n_start).imag, '-p', color='k')
-    ax[1].plot(mf.cut_v_1d_pos(vn, siw_sde.size//2, n_start), mf.cut_v_1d_pos(siw_sde, siw_sde.size//2, n_start).imag, 'o', color='cornflowerblue', ms=4,
+    ax[1].plot(mf.cut_v_1d_pos(vn, siw_sde.size // 2, n_start), mf.cut_v_1d_pos(siw_sde, siw_sde.size // 2, n_start).imag, 'o',
+               color='cornflowerblue', ms=4,
                markeredgecolor='k', alpha=0.8)
     # ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_sde_m, n_plot, n_start).imag, 'o', color='indigo',ms=3,markeredgecolor='k',alpha=0.8)
     ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h', color='firebrick', ms=3,
@@ -725,16 +770,17 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    #%%
-    #%%
+    # %%
+    # %%
     n_start = 50
-    n_plot=150
+    n_plot = 150
     fig, ax = plt.subplots(1, 1, figsize=(7, 3.5), dpi=500)
     ax = np.atleast_1d(ax)
     ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(dmft_input_1['siw'], n_plot, n_start).imag, '-p', color='cornflowerblue')
     ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h', color='firebrick', ms=3,
-               markeredgecolor='firebrick', alpha=0.8)
-    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(1/mf.v(beta,n_shell_giw)*tp.get_smom1(u,n), n_plot, n_start), '-', color='k')
+                   markeredgecolor='firebrick', alpha=0.8)
+    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(1 / mf.v(beta, n_shell_giw) * tp.get_smom1(u, n), n_plot, n_start), '-',
+                   color='k')
     plt.tight_layout()
     plt.show()
 
@@ -777,7 +823,7 @@ if __name__ == '__main__':
     # plt.show()
     #
 
-    #%%
+    # %%
 
     # F_asympt = lam_magn_tilde.mat[niw,:][:,None]+lam_magn_tilde.mat[niw,:][None,:]
     #
