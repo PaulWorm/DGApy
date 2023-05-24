@@ -9,11 +9,11 @@ import cycler
 FIGSIZE = (7, 3)
 ALPHA = 0.7
 BASECOLOR = 'cornflowerblue'
-DEFAULTCOLOURS = ['cornflowerblue','firebrick','seagreen','goldenrod','indigo']
+DEFAULTCOLOURS = ['cornflowerblue','firebrick','seagreen','goldenrod','indigo','k']
 DIVERGINGCOLOURS = ['navy','indigo','cornflowerblue','goldenrod','firebrick']
-DEFAULTMARKERS = ['o','^','h','d','<']
-DEFAULTMARKERSIZE = [6,5,4,3,2]
-DEFAULTALPHA = [1,0.9,0.8,0.7,0.6]
+DEFAULTMARKERS = ['o','^','h','d','<','p']
+DEFAULTMARKERSIZE = [6,5,4,3,2,1]
+DEFAULTALPHA = [1,0.9,0.8,0.7,0.6,0.4]
 mpl.rcParams["savefig.dpi"] = 500
 mpl.rcParams["figure.dpi"] = 500
 

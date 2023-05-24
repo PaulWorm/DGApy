@@ -34,7 +34,7 @@ comm = mpi.COMM_WORLD
 # Momentum and frequency grids:
 niw_core = 15
 niv_core = 15
-niv_shell = 2 * niv_core
+niv_shell = 50
 niv_full = niv_core + niv_shell
 lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
 nk = (12, 12, 1)
@@ -43,8 +43,8 @@ symmetries = bz.two_dimensional_square_symmetries()
 hr = hamr.one_band_2d_t_tp_tpp(1.0, -0.2, 0.1)
 
 # Input and output directories:
-# input_type = 'EDFermion'  # 'w2dyn'
-input_type = 'w2dyn'#'w2dyn'
+input_type = 'EDFermion'  # 'w2dyn'
+# input_type = 'w2dyn'#'w2dyn'
 input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
 output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk), np.prod(nq),
                                                                                      niw_core, niv_core, niv_shell)
@@ -142,21 +142,32 @@ my_q_list = q_grid.irrk_mesh_ind.T  # Currently nk and nq have to be equal. For 
 gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
 chi0_q_core = 1 / dmft_input['beta'] ** 2 * np.sum(gchi0_q_core, axis=-1)
 chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
-chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_core, niv_full, 2*niv_shell, my_q_list)
+chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full, 2*niv_shell, my_q_list)
 
 # %%
 if (comm.rank == 0):
     chi0_core = bubble_gen.get_chi0(niv_core)
-    chi0_shell = bubble_gen.get_chi0_shell(niv_core, niv_shell)
+    chi0_urange = bubble_gen.get_chi0(niv_full)
+    chi0_shell = bubble_gen.get_chi0_shell(niv_full, 2*niv_shell)
     chi0q_shell_loc = np.mean(q_grid.map_irrk2fbz(chi0q_shell), axis=(0, 1, 2))
+    chi0_q_urange_loc = np.mean(q_grid.map_irrk2fbz(chi0_q_urange), axis=(0, 1, 2))
     chi0q_core_loc = np.mean(q_grid.map_irrk2fbz(chi0_q_core), axis=(0, 1, 2))
-    plt.figure()
-    plt.plot(chi0q_core_loc.real + chi0q_shell_loc.real, label='Full')
-    plt.plot(chi0q_core_loc.real, label='Core')
-    plt.plot(chi0q_shell_loc.real, label='Shell')
-    plt.plot(chi0_core.real + chi0_shell.real, label='BM')
-    plt.plot(chi0_core.real, label='BM-Core')
-    plt.legend()
+
+    fig, axes = plt.subplots(1, 2,figsize=(8,4))
+    axes = axes.flatten()
+    axes[0].plot(chi0_q_urange_loc.real + chi0q_shell_loc.real, label='Full')
+    axes[0].plot(chi0_q_urange_loc.real, label='Urange')
+    axes[0].plot(chi0q_core_loc.real, label='Core')
+    axes[0].plot(chi0_urange.real + chi0_shell.real, label='BM-Full')
+    axes[0].plot(chi0_urange.real, label='BM-Urange')
+    axes[0].plot(chi0_core.real, label='BM-Core')
+    axes[0].legend()
+
+    axes[1].loglog(np.abs(chi0q_core_loc.real - chi0_core.real) , label='diff-core')
+    axes[1].loglog(np.abs(chi0_q_urange_loc.real - chi0_urange.real) , label='diff-urange')
+    axes[1].loglog(np.abs(chi0_q_urange_loc.real+chi0q_shell_loc.real - chi0_urange.real-chi0_shell.real) , label='diff-tilde')
+    axes[1].legend()
+
     plt.savefig(output_dir + '/TestChi0.png')
     plt.show()
 # %%
