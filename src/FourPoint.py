@@ -33,19 +33,20 @@ def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_poin
     return sigma_F
 
 
-def schwinger_dyson_dc(gchiq_Fupdo,giwk,u,q_list,q_point_duplicity,wn,nqtot):
+def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqtot):
     '''
         two beta prefactors are contained in F. Additional minus sign from usign gchi0_q
     '''
     niv_core = np.shape(gchiq_Fupdo)[-1] // 2
     sigma_dc = np.zeros([*np.shape(giwk)[:3], 2 * niv_core], dtype=complex)
-    niv_giwk = np.shape(giwk)[-1]//2
-    for iq,q in enumerate(q_list):
-        for iw,iwn in enumerate(wn):
-            gkpq = bz.shift_mat_by_ind(giwk[...,niv_giwk - niv_core - iwn:niv_giwk + niv_core - iwn], ind=[-iq for iq in q])
+    niv_giwk = np.shape(giwk)[-1] // 2
+    for iq, q in enumerate(q_list):
+        for iw, iwn in enumerate(wn):
+            gkpq = bz.shift_mat_by_ind(giwk[..., niv_giwk - niv_core - iwn:niv_giwk + niv_core - iwn], ind=[-iq for iq in q])
             # sigma_dc += - u * 1/(nq_tot) * q_point_duplicity[iq] * np.sum(np.diag(gchi0_q[iq,iw]) * F_updo[iw],axis=-1)[None,None,None,:] * gkpq
-            sigma_dc += + u * 1/(nqtot) * q_point_duplicity[iq] * gchiq_Fupdo[iq,iw,None,None,None,:] * gkpq
+            sigma_dc += + u * 1 / (nqtot) * q_point_duplicity[iq] * gchiq_Fupdo[iq, iw, None, None, None, :] * gkpq
     return sigma_dc
+
 
 def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn):
     mat_grid = mf.wn_slices_shell(giw, n_shell=n_shell, n_core=n_core, wn=wn)
@@ -67,7 +68,7 @@ def schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, giw, u, n, niv_
 
 def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
     '''
-        Compute the non-local suscptibility using the BSE: chi_r = chi_0/(1+chi_0 Gamma_r)
+        Compute the non-local suscptibility using the BSE: chi_r = (chi_0^(-1) + Gamma_r/beta^2)^(-1)
         q_list is distributed among cores.
     '''
     nq = np.shape(gchi0)[0]
@@ -77,6 +78,44 @@ def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
         for iwn in range(nw):
             chir[iq, iwn, ...] = np.linalg.inv(np.diag(1 / gchi0[iq, iwn]) + gammar.mat[iwn])
     return chir
+
+
+def get_gchir_aux_from_gammar_q(gammar: lfp.LocalFourPoint, gchi0, u):
+    ''' chi_aux = (chi0^(-1) + Gamma/beta^2 - u/beta^2)^(-1) '''
+    nq = np.shape(gchi0)[0]
+    nw = np.shape(gchi0)[1]
+    chir_aux = np.zeros([nq, *gammar.mat.shape], dtype=complex)
+    u_r = get_ur(u, gammar.channel)
+    for iq in range(nq):
+        for iwn in range(nw):
+            chir_aux[iq, iwn, ...] = np.linalg.inv(np.diag(1 / gchi0[iq, iwn]) + gammar.mat[iwn] - u_r / gammar.beta ** 2)
+    return chir_aux
+
+
+def chi_phys_from_chi_aux_q(chi_aux, chi0q_urange, chi0q_core, u, channel):
+    ''' chi_phys = ((chi_aux + chi0_urange - chi0_core)^(-1) + u_r)^(-1) '''
+    u_r = get_ur(u, channel)
+    chir = 1. / (1. / (chi_aux + chi0q_urange - chi0q_core) + u_r)
+    return chir
+
+
+def chi_phys_asympt_q(chir_urange, chi0_urange, chi0_asympt):
+    ''' asymptotic form of the susceptibility '''
+    return chir_urange + chi0_asympt - chi0_urange
+
+
+def vrg_from_gchi_aux(gchir_aux, gchi0_core, chir_urange, chir_asympt, u, channel):
+    '''Note: 1/beta is here included in vrg compared to the old code'''
+    u_r = get_ur(u, channel=channel)
+    nq = np.shape(gchir_aux)[0]
+    niw = np.shape(gchir_aux)[1]
+    niv = np.shape(gchir_aux)[2]
+    vrg = np.zeros([nq, niw, niv], dtype=complex)
+    for iq in range(nq):
+        for iwn in range(niw):
+            vrg[iq,iwn,:] = 1 / gchi0_core[iq,iwn] * np.sum(gchir_aux[iq,iwn], axis=-1)*\
+                            (1 - u_r * chir_urange[iq,iwn]) / (1 - u_r * chir_asympt[iq,iwn])
+    return vrg
 
 
 def lam_from_chir_q(gchir, gchi0, channel):

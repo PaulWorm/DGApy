@@ -15,7 +15,7 @@ import PlotSpecs as ps
 import sys,os
 
 # Load the ED data:
-path = './2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
+path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
 pdir = path +'PlotsMotoharuAsymptotics/'
 if(not os.path.exists(pdir)):
     os.mkdir(pdir)
@@ -172,13 +172,13 @@ gamma_magn = lfp.gammar_from_gchir(gchi_magn,gchi0_urange,u)
 
 gamma_dens.plot(0,pdir=pdir,name='Gamma_dens')
 gamma_magn.plot(0,pdir=pdir,name='Gamma_magn')
-
-#%%
-plt.figure()
-plt.imshow(gamma_magn.mat[niw_core].real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-#%%
+#
+# #%%
+# plt.figure()
+# plt.imshow(gamma_magn.mat[niw_core].real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+# #%%
 
 chi_dens_core = gchi_dens.contract_legs()
 chi_magn_core = gchi_magn.contract_legs()
@@ -262,9 +262,11 @@ plt.show()
 
 #%% Get the vrg vertices:
 
-vrg_dens = lfp.vrg_from_gchi_aux(gchi_aux_core_dens,gchi0_core,chi_dens_urange,chi_dens,u)
-vrg_magn = lfp.vrg_from_gchi_aux(gchi_aux_core_magn,gchi0_core,chi_magn_urange,chi_magn,u)
+# vrg_dens = lfp.vrg_from_gchi_aux(gchi_aux_core_dens,gchi0_core,chi_dens_urange,chi_dens,u)
+# vrg_magn = lfp.vrg_from_gchi_aux(gchi_aux_core_magn,gchi0_core,chi_magn_urange,chi_magn,u)
 
+vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_dens, gchi0_gen, u, niv_shell=niv_shell)
+vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_magn, gchi0_gen, u, niv_shell=niv_shell)
 
 
 #%% Check the Schwinger-Dyson equation:
@@ -306,74 +308,75 @@ plt.tight_layout()
 plt.savefig(pdir + f'sde_vs_input_nbath{n_bath}_niv_{niv_core}.png')
 plt.show()
 
-#%% Test non-local part:
-q_list =  q_grid.irrk_mesh_ind.T
-# q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
-chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
-# chi0_q_list_full = gchi0_gen.get_chi0_q_list(niv_core,q_list)
-chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q,niv_core,niv_shell,q_list)
+#
+# #%% Test non-local part:
+# q_list =  q_grid.irrk_mesh_ind.T
+# # q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
+# chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
+# # chi0_q_list_full = gchi0_gen.get_chi0_q_list(niv_core,q_list)
+# chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q,niv_core,niv_shell,q_list)
+#
+# #%%
+# chi0_q = q_grid.map_irrk2fbz(chi0_q)
+# chi0_q_full = chi0_q + q_grid.map_irrk2fbz(chi0_q_shell)
+# # chi0_q = chi0_q
+# # chi0_q_full = chi0_q + chi0_q_shell
+# #%%
+# chi0_sum_core = np.mean(chi0_q,axis=(0,1,2))
+# chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,1,2))
+# # chi0_sum_core = np.mean(chi0_q,axis=(0,))
+# # chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,))
+# wn_core = gchi0_gen.wn
+#
+# fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
+# axes = axes.flatten()
+#
+# axes[0].plot(wn_core,chi0_sum_core.real,label='sum')
+# axes[0].plot(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+# axes[0].plot(wn_core,chi0_core.real,label='loc-core')
+# axes[0].plot(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
+# axes[0].legend()
+#
+# axes[1].loglog(wn_core,chi0_sum_core.real,label='sum')
+# axes[1].loglog(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+# axes[1].loglog(wn_core,chi0_core.real,label='loc-core')
+# axes[1].loglog(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
+#
+# axes[3].loglog(wn_core,np.abs(chi0_sum_core.real-chi0_core.real),label='diff-core')
+# axes[3].loglog(wn_core,np.abs(chi0_sum_tilde.real-chi0_urange.real-chi0_shell.real),label='diff-tilde')
+# plt.legend()
+#
+# plt.show()
 
-#%%
-chi0_q = q_grid.map_irrk2fbz(chi0_q)
-chi0_q_full = chi0_q + q_grid.map_irrk2fbz(chi0_q_shell)
-# chi0_q = chi0_q
-# chi0_q_full = chi0_q + chi0_q_shell
-#%%
-chi0_sum_core = np.mean(chi0_q,axis=(0,1,2))
-chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,1,2))
-# chi0_sum_core = np.mean(chi0_q,axis=(0,))
-# chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,))
-wn_core = gchi0_gen.wn
-
-fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
-axes = axes.flatten()
-
-axes[0].plot(wn_core,chi0_sum_core.real,label='sum')
-axes[0].plot(wn_core,chi0_sum_tilde.real,label='sum-tilde')
-axes[0].plot(wn_core,chi0_core.real,label='loc-core')
-axes[0].plot(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
-axes[0].legend()
-
-axes[1].loglog(wn_core,chi0_sum_core.real,label='sum')
-axes[1].loglog(wn_core,chi0_sum_tilde.real,label='sum-tilde')
-axes[1].loglog(wn_core,chi0_core.real,label='loc-core')
-axes[1].loglog(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
-
-axes[3].loglog(wn_core,np.abs(chi0_sum_core.real-chi0_core.real),label='diff-core')
-axes[3].loglog(wn_core,np.abs(chi0_sum_tilde.real-chi0_urange.real-chi0_shell.real),label='diff-tilde')
-plt.legend()
-
-plt.show()
-
-#%%
-
-plt.figure()
-plt.plot(wn_core,chi_aux_core_dens.real,'-o')
-plt.plot(wn_core,chi_aux_core_magn.real,'-o')
-plt.show()
-
-
-#%%
-plt.figure()
-plt.imshow(vrg_magn.mat.real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-#%%
-plt.figure()
-plt.imshow(vrg_dens.mat.real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-
-#%%
-plt.figure()
-plt.imshow(gchi_aux_core_magn.mat[niw_core].real,cmap='RdBu')
-plt.colorbar()
-plt.show()
-
-#%%
-plt.figure()
-plt.imshow(gchi_magn.mat[niw_core].real,cmap='RdBu')
-plt.colorbar()
-plt.show()
+# #%%
+#
+# plt.figure()
+# plt.plot(wn_core,chi_aux_core_dens.real,'-o')
+# plt.plot(wn_core,chi_aux_core_magn.real,'-o')
+# plt.show()
+#
+#
+# #%%
+# plt.figure()
+# plt.imshow(vrg_magn.mat.real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+# #%%
+# plt.figure()
+# plt.imshow(vrg_dens.mat.real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+#
+# #%%
+# plt.figure()
+# plt.imshow(gchi_aux_core_magn.mat[niw_core].real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()
+#
+# #%%
+# plt.figure()
+# plt.imshow(gchi_magn.mat[niw_core].real,cmap='RdBu')
+# plt.colorbar()
+# plt.show()

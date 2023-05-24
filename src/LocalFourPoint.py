@@ -208,7 +208,7 @@ def g2_from_chir(chir: LocalFourPoint = None, giw=None):
 #
 #
 def gamob2_from_chir(chir: LocalFourPoint, gchi0):
-    ''' Gamma = - ( chi_0^-1 - chi_r^-1) '''
+    ''' Gamma/beta^2 = - ( chi_0^-1 - chi_r^-1) '''
     gam_r = np.array([gamob2_from_chir_wn(chir.mat[iwn_lin], gchi0[iwn_lin]) for iwn_lin in chir.wn_lin])
     return LocalFourPoint(matrix=gam_r, channel=chir.channel, beta=chir.beta, wn=chir.wn)
 
@@ -303,6 +303,32 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalB
         return vrg_core, chir_core
 
 
+def get_vrg_and_chir_tilde_from_chir_uasympt(gamma_r: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell = 0):
+    '''
+        Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
+        Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
+    '''
+    niv_core = gamma_r.niv
+    # Create necessary bubbles
+    niv_full = niv_core+niv_shell
+    chi0_core = gchi0_gen.get_chi0(niv_core)
+    chi0_urange = gchi0_gen.get_chi0(niv_full)
+    chi0_shell = gchi0_gen.get_chi0_shell(niv_full, 2 * niv_full)
+    chi0_asympt = chi0_urange + chi0_shell
+    gchi0_core = gchi0_gen.get_gchi0(niv_core)
+
+    # Compute the auxiliary susceptibility:
+    gchi_aux = gchi_aux_core_from_gammar(gamma_r, gchi0_core, u)
+    chi_aux_core = gchi_aux.contract_legs()
+
+    # Compute the physical susceptibility:
+    chi_urange = chi_phys_urange(chi_aux_core, chi0_core, chi0_urange, u, gamma_r.channel)
+    chi_asympt = chi_urange #chi_phys_asympt(chi_urange, chi0_urange, chi0_asympt)
+
+    # Compute the fermion-boson vertex:
+    vrg = vrg_from_gchi_aux(gchi_aux, gchi0_core, chi_urange, chi_asympt, u)
+
+    return vrg, chi_asympt
 #
 #
 # ==================================================================================================================
@@ -332,15 +358,19 @@ def chi_phys_urange(chir_aux, chi0_core, chi0_urange, u, channel):
     u_r = get_ur(u, channel)
     return 1. / (1. / (chir_aux + chi0_urange - chi0_core) + u_r)
 
+
 def chi_phys_asympt(chir_urange, chi0_urange, chi0_asympt):
     ''' asymptotic form of the susceptibility '''
     return chir_urange + chi0_asympt - chi0_urange
 
 
-def gchi_aux_core(gchir: LocalFourPoint, u):
-    u_r = get_ur(u, gchir.channel)
-    mat = np.array([np.linalg.inv((np.linalg.inv(gchir.mat[i]) - u_r / gchir.beta ** 2)) for i in gchir.wn_lin])
-    return LocalFourPoint(matrix=mat, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
+# def gchi_aux_core(gchir: LocalFourPoint, u):
+#     u_r = get_ur(u, gchir.channel)
+#     mat = np.array([np.linalg.inv((np.linalg.inv(gchir.mat[i]) - u_r / gchir.beta ** 2)) for i in gchir.wn_lin])
+#     # u_r_mat = np.ones_like(gchir.mat[0]) * u_r
+#     # chir = gchir.contract_legs()
+#     # mat = np.array([gchir.mat[i] + gchir.mat[i] @ u_r_mat @ gchir.mat[i]/(1 - u_r * chir[i]) for i in gchir.wn_lin])
+#     return LocalFourPoint(matrix=mat, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
 
 
 def gchi_aux_core_from_gammar(gammar: LocalFourPoint, gchi0_core, u):
