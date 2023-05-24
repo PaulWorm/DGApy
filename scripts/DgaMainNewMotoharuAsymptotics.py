@@ -142,7 +142,7 @@ my_q_list = q_grid.irrk_mesh_ind.T  # Currently nk and nq have to be equal. For 
 gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
 chi0_q_core = 1 / dmft_input['beta'] ** 2 * np.sum(gchi0_q_core, axis=-1)
 chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
-chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_core, niv_full, 2*niv_full, my_q_list)
+chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_core, niv_full, 2*niv_shell, my_q_list)
 
 # %%
 if (comm.rank == 0):
@@ -173,8 +173,11 @@ chiq_aux_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchiq_aux_magn, axis=(-1, -
 chi_lad_dens_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_dens, chi0_q_urange, chi0_q_core,dmft_input['u'], 'dens')
 chi_lad_magn_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_magn, chi0_q_urange, chi0_q_core,dmft_input['u'], 'magn')
 
-chi_lad_dens = chi_lad_dens_urange #fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
-chi_lad_magn = chi_lad_magn_urange #fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
+# chi_lad_dens = chi_lad_dens_urange #fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
+# chi_lad_magn = chi_lad_magn_urange #fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
+
+chi_lad_dens = fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
+chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
 
 # chi_lad_dens = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_dens, axis=(-1, -2))
 # chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2))

@@ -69,8 +69,8 @@ wn_g2 = mf.wn(niw_g2)
 hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
 nk = (8, 8, 1)
 nq = nk
-symmetries = bz.two_dimensional_square_symmetries()
-q_grid = bz.KGrid(nk=nq,symmetries=symmetries)
+
+
 k_grid = bz.KGrid(nk=nk)
 ek = hamk.ek_3d(k_grid.grid, hr)
 sigma = twop.SelfEnergy(siw_input[None, None, None, :], beta)
@@ -309,44 +309,59 @@ plt.savefig(pdir + f'sde_vs_input_nbath{n_bath}_niv_{niv_core}.png')
 plt.show()
 
 #
-# #%% Test non-local part:
-# q_list =  q_grid.irrk_mesh_ind.T
-# # q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
-# chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
-# # chi0_q_list_full = gchi0_gen.get_chi0_q_list(niv_core,q_list)
-# chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q,niv_core,niv_shell,q_list)
-#
-# #%%
-# chi0_q = q_grid.map_irrk2fbz(chi0_q)
-# chi0_q_full = chi0_q + q_grid.map_irrk2fbz(chi0_q_shell)
-# # chi0_q = chi0_q
-# # chi0_q_full = chi0_q + chi0_q_shell
-# #%%
-# chi0_sum_core = np.mean(chi0_q,axis=(0,1,2))
-# chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,1,2))
-# # chi0_sum_core = np.mean(chi0_q,axis=(0,))
-# # chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,))
-# wn_core = gchi0_gen.wn
-#
-# fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
-# axes = axes.flatten()
-#
-# axes[0].plot(wn_core,chi0_sum_core.real,label='sum')
-# axes[0].plot(wn_core,chi0_sum_tilde.real,label='sum-tilde')
-# axes[0].plot(wn_core,chi0_core.real,label='loc-core')
-# axes[0].plot(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
-# axes[0].legend()
-#
-# axes[1].loglog(wn_core,chi0_sum_core.real,label='sum')
-# axes[1].loglog(wn_core,chi0_sum_tilde.real,label='sum-tilde')
-# axes[1].loglog(wn_core,chi0_core.real,label='loc-core')
-# axes[1].loglog(wn_core,(chi0_urange+chi0_shell).real,label='loc-tilde')
-#
-# axes[3].loglog(wn_core,np.abs(chi0_sum_core.real-chi0_core.real),label='diff-core')
-# axes[3].loglog(wn_core,np.abs(chi0_sum_tilde.real-chi0_urange.real-chi0_shell.real),label='diff-tilde')
-# plt.legend()
-#
-# plt.show()
+#%% Test non-local part:
+symmetries = bz.two_dimensional_square_symmetries()
+# symmetries=None
+q_grid = bz.KGrid(nk=nq,symmetries=symmetries)
+q_list =  q_grid.irrk_mesh_ind.T
+# q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
+chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
+chi0_q_urange = gchi0_gen.get_chi0_q_list(niv_full,q_list)
+# chi0_q_list_full = gchi0_gen.get_chi0_q_list(niv_core,q_list)
+chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q_urange,niv_full,niv_full*2,q_list)
+
+#%%
+chi0_q = q_grid.map_irrk2fbz(chi0_q)
+chi0_q_urange = q_grid.map_irrk2fbz(chi0_q_urange)
+chi0_q_full = chi0_q_urange + q_grid.map_irrk2fbz(chi0_q_shell)
+# chi0_q = chi0_q
+# chi0_q_full = chi0_q + chi0_q_shell
+#%%
+chi0_sum_core = np.mean(chi0_q,axis=(0,1,2))
+chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,1,2))
+# chi0_sum_core = np.mean(chi0_q,axis=(0,))
+# chi0_sum_tilde = np.mean(chi0_q_full,axis=(0,))
+wn_core = gchi0_gen.wn
+
+fig, axes = plt.subplots(ncols=2,nrows=2, figsize=(8,5), dpi=500)
+axes = axes.flatten()
+
+axes[0].plot(wn_core,chi0_sum_core.real,label='sum')
+axes[0].plot(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+axes[0].plot(wn_core,chi0_core.real,label='loc-core')
+axes[0].plot(wn_core,(chi0_asympt).real,label='loc-tilde')
+axes[0].legend()
+
+axes[1].loglog(wn_core,chi0_sum_core.real,label='sum')
+axes[1].loglog(wn_core,chi0_sum_tilde.real,label='sum-tilde')
+axes[1].loglog(wn_core,chi0_core.real,label='loc-core')
+axes[1].loglog(wn_core,(chi0_asympt).real,label='loc-tilde')
+
+axes[3].loglog(wn_core,np.abs(chi0_sum_core.real-chi0_core.real),label='diff-core')
+axes[3].loglog(wn_core,np.abs(chi0_sum_tilde.real-chi0_asympt.real),label='diff-tilde')
+plt.legend()
+
+plt.show()
+
+
+#%%
+q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
+f1,f2,f3 = gchi0_gen.get_asympt_prefactors_q(q_list_full)
+f1l,f2l,f3l = gchi0_gen.get_asympt_prefactors()
+
+print(np.mean(f3))
+print(f3l)
+
 
 # #%%
 #

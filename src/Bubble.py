@@ -136,6 +136,11 @@ class LocalBubble():
         if (self.chi0_method == 'sum'):
             return vec_get_chi0_sum(self.g_loc, self.beta, niv, self.wn, freq_notation)
 
+    def get_gchi0(self, niv, freq_notation=None):
+        if (freq_notation is None):
+            freq_notation = self.freq_notation
+        return vec_get_gchi0(self.g_loc, self.beta, niv, self.wn, freq_notation)
+
     def get_chi0_shell(self, niv_core, niv_shell, do_asmypt=True, freq_notation=None):
         if (freq_notation is None):
             freq_notation = self.freq_notation
@@ -150,15 +155,27 @@ class LocalBubble():
                 chi0_full = vec_get_chi0_sum(self.g_loc, self.beta, niv_core + niv_shell, self.wn, freq_notation=freq_notation)
                 return chi0_full - chi0_core
 
-    def get_gchi0(self, niv, freq_notation=None):
-        if (freq_notation is None):
-            freq_notation = self.freq_notation
-        return vec_get_gchi0(self.g_loc, self.beta, niv, self.wn, freq_notation)
-
     def get_asymptotic_correction(self, niv_core, freq_notation=None):
         chi0_asmypt_sum = self.get_asympt_sum(niv_core, freq_notation=freq_notation)
         chi0_asmypt_exact = self.get_exact_asymptotics()
         return chi0_asmypt_exact - chi0_asmypt_sum
+
+    def get_asymptotic_correction_q(self, niv_core, q_list,freq_notation=None):
+        chi0q_asmypt_sum = self.get_asympt_sum_q(niv_core, q_list, freq_notation=freq_notation)
+        chi0q_asmypt_exact = self.get_exact_asymptotics_q(q_list)
+        return chi0q_asmypt_exact - chi0q_asmypt_sum
+
+    def get_chi0q_shell(self, chi0q_core,niv_core, niv_shell,q_list, freq_notation=None):
+        if (freq_notation is None):
+            freq_notation = self.freq_notation
+
+        chi0q_shell = self.get_chi0_q_list(niv_core + niv_shell, q_list, freq_notation=freq_notation)
+        chi0q_asmypt = self.get_asymptotic_correction_q(niv_core + niv_shell,q_list, freq_notation=freq_notation)
+        return chi0q_shell - chi0q_core + chi0q_asmypt
+
+
+
+
 
     def get_asympt_prefactors(self):
         fac1 = (self.mu - self.smom0)
@@ -169,7 +186,7 @@ class LocalBubble():
     def get_asympt_prefactors_q(self,q_list):
         fac1 = (self.mu - self.smom0)
         fac2 = (self.mu - self.smom0) ** 2 + self.ek_mom2 - self.smom1
-        fac3 = (self.mu - self.smom0) ** 2 + 0*self.get_ek_ekpq(q_list) # ek_mom1 is zero
+        fac3 = (self.mu - self.smom0) ** 2 + self.get_ek_ekpq(q_list) # ek_mom1 is zero
         return fac1, fac2, fac3
 
     def get_ek_ekpq(self,q_list):
@@ -233,18 +250,7 @@ class LocalBubble():
         chi0q_asympt[:,ind] = self.beta / 4 - self.beta ** 3 / 24 * fac2 - self.beta ** 3 / 48 * fac3[:,None]
         return chi0q_asympt
 
-    def get_asymptotic_correction_q(self, niv_core, q_list,freq_notation=None):
-        chi0q_asmypt_sum = self.get_asympt_sum_q(niv_core, q_list, freq_notation=freq_notation)
-        chi0q_asmypt_exact = self.get_exact_asymptotics_q(q_list)
-        return chi0q_asmypt_exact - chi0q_asmypt_sum
 
-    def get_chi0q_shell(self, chi0q_core,niv_core, niv_shell,q_list, freq_notation=None):
-        if (freq_notation is None):
-            freq_notation = self.freq_notation
-
-        chi0q_shell = self.get_chi0_q_list(niv_core + niv_shell, q_list, freq_notation=freq_notation)
-        chi0q_asmypt = self.get_asymptotic_correction_q(niv_core + niv_shell,q_list, freq_notation=freq_notation)
-        return chi0q_shell - chi0q_core + chi0q_asmypt
 
     def get_chi0_single_q(self, niv, q=(0, 0, 0), freq_notation=None):
         if (freq_notation is None):
@@ -281,12 +287,12 @@ if __name__ == '__main__':
     import BrillouinZone as bz
     import Hk as hamk
 
-    ddict = td.get_data_set_5()
+    ddict = td.get_data_set_6()
     nk = (16, 16, 1)
     k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
     ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
     ek_mom0 = np.mean(ek * ek)
-    niw_chi0 = 100
+    niw_chi0 = 50
     u, n, beta = ddict['u'], ddict['n'], ddict['beta']
     w = mf.w(ddict['beta'], niw_chi0)
     wn = mf.wn(niw_chi0)
@@ -296,8 +302,8 @@ if __name__ == '__main__':
     giwk.set_g_asympt(niv_asympt)
     bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
 
-    niv_core = 100
-    niv_shell = 1900
+    niv_core = 10
+    niv_shell = 190
     chi0_core = bubble_gen.get_chi0(niv_core)
     chi0_shell = bubble_gen.get_chi0(niv_shell)
     chi0_asympt = bubble_gen.get_chi0_shell(niv_core, niv_shell)
@@ -316,7 +322,9 @@ if __name__ == '__main__':
     plt.show()
 
     # %% Test non-local Bubble:
-    niv_core = 100
+    bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
+    niv_core = 10
+    niv_shell = 2*niv_core
     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
     q_list = q_grid.irrk_mesh_ind
     niv_giw = np.shape(giwk.full)[-1] // 2
@@ -325,23 +333,54 @@ if __name__ == '__main__':
     print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
                                        giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
     chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
-    chi0_q_asympt = bubble_gen.get_asymptotic_correction_q(niv_core,q_list.T)
+    chi0_q_shell = bubble_gen.get_chi0q_shell(chi0_q,niv_core, niw_chi0, q_list.T)
     # %%
-    chi0_q_fbz = q_grid.map_fbz2irrk(chi0_q)
-    chi0_q_fbz_asympt = q_grid.map_fbz2irrk(chi0_q_asympt)
-    chi0_loc = np.mean(chi0_q_fbz, axis=(0, 1, 2))
-    chi0_loc_asympt = np.mean(chi0_q_fbz_asympt, axis=(0, 1, 2))
+    chi0_q_fbz = q_grid.map_irrk2fbz(chi0_q)
+    chi0_q_fbz_asympt = q_grid.map_irrk2fbz(chi0_q_shell)
+    #%%
+    chi0_loc = np.mean(chi0_q_fbz, axis=(0,1,2))
+    chi0_loc_asympt = np.mean(chi0_q_fbz_asympt, axis=(0,1,2))
     print('Finished!')
 
     # %%
+    chi0_core = bubble_gen.get_chi0(niv_core)
+    chi0_shell = bubble_gen.get_chi0_shell(niv_core, niw_chi0)
     plt.figure()
-    plt.loglog(wn, chi0_loc.real, color='cornflowerblue')
-    plt.loglog(wn, chi0_core.real, color='firebrick')
-    plt.loglog(wn, chi0_core.real+chi0_asympt.real, color='seagreen')
+    plt.loglog(wn, chi0_loc.real, color='cornflowerblue',label='ksum-core')
+    plt.loglog(wn, chi0_core.real, color='firebrick',label='core')
+    plt.loglog(wn, chi0_core.real+chi0_shell.real, color='seagreen')
     plt.loglog(wn, chi0_loc.real+chi0_loc_asympt.real, color='goldenrod')
     plt.show()
 
+    #%%
+
+    plt.figure()
+    plt.loglog(wn, np.abs(chi0_loc.real-chi0_core.real), color='cornflowerblue',label='diff-core')
+    plt.loglog(wn, np.abs(chi0_loc.real+chi0_loc_asympt.real-chi0_core.real-chi0_shell.real), color='firebrick',label='diff-asympt')
+    plt.show()
+
     # %%
+
+    asympt_sum_q = bubble_gen.get_asympt_sum_q(niv_shell+niv_core, q_list.T)
+    asympt_sum_q = np.mean(q_grid.map_irrk2fbz(asympt_sum_q),axis=(0,1,2))
+    asympt_loc = bubble_gen.get_asympt_sum(niv_shell+niv_core)
+
+    asympt_exact_q = bubble_gen.get_exact_asymptotics_q(q_list.T)
+    asympt_exact_q = np.mean(q_grid.map_irrk2fbz(asympt_exact_q),axis=(0,1,2))
+    asympt_exact_loc = bubble_gen.get_exact_asymptotics()
+
+    plt.figure()
+    plt.loglog(wn, asympt_sum_q.real, color='cornflowerblue',label='ksum')
+    plt.loglog(wn, asympt_loc.real, color='firebrick',label='loc')
+    plt.loglog(wn, asympt_exact_q.real, color='seagreen',label='exact-ksum')
+    plt.loglog(wn, asympt_exact_loc.real, color='goldenrod',label='exact-loc')
+    plt.show()
+
+#%%
+    plt.figure()
+    plt.loglog(wn, np.abs(asympt_sum_q.real-asympt_loc.real), color='cornflowerblue',label='ksum')
+    plt.loglog(wn, np.abs(asympt_exact_q.real-asympt_exact_loc.real), color='firebrick',label='ksum')
+    plt.show()
 
     # gchi0_q = bubble_gen.get_gchi0_q_list(niv_core, q_list=q_list.T)
     # chi0_q =

@@ -45,8 +45,8 @@ def load_edfermion_data_set(path,file,hr,load_g2=False):
     ddict['giw'] = file['dmft/giw'][()]
     ddict['siw'] = 1/file['dmft/g0iw'][()] - 1/file['dmft/giw'][()]
     ddict['hr'] = hr
-    ddict['wn'] = mf.wn(np.size(file['iw4'][()])//2)
     if(load_g2):
+        ddict['wn'] = mf.wn(np.size(file['iw4'][()]) // 2)
         ddict['g2_dens'] = lfp.LocalFourPoint(matrix=file['g4iw_dens'][()], beta=ddict['beta'], wn=ddict['wn'], channel='dens')
         ddict['g2_magn'] = lfp.LocalFourPoint(matrix=file['g4iw_magn'][()], beta=ddict['beta'], wn=ddict['wn'], channel='magn')
     return ddict
@@ -82,6 +82,12 @@ def get_data_set_4(load_g2=False):
 
 def get_data_set_5(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
-    file = 'EDFermion_GreenFunctions_nbath_3_niw_200_niv_199.hdf5'
+    file = 'EDFermion_1p-data.hdf5'
+    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr)
+
+def get_data_set_6(load_g2=False):
+    path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+    file = 'EDFermion_1p-data.hdf5'
     hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr)
