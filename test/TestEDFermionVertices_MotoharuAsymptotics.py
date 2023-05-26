@@ -15,14 +15,14 @@ import PlotSpecs as ps
 import sys,os
 
 # Load the ED data:
-path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+path = './2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
 pdir = path +'PlotsMotoharuAsymptotics/'
 if(not os.path.exists(pdir)):
     os.mkdir(pdir)
 # Define the frequency grid range:
 niw_core = 15
 niv_core = 15
-niv_shell = 2*niv_core
+niv_shell = 100
 niv_full = niv_core + niv_shell
 
 # Load the single-particle quantities:
@@ -38,7 +38,8 @@ siw_bm = file['dmft/siw'][()]
 vn_bm = mf.vn(np.size(giw_bm) // 2)
 u = file['config/U'][()]
 n = file['config/totdens'][()]
-vn_input = mf.vn(np.size(giw_input) // 2)
+niv_input = np.size(giw_input) // 2
+vn_input = mf.vn(niv_input)
 
 # Load the physical susceptibilities:
 fname_chi = 'EDFermion_chi.hdf5'
@@ -212,6 +213,22 @@ chi_magn = lfp.chi_phys_asympt(chi_magn_urange,chi0_urange,chi0_asympt)
 tmp = 1. / (1. / (chi_aux_core_magn + 0*chi0_urange - 0*chi0_core) -u)
 print(tmp[niw_core])
 
+
+
+#%% Get the vrg vertices:
+
+# vrg_dens = lfp.vrg_from_gchi_aux(gchi_aux_core_dens,gchi0_core,chi_dens_urange,chi_dens,u)
+# vrg_magn = lfp.vrg_from_gchi_aux(gchi_aux_core_magn,gchi0_core,chi_magn_urange,chi_magn,u)
+
+# vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gchi_dens, gchi0_gen, u, niv_shell=niv_shell)
+# vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gchi_magn, gchi0_gen, u, niv_shell=niv_shell)
+
+vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, gchi0_gen, u, niv_shell=niv_shell)
+vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_magn, gchi0_gen, u, niv_shell=niv_shell)
+
+# vrg_dens.mat = np.ones_like(vrg_dens.mat)
+# vrg_magn.mat = np.ones_like(vrg_magn.mat)
+
 #%%
 fig, axes = plt.subplots(ncols=2,nrows=3, figsize=(8,9), dpi=500)
 axes = axes.flatten()
@@ -260,15 +277,6 @@ plt.tight_layout()
 plt.savefig(pdir+f'chi_dens_magn_nbath{n_bath}.png')
 plt.show()
 
-#%% Get the vrg vertices:
-
-# vrg_dens = lfp.vrg_from_gchi_aux(gchi_aux_core_dens,gchi0_core,chi_dens_urange,chi_dens,u)
-# vrg_magn = lfp.vrg_from_gchi_aux(gchi_aux_core_magn,gchi0_core,chi_magn_urange,chi_magn,u)
-
-vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_dens, gchi0_gen, u, niv_shell=niv_shell)
-vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_magn, gchi0_gen, u, niv_shell=niv_shell)
-
-
 #%% Check the Schwinger-Dyson equation:
 # siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, green.g_loc, u, n, niv_shell=niv_shell)
 siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, green.g_loc, u, n, niv_shell=niv_shell)
@@ -289,19 +297,19 @@ axes[1].set_ylabel(r'$\Im \Sigma(i\nu_n)$')
 axes[1].set_xlabel(r'$\nu_n$')
 
 
-axes[2].loglog(vn_full, siw_sde_full.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-axes[2].loglog(vn_full, green.sigma.get_siw(niv=niv_full)[0, 0, 0, :].real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+axes[2].loglog(np.abs(vn_full*2+1), siw_sde_full.real, '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+axes[2].loglog(np.abs(vn_full*2+1), green.sigma.get_siw(niv=niv_full)[0, 0, 0, :].real, '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
 axes[2].set_ylabel(r'$\Re \Sigma(i\nu_n)$')
 axes[2].set_xlabel(r'$\nu_n$')
 
-axes[3].loglog(vn_full, np.abs(siw_sde_full.imag), '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
-axes[3].loglog(vn_full, np.abs(green.sigma.get_siw(niv=niv_full)[0, 0, 0, :].imag), '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
+axes[3].loglog(np.abs(vn_full*2+1), np.abs(siw_sde_full.imag), '-o', color='cornflowerblue', markeredgecolor='k', label='SDE', lw=4)
+axes[3].loglog(np.abs(vn_full*2+1), np.abs(green.sigma.get_siw(niv=niv_full)[0, 0, 0, :].imag), '-p', color='firebrick', label='Input', markeredgecolor='k', ms=2)
 axes[3].set_ylabel(r'$|\Im \Sigma(i\nu_n)|$')
 axes[3].set_xlabel(r'$\nu_n$')
 
 
-axes[0].set_xlim(0,niv_full)
-axes[1].set_xlim(0,niv_full)
+axes[0].set_xlim(-0,niv_full)
+axes[1].set_xlim(-0,niv_full)
 plt.legend()
 axes[1].set_ylim(None,0)
 plt.tight_layout()
@@ -394,4 +402,142 @@ print(f3l)
 # plt.figure()
 # plt.imshow(gchi_magn.mat[niw_core].real,cmap='RdBu')
 # plt.colorbar()
+# plt.show()
+#
+#%%
+import matplotlib
+colors2 = matplotlib.cm.get_cmap('jet_r')(np.linspace(0, 1, niw_core*2))
+vn_core = mf.vn(niv_core)
+plt.figure()
+# for i in range(niw_core*2):
+#     plt.plot(vn_core,vrg_dens.mat[i,:].real,'-',color=colors2[i])
+plt.plot(wn_core,vrg_dens.mat[:,-1].real)
+plt.plot(wn_core,vrg_dens.mat[:,-5].real)
+plt.plot(wn_core,vrg_dens.mat[:,-10].real)
+plt.plot(wn_core,vrg_dens.mat[:,-15].real)
+plt.plot(wn_core,vrg_dens.mat[:,-20].real)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core+1,:].imag)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core+2,:].imag)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core+3,:].imag)
+plt.show()
+#
+# plt.figure()
+# # for i in range(niw_core*2):
+# #     plt.plot(vn_core,vrg_dens.mat[i,:].real,'-',color=colors2[i])
+# plt.loglog(vn_core,vrg_dens.mat[niw_core,:].imag)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core-1,:].imag)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core-2,:].imag)
+# plt.loglog(vn_core,vrg_dens.mat[niw_core-3,:].imag)
+# plt.show()
+
+#
+# #%%
+# plt.figure()
+# # plt.plot(vn_full[niv_full:],siw_sde_full[niv_full:].imag)
+# # plt.plot(vn_full[niv_full:],-siw_sde_full[:niv_full][::-1].imag)
+# plt.loglog(vn_full[niv_full:],np.abs(siw_sde_full[niv_full:].imag+siw_sde_full[:niv_full][::-1].imag))
+# plt.show()
+#
+# #%%
+# plt.figure()
+# # plt.plot(vn_full[niv_full:],siw_sde_full[niv_full:].imag)
+# # plt.plot(vn_full[niv_full:],-siw_sde_full[:niv_full][::-1].imag)
+# plt.loglog(green.vn[green.niv_full:],np.abs(green.g_loc[green.niv_full:].real-green.g_loc[:green.niv_full][::-1].real))
+# plt.show()
+#
+#
+# #%%
+#
+# plt.figure()
+# # plt.plot(vn_full[:],siw_sde_full[:].imag)
+# plt.plot(vn_full[niv_full:],siw_sde_full[niv_full:].imag)
+# plt.plot(vn_full[niv_full:],-siw_sde_full[:niv_full][::-1].imag)
+# plt.plot(vn_input[niv_input:],siw_input[niv_input:].imag)
+# plt.xlim(0,100)
+# plt.show()
+#
+# #%%
+# siw_input_cut = mf.cut_v(siw_input,niv_full)
+# plt.figure()
+# plt.loglog(vn_full[niv_full:], np.abs(siw_input_cut.imag-siw_sde_full.imag)[niv_full:])
+# plt.loglog(vn_full[niv_full:], np.abs(siw_input_cut.imag-siw_sde_full.imag)[:niv_full][::-1])
+# plt.show()
+#
+# #%%
+# plt.figure()
+# # plt.plot(wn_core[niw_core:],chi_dens[niw_core:].real)
+# # plt.plot(wn_core[niw_core:],chi_dens[:niw_core+1][::-1].real)
+# plt.loglog(wn_core[niw_core:],np.abs(chi_dens[niw_core:].real-chi_dens[:niw_core+1][::-1].real))
+# plt.show()
+# #%%
+# plt.figure()
+# # plt.plot(wn_core[niw_core:],chi_dens[niw_core:].real)
+# # plt.plot(wn_core[niw_core:],chi_dens[:niw_core+1][::-1].real)
+# plt.loglog(wn_core[niw_core:],np.abs(vrg_magn.mat[niw_core:,niv_core].real-vrg_magn.mat[:niw_core+1,niv_core-1][::-1].real))
+# # plt.plot(wn_core[niw_core:],vrg_magn.mat[niw_core:,niv_core].real)
+# # plt.plot(wn_core[niw_core:],vrg_magn.mat[:niw_core+1,niv_core-1][::-1].real)
+# plt.show()
+#
+# #%%
+# core = 1/(1j*mf.v(beta,niv_core))
+# asympt = 1/(1j*mf.v(beta,niv_full))
+# full = mf.concatenate_core_asmypt(core,asympt)
+# niv_new = np.size(full)//2
+#
+# plt.figure()
+# plt.loglog(np.abs(full[niv_new:].imag+full[:niv_new][::-1].imag))
+# plt.show()
+#
+# #%%
+# siw_shell_test = lfp.schwinger_dyson_shell(chi_dens, green.g_loc, beta, u, niv_shell, niv_core, g2_dens.wn)
+# vn_shell = mf.vn_plus(niv_full, niv_core)
+# vn_shell = mf.fermionic_full_nu_range(vn_shell)
+#
+# plt.figure()
+# # plt.plot(vn_full[:],siw_sde_full[:].imag)
+# plt.plot(vn_shell[niv_shell:],siw_shell_test[niv_shell:].imag)
+# plt.plot(vn_shell[niv_shell:],-siw_shell_test[:niv_shell][::-1].imag)
+# plt.xlim(0,100)
+# plt.show()
+#
+# plt.figure()
+# plt.loglog(vn_shell[niv_shell:],np.abs(siw_shell_test[niv_shell:].imag+siw_shell_test[:niv_shell][::-1].imag))
+# plt.xlim(0,100)
+# plt.show()
+#
+# #%%
+#
+# g_loc_mat = mf.wn_slices_shell(green.g_loc,niv_shell,n_core=niv_core,wn=g2_dens.wn)
+#
+# tmp = np.sum(chi_dens[:, None]*g_loc_mat,axis=0)
+#
+# plt.figure()
+# # plt.plot(tmp.real)
+# # plt.plot(tmp.imag)
+# plt.plot(tmp[niv_shell:].imag)
+# plt.plot(-tmp[:niv_shell][::-1].imag)
+# plt.show()
+#
+# plt.figure()
+# plt.loglog(np.abs(tmp[niv_shell:].imag+tmp[:niv_shell][::-1].imag))
+# plt.xlim(0,100)
+# plt.show()
+#
+# #%%
+# plt.figure()
+# plt.plot(chi_dens.imag)
+# plt.show()
+#
+# #%%
+# sigma_test = u ** 2 / 2 * 1 / beta * np.sum((chi_dens[:, None]) * g_loc_mat, axis=0)
+# plt.figure()
+# # plt.plot(vn_full[:],siw_sde_full[:].imag)
+# plt.plot(vn_shell[niv_shell:],sigma_test[niv_shell:].imag)
+# plt.plot(vn_shell[niv_shell:],-sigma_test[:niv_shell][::-1].imag)
+# plt.xlim(0,100)
+# plt.show()
+#
+# plt.figure()
+# plt.loglog(vn_shell[niv_shell:],np.abs(sigma_test[niv_shell:].imag+sigma_test[:niv_shell][::-1].imag))
+# plt.xlim(0,100)
 # plt.show()
