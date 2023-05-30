@@ -32,9 +32,9 @@ comm = mpi.COMM_WORLD
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 
 # Momentum and frequency grids:
-niw_core = 30
-niv_core = 30
-niv_shell = 50
+niw_core = 15
+niv_core = 15
+niv_shell = 100
 niv_full = niv_core + niv_shell
 lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
 nk = (12, 12, 1)
@@ -96,8 +96,8 @@ gchi0_urange = bubble_gen.get_gchi0(niv_full)
 # gamma_dens = lfp.gamob2_from_chir(gchi_dens, gchi0_core)
 # gamma_magn = lfp.gamob2_from_chir(gchi_magn, gchi0_core)
 
-gamma_dens = lfp.gammar_from_gchir(gchi_dens,gchi0_urange,dmft_input['u'])
-gamma_magn = lfp.gammar_from_gchir(gchi_magn,gchi0_urange,dmft_input['u'])
+gamma_dens = lfp.gammar_from_gchir(gchi_dens, gchi0_urange, dmft_input['u'])
+gamma_magn = lfp.gammar_from_gchir(gchi_magn, gchi0_urange, dmft_input['u'])
 
 # %%
 if (comm.rank == 0):
@@ -111,8 +111,8 @@ if (comm.rank == 0):
 
 # Perform the local SDE for box-size checks:
 
-vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_dens, bubble_gen, dmft_input['u'], niv_shell=niv_shell)
-vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir_uasympt(gamma_magn, bubble_gen, dmft_input['u'], niv_shell=niv_shell)
+vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, bubble_gen, dmft_input['u'], niv_shell=niv_shell)
+vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_magn, bubble_gen, dmft_input['u'], niv_shell=niv_shell)
 
 # Create checks of the susceptibility:
 if (comm.rank == 0): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, output_dir, verbose=False, do_plot=True, name='loc')
@@ -133,27 +133,26 @@ if (comm.rank == 0): plotting.sigma_loc_checks([siw_sde_full, dmft_input['siw']]
 #     gchi_magn_test.plot(pdir=output_dir,name='Gchi_test')
 
 
-
-
 # %% Build the non-local susceptibility:
 q_grid = bz.KGrid(nk=nq, symmetries=symmetries)
 my_q_list = q_grid.irrk_mesh_ind.T  # Currently nk and nq have to be equal. For inequal grids the q-list would have to be adjusted.
 
 gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
+gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
 chi0_q_core = 1 / dmft_input['beta'] ** 2 * np.sum(gchi0_q_core, axis=-1)
 chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
-chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full, 2*niv_shell, my_q_list)
+chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full, 2 * niv_shell, my_q_list)
 
 # %%
 if (comm.rank == 0):
     chi0_core = bubble_gen.get_chi0(niv_core)
     chi0_urange = bubble_gen.get_chi0(niv_full)
-    chi0_shell = bubble_gen.get_chi0_shell(niv_full, 2*niv_shell)
+    chi0_shell = bubble_gen.get_chi0_shell(niv_full, 2 * niv_shell)
     chi0q_shell_loc = np.mean(q_grid.map_irrk2fbz(chi0q_shell), axis=(0, 1, 2))
     chi0_q_urange_loc = np.mean(q_grid.map_irrk2fbz(chi0_q_urange), axis=(0, 1, 2))
     chi0q_core_loc = np.mean(q_grid.map_irrk2fbz(chi0_q_core), axis=(0, 1, 2))
 
-    fig, axes = plt.subplots(1, 2,figsize=(8,4))
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
     axes = axes.flatten()
     axes[0].plot(chi0_q_urange_loc.real + chi0q_shell_loc.real, label='Full')
     axes[0].plot(chi0_q_urange_loc.real, label='Urange')
@@ -163,9 +162,9 @@ if (comm.rank == 0):
     axes[0].plot(chi0_core.real, label='BM-Core')
     axes[0].legend()
 
-    axes[1].loglog(np.abs(chi0q_core_loc.real - chi0_core.real) , label='diff-core')
-    axes[1].loglog(np.abs(chi0_q_urange_loc.real - chi0_urange.real) , label='diff-urange')
-    axes[1].loglog(np.abs(chi0_q_urange_loc.real+chi0q_shell_loc.real - chi0_urange.real-chi0_shell.real) , label='diff-tilde')
+    axes[1].loglog(np.abs(chi0q_core_loc.real - chi0_core.real), label='diff-core')
+    axes[1].loglog(np.abs(chi0_q_urange_loc.real - chi0_urange.real), label='diff-urange')
+    axes[1].loglog(np.abs(chi0_q_urange_loc.real + chi0q_shell_loc.real - chi0_urange.real - chi0_shell.real), label='diff-tilde')
     axes[1].legend()
 
     plt.savefig(output_dir + '/TestChi0.png')
@@ -175,20 +174,20 @@ if (comm.rank == 0):
 # gchi_lad_dens = fp.get_gchir_from_gamma_loc_q(gammar=gamma_dens, gchi0=gchi0_q_core)
 # gchi_lad_magn = fp.get_gchir_from_gamma_loc_q(gammar=gamma_magn, gchi0=gchi0_q_core)
 
-gchiq_aux_dens = fp.get_gchir_aux_from_gammar_q(gamma_dens, gchi0_q_core,dmft_input['u'])
-gchiq_aux_magn = fp.get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core,dmft_input['u'])
+gchiq_aux_dens = fp.get_gchir_aux_from_gammar_q(gamma_dens, gchi0_q_core, dmft_input['u'])
+gchiq_aux_magn = fp.get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core, dmft_input['u'])
 
 chiq_aux_dens = 1 / dmft_input['beta'] ** 2 * np.sum(gchiq_aux_dens, axis=(-1, -2))
 chiq_aux_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchiq_aux_magn, axis=(-1, -2))
 
-chi_lad_dens_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_dens, chi0_q_urange, chi0_q_core,dmft_input['u'], 'dens')
-chi_lad_magn_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_magn, chi0_q_urange, chi0_q_core,dmft_input['u'], 'magn')
+chi_lad_dens_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_dens, chi0_q_urange, chi0_q_core, dmft_input['u'], 'dens')
+chi_lad_magn_urange = fp.chi_phys_from_chi_aux_q(chiq_aux_magn, chi0_q_urange, chi0_q_core, dmft_input['u'], 'magn')
 
 # chi_lad_dens = chi_lad_dens_urange #fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
 # chi_lad_magn = chi_lad_magn_urange #fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
 
-chi_lad_dens = fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
-chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_urange+chi0q_shell)
+chi_lad_dens = fp.chi_phys_asympt_q(chi_lad_dens_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
+chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
 
 # chi_lad_dens = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_dens, axis=(-1, -2))
 # chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2))
@@ -228,7 +227,7 @@ chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_magn_urange, chi0_q_urange,chi0_q_ur
 vrg_q_dens = fp.vrg_from_gchi_aux(gchiq_aux_dens, gchi0_q_core, chi_lad_dens_urange, chi_lad_dens, dmft_input['u'], 'dens')
 vrg_q_magn = fp.vrg_from_gchi_aux(gchiq_aux_magn, gchi0_q_core, chi_lad_magn_urange, chi_lad_magn, dmft_input['u'], 'magn')
 
-#%%
+# %%
 chi_lad_dens = q_grid.map_irrk2fbz(chi_lad_dens)
 chi_lad_magn = q_grid.map_irrk2fbz(chi_lad_magn)
 chi_lad_magn_urange = q_grid.map_irrk2fbz(chi_lad_magn_urange)
@@ -314,29 +313,44 @@ if (comm.rank == 0):
     plt.show()
 # %%
 gchi0_q_core = q_grid.map_irrk2fbz(gchi0_q_core).reshape((-1, *gchi0_q_core.shape[1:]))
+gchi0_q_urange = q_grid.map_irrk2fbz(gchi0_q_urange).reshape((-1, *gchi0_q_urange.shape[1:]))
 
 chi_lad_dens = chi_lad_dens.reshape((-1, *chi_lad_dens.shape[3:]))
 chi_lad_magn = chi_lad_magn.reshape((-1, *chi_lad_magn.shape[3:]))
 # %%
-siw_dga_dens = fp.schwinger_dyson_vrg_q(vrg_q_dens, chi_lad_dens, giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], 'dens', full_q_list,
-                                        q_dupl, g2_dens.wn, np.prod(q_grid.nk))
-siw_dga_magn = fp.schwinger_dyson_vrg_q(vrg_q_magn, chi_lad_magn, giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], 'magn', full_q_list,
-                                        q_dupl, g2_dens.wn, np.prod(q_grid.nk))
-F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
-F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
-F_updo = 0.5 * (F_dens.mat - F_magn.mat)
+siw_dga_dens = fp.schwinger_dyson_full_q(vrg_q_dens, chi_lad_dens, 'dens', giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], full_q_list,
+                                         q_dupl, g2_dens.wn, np.prod(q_grid.nk), niv_shell)
+siw_dga_magn = fp.schwinger_dyson_full_q(vrg_q_magn, chi_lad_magn, 'magn', giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], full_q_list,
+                                         q_dupl, g2_dens.wn, np.prod(q_grid.nk), niv_shell)
+
 
 # %%
+# F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
+# F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
+# F_updo = 0.5 * (F_dens.mat - F_magn.mat)
+
+# WARNING: This is not working!
 chi0q_shell = q_grid.map_irrk2fbz(chi0q_shell).reshape((-1, *chi0q_shell.shape[1:]))
-qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_core[:, :, None, :] * F_magn.mat[None, ...], axis=-1) + 1 / dmft_input['beta'] \
-              * chi0q_shell[:, :, None] * dmft_input['u']
+
+gamma_magn_urange = lfp.get_urange(gamma_magn, -dmft_input['u']/dmft_input['beta']**2,niv_shell)
+gamma_magn_urange.plot(pdir=output_dir,name='gamma_magn_urange')
+F_dens_urange = lfp.Fob2_from_gamob2_urange(gamma_dens, gchi0_urange, dmft_input['u'])
+F_magn_urange = lfp.Fob2_from_gamob2_urange(gamma_magn, gchi0_urange, dmft_input['u'])
+F_dens_urange.plot(pdir=output_dir,name='F_dens_urange')
+F_magn_urange.plot(pdir=output_dir,name='F_magn_urange')
+# F_dens.plot(pdir=output_dir,name='F_dens')
+# F_dens.plot(pdir=output_dir,name='F_dens')
+F_dc = 0.5 * (F_dens_urange.mat - F_magn_urange.mat)
+F_dc = F_magn_urange.mat
+qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_urange[:, :, None, :] * F_dc[None, ...], axis=-1) \
+    # + 1 / dmft_input['beta'] * chi0q_shell[:, :, None] * dmft_input['u']
 siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full, dmft_input['u'], full_q_list, q_dupl, g2_dens.wn, np.prod(q_grid.nk))
 
 # %%
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 # siw_dga = hartree + (siw_dga_dens + siw_dga_magn)
-# siw_dga = hartree + (siw_dga_dens + 3 * siw_dga_magn) - siw_dc
-siw_dga = hartree + (1 * siw_dga_dens + 3 * siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full, niv_core) + mf.cut_v(dmft_input['siw'], niv_core)
+siw_dga = hartree + (siw_dga_dens + 3 * siw_dga_magn) - siw_dc
+# siw_dga = hartree + (1 * siw_dga_dens + 3 * siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full, niv_core) + mf.cut_v(dmft_input['siw'], niv_core)
 
 if (comm.rank == 0):
     plotting.plot_kx_ky(siw_dga[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_kz0')
@@ -344,8 +358,8 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(siw_dga_dens[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_magn_kz0')
     plotting.plot_kx_ky(siw_dga_magn[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_dens_kz0')
 
-    siw_dga_dens_loc = hartree + 2*np.mean(siw_dga_dens, axis=(0, 1, 2))
-    siw_dga_magn_loc = hartree + 2*np.mean(siw_dga_magn, axis=(0, 1, 2))
+    siw_dga_dens_loc = hartree + 2 * np.mean(siw_dga_dens, axis=(0, 1, 2))
+    siw_dga_magn_loc = hartree + 2 * np.mean(siw_dga_magn, axis=(0, 1, 2))
     siw_dga_loc = np.mean(siw_dga, axis=(0, 1, 2))
     siw_dc_loc = np.mean(siw_dc + hartree, axis=(0, 1, 2))
     plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dc_loc, siw_dga_dens_loc, siw_dga_magn_loc],

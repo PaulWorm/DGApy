@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def v_vp_urange(mat,val,niv_urange=0):
+    ''' append val to the urange of mat
+        assume last two dimensions are v and vp
+        niv_urange is the number of additional frequencies
+    '''
+    niv = mat.shape[-1]//2
+    niv_full = niv + niv_urange
+    mat_urange = np.ones(mat.shape[:-2]+(niv_full*2,niv_full*2),dtype=mat.dtype)*val
+    mat_urange[...,niv_full-niv:niv_full+niv,niv_full-niv:niv_full+niv] = mat
+    return mat_urange
+
+
 def w_to_vmvp(mat):
     '''Transform w -> v-v' '''
     niw = np.shape(mat)[0]//2
@@ -21,7 +33,7 @@ def wn_cen2lin(wn=0, niw=None):
 
 def wn_slices(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2
-    mat_grid = np.array([mat[n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
+    mat_grid = np.array([mat[...,n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
     return mat_grid
 
 def wn_slices_gen(mat=None, n_cut=None, wn=None):
@@ -32,13 +44,14 @@ def wn_slices_gen(mat=None, n_cut=None, wn=None):
 
 def wn_slices_plus(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2
-    mat_grid = np.array([mat[n - n_cut + iwn:n + n_cut + iwn] for iwn in wn])
+    mat_grid = np.array([mat[...,n - n_cut + iwn:n + n_cut + iwn] for iwn in wn])
     return mat_grid
 
 def wn_slices_shell(mat,n_shell,n_core=0,wn=None):
     n = mat.shape[-1] // 2
-    mat_grid = np.array([mat[n+n_core-iwn:n+n_core+n_shell-iwn] for iwn in wn])
+    mat_grid = np.array([mat[...,n+n_core-iwn:n+n_core+n_shell-iwn] for iwn in wn])
     return fermionic_full_nu_range(mat_grid)
+
 
 def wn_slices_plus_cent(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2

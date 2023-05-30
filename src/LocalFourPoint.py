@@ -228,6 +228,21 @@ def gchir_from_gamob2_wn(gammar, gchi0):
     return np.linalg.inv(np.diag(1 / gchi0) + gammar)
 
 
+def get_urange(obj: LocalFourPoint, val, niv_urange):
+    return LocalFourPoint(channel=obj.channel, beta=obj.beta, wn=obj.wn,  matrix=mf.v_vp_urange(obj.mat, val, niv_urange))
+
+
+def Fob2_from_gamob2_urange(gammar: LocalFourPoint,gchi0,u):
+    ''' F = Gamma [1 - Gamma X_0]^(-1)'''
+    u_r = get_ur(u, channel=gammar.channel)
+    niv_core = gammar.niv
+    niv_full = np.shape(gchi0)[-1]//2
+    niv_urange = niv_full - niv_core
+    gamma_urange = get_urange(gammar, u_r/gammar.beta**2, niv_urange)
+    eye = np.eye(niv_full*2)
+    Fob2 = np.array([gamma_urange.mat[iwn] @ np.linalg.inv(eye + gamma_urange.mat[iwn]*gchi0[iwn][:,None]) for iwn in gammar.wn_lin])
+    return LocalFourPoint(channel=gammar.channel, beta=gammar.beta, wn=gammar.wn, matrix=Fob2)
+
 # def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
 #     u_r = get_ur(u, channel=gam.channel)
 #     vrg = np.array([vrg_from_gam_wn(gam.mat[iwn_lin], chi0_inv.mat[iwn_lin], gam.beta, u_r) for iwn_lin in gam.wn_lin])

@@ -32,6 +32,25 @@ def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_poin
                                                             vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * q_point_duplicity[i]
     return sigma_F
 
+def schwinger_dyson_q_shell(chir_phys, giwk, beta, u, n_shell, n_core, wn, q_list, q_point_duplicity, nqtot):
+    sigma_F = np.zeros([*np.shape(giwk)[:3],2*n_shell], dtype=complex)
+    for i, q in enumerate(q_list):
+        gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+        mat_grid = mf.wn_slices_shell(gkpq, n_shell,n_core, wn=wn)
+        sigma_F += 1 / nqtot * u**2 / 2 * 1 / beta * np.sum(chir_phys[i, :, None,None,None,None] * mat_grid, axis=0) * q_point_duplicity[i]
+    return sigma_F
+
+def schwinger_dyson_full_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_point_duplicity, wn, nqtot,niv_shell=0):
+    siwk_core = schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_point_duplicity, wn, nqtot)
+    if (niv_shell == 0):
+        return siwk_core
+    else:
+        niv_core = np.shape(vrg)[-1] // 2
+        siwk_shell = schwinger_dyson_q_shell(chir_phys, giwk, beta, u, niv_shell, niv_core, wn, q_list, q_point_duplicity, nqtot)
+        return mf.concatenate_core_asmypt(siwk_core, siwk_shell)
+
+
+
 
 def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqtot):
     '''

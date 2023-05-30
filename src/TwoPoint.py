@@ -267,7 +267,7 @@ def build_g(v, ek, mu, sigma):
 
 
 class GreensFunction():
-    '''Object to build the Green's function from hr and sigma'''
+    '''Object to build the Green's function from hk and sigma'''
     mu0 = 0
     mu_tol = 1e-6
 
