@@ -541,3 +541,41 @@ plt.show()
 # plt.loglog(vn_shell[niv_shell:],np.abs(sigma_test[niv_shell:].imag+sigma_test[:niv_shell][::-1].imag))
 # plt.xlim(0,100)
 # plt.show()
+
+#%%
+
+# siw_sde_full_dens = lfp.schwinger_dyson_full(vrg_dens, vrg_dens, chi_dens, chi_dens, green.g_loc, u, n, niv_shell=niv_shell)
+# siw_sde_full_magn = lfp.schwinger_dyson_full(vrg_magn, vrg_magn, chi_magn, chi_magn, green.g_loc, u, n, niv_shell=niv_shell)
+#
+# plt.plot(vn_full[:],siw_sde_full_dens[:].imag)
+# plt.plot(vn_full[:],siw_sde_full_magn[:].imag)
+# plt.plot(vn_full[:],0.5*(siw_sde_full_magn+siw_sde_full_dens).imag)
+# plt.show()
+
+#%%
+
+siw_dens = lfp.schwinger_dyson_F(F_dens, gchi0_core, green.g_loc, u)
+siw_magn = lfp.schwinger_dyson_F(F_magn, gchi0_core, green.g_loc, u)
+
+
+plt.plot(vn_core,siw_dens.imag)
+plt.plot(vn_core,-siw_magn.imag)
+plt.show()
+
+#%%
+
+gamma_dens_urange = lfp.get_urange(gamma_dens,u/beta**2,niv_shell)
+gamma_magn_urange = lfp.get_urange(gamma_magn,-u/beta**2,niv_shell)
+F_dens_urange = lfp.Fob2_from_gamob2_urange(gamma_dens_urange,gchi0_urange,u)
+F_magn_urange = lfp.Fob2_from_gamob2_urange(gamma_magn_urange,gchi0_urange,u)
+
+siw_dens_urange = lfp.schwinger_dyson_F(F_dens_urange, gchi0_urange, green.g_loc, u)
+siw_magn_urange = lfp.schwinger_dyson_F(F_magn_urange, gchi0_urange, green.g_loc, u)
+
+
+# plt.plot(vn_full,siw_dens_urange.imag)
+# plt.plot(vn_full,-siw_magn_urange.imag)
+# plt.plot(vn_full,0.5*(siw_dens_urange-siw_magn_urange).imag)
+plt.plot(vn_full,0.5*(siw_dens-siw_magn).imag)
+plt.plot(vn_full,(siw_sde_full).imag)
+plt.show()

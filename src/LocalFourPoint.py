@@ -535,22 +535,25 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     return sigma_F
 
 
-def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn):
+def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn, channel):
+    u_r = get_ur(u, channel=channel)
     mat_grid = mf.wn_slices_shell(giw, n_shell=n_shell, n_core=n_core, wn=wn)
-    sigma_F = u ** 2 / 2 * 1 / beta * np.sum((chir_phys[:, None]) * mat_grid, axis=0)
+    sigma_F = u / 2 * 1 / beta * np.sum((u* chir_phys[:, None]) * mat_grid, axis=0)
     return sigma_F
 
 
 def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, chi_dens, chi_magn, giw, u, n, niv_shell=0):
-    siw_dens_core = schwinger_dyson_vrg(vrg_dens, chi_dens, giw, u)
-    siw_magn_core = schwinger_dyson_vrg(vrg_magn, chi_magn, giw, u)
+    siw_dens = schwinger_dyson_core_urange(vrg_dens, chi_dens, giw, u, niv_shell)
+    siw_magn = schwinger_dyson_core_urange(vrg_magn, chi_magn, giw, u, niv_shell)
     hartree = twop.get_smom0(u, n)
-    if (niv_shell == 0):
-        return siw_dens_core + siw_magn_core + hartree
+    return hartree + siw_dens + siw_magn
+
+def schwinger_dyson_core_urange(vrg: LocalThreePoint, chi_phys, giw, u, niv_shell):
+    siw_core = schwinger_dyson_vrg(vrg, chi_phys, giw, u)
+    if(niv_shell==0): return siw_core
     else:
-        siw_magn_shell = schwinger_dyson_shell(chi_magn, giw, vrg_magn.beta, u, niv_shell, vrg_magn.niv, vrg_magn.wn)
-        siw_dens_shell = schwinger_dyson_shell(chi_dens, giw, vrg_dens.beta, u, niv_shell, vrg_dens.niv, vrg_dens.wn)
-        return hartree + mf.concatenate_core_asmypt(siw_dens_core + siw_magn_core, siw_magn_shell + siw_dens_shell)
+        siw_shell = schwinger_dyson_shell(chi_phys, giw, vrg.beta, u, niv_shell, vrg.niv, vrg.wn,vrg.channel)
+        return mf.concatenate_core_asmypt(siw_core, siw_shell)
 
 
 def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):

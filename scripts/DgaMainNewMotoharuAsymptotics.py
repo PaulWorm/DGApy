@@ -340,10 +340,9 @@ F_dens_urange.plot(pdir=output_dir,name='F_dens_urange')
 F_magn_urange.plot(pdir=output_dir,name='F_magn_urange')
 # F_dens.plot(pdir=output_dir,name='F_dens')
 # F_dens.plot(pdir=output_dir,name='F_dens')
-F_dc = 0.5 * (F_dens_urange.mat - F_magn_urange.mat)
+# F_dc = -0.5 * (F_dens_urange.mat - F_magn_urange.mat)
 F_dc = F_magn_urange.mat
-qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_urange[:, :, None, :] * F_dc[None, ...], axis=-1) \
-    # + 1 / dmft_input['beta'] * chi0q_shell[:, :, None] * dmft_input['u']
+qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_urange[:, :, None, :] * F_dc[None, ...], axis=-1)
 siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full, dmft_input['u'], full_q_list, q_dupl, g2_dens.wn, np.prod(q_grid.nk))
 
 # %%

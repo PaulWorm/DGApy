@@ -60,10 +60,9 @@ def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqto
     sigma_dc = np.zeros([*np.shape(giwk)[:3], 2 * niv_core], dtype=complex)
     niv_giwk = np.shape(giwk)[-1] // 2
     for iq, q in enumerate(q_list):
-        for iw, iwn in enumerate(wn):
-            gkpq = bz.shift_mat_by_ind(giwk[..., niv_giwk - niv_core - iwn:niv_giwk + niv_core - iwn], ind=[-iq for iq in q])
-            # sigma_dc += - u * 1/(nq_tot) * q_point_duplicity[iq] * np.sum(np.diag(gchi0_q[iq,iw]) * F_updo[iw],axis=-1)[None,None,None,:] * gkpq
-            sigma_dc += + u * 1 / (nqtot) * q_point_duplicity[iq] * gchiq_Fupdo[iq, iw, None, None, None, :] * gkpq
+        gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+        mat_grid = mf.wn_slices_gen(gkpq, niv_core,wn=wn)
+        sigma_dc += + u * 1 / (nqtot) * q_point_duplicity[iq] * np.sum(gchiq_Fupdo[iq, :, None, None, None, :] * mat_grid,axis=0)
     return sigma_dc
 
 
@@ -132,8 +131,7 @@ def vrg_from_gchi_aux(gchir_aux, gchi0_core, chir_urange, chir_asympt, u, channe
     vrg = np.zeros([nq, niw, niv], dtype=complex)
     for iq in range(nq):
         for iwn in range(niw):
-            vrg[iq,iwn,:] = 1 / gchi0_core[iq,iwn] * np.sum(gchir_aux[iq,iwn], axis=-1)*\
-                            (1 - u_r * chir_urange[iq,iwn]) / (1 - u_r * chir_asympt[iq,iwn])
+            vrg[iq,iwn,:] = 1 / gchi0_core[iq,iwn] * np.sum(gchir_aux[iq,iwn], axis=-1)*(1 - u_r * chir_urange[iq,iwn]) / (1 - u_r * chir_asympt[iq,iwn])
     return vrg
 
 
