@@ -130,11 +130,23 @@ class LocalBubble():
     def wn_lin(self):
         return np.arange(0, self.niw)
 
-    def get_chi0(self, niv, freq_notation=None):
+    def get_chi0(self, niv, freq_notation=None, do_asmypt=False, niv_shell=None):
+
         if (freq_notation is None):
             freq_notation = self.freq_notation
+
         if (self.chi0_method == 'sum'):
-            return vec_get_chi0_sum(self.g_loc, self.beta, niv, self.wn, freq_notation)
+            chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv, self.wn, freq_notation)
+
+        if(do_asmypt):
+            if(niv_shell is None):
+                niv_shell = 2*niv
+            chi0_core = vec_get_chi0_sum(self.g_loc, self.beta, niv, self.wn, freq_notation)
+            chi0_shell = self.get_chi0_shell(niv, niv_shell, do_asmypt=True, freq_notation=freq_notation)
+            return chi0_core + chi0_shell
+        else:
+            return chi0_core
+
 
     def get_gchi0(self, niv, freq_notation=None):
         if (freq_notation is None):

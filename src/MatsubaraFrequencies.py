@@ -27,6 +27,15 @@ def cen2lin(val=None, start=0):
     return val - start
 
 
+def vn_from_mat(mat=None,axis=-1):
+    ''' return vn corresponding to an axis of matrix '''
+    return vn(mat.shape[axis]//2)
+
+
+def wn_from_mat(mat=None,axis=-1):
+    ''' return wn corresponding to an axis of matrix '''
+    return wn(mat.shape[axis]//2)
+
 def wn_cen2lin(wn=0, niw=None):
     return cen2lin(wn, -niw)
 

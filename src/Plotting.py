@@ -108,10 +108,47 @@ def chi_checks(chi_dens,chi_magn,labels,green,plot_dir,verbose=False,do_plot=Tru
     else:
         plt.close()
 
+def local_diff_checks(arrs,labels,output_dir,verbose=False,do_plot=True,name='',xmax=None):
+    ''''''
+    fig, axes = plt.subplots(ncols=3, nrows=1, figsize=(14, 5))
+    axes = axes.flatten()
+
+    for i,arr in enumerate(arrs):
+        wn_1 = mf.wn_from_mat(arr[0])
+        wn_2 = mf.wn_from_mat(arr[1])
+        axes[0].plot(wn_1, arr[0].real, label=labels[i][0])
+        axes[0].plot(wn_2, arr[1].real, label=labels[i][1])
+
+        axes[1].loglog(wn_1, arr[0].real, label=labels[i][0])
+        axes[1].loglog(wn_2, arr[1].real, label=labels[i][1])
+
+        diff = np.abs(arr[0].real - arr[1].real)
+        axes[2].loglog(wn_1, diff, label='diff-' + labels[i][0])
+
+    axes[0].set_ylabel(r'$\Re '+'\\' + name + '$')
+    axes[0].set_xlabel(r'$\omega_n$')
+
+    axes[1].set_ylabel(r'$\Re '+'\\' + name + '$')
+    axes[1].set_xlabel(r'$\omega_n$')
+
+    axes[2].set_ylabel(r'$diff - \Re '+'\\' + name + '$')
+    axes[2].set_xlabel(r'$\omega_n$')
+
+    for ax in axes:
+        ax.legend()
+        ax.set_xlim(0, xmax)
+    plt.tight_layout()
+    if(do_plot): plt.savefig(output_dir  + '/' + name+'_diff_check.png')
+    if(verbose):
+        plt.show()
+    else:
+        plt.close()
+
+
 def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,name='',xmax=None):
     if(xmax is None):
         xmax = 5+2*beta
-    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5), dpi=500)
+    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(8, 5))
     axes = axes.flatten()
 
     for i,siw in enumerate(siw_arr):

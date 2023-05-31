@@ -165,6 +165,38 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
     return (1 + sign * lam_tilde) / (1 - u_r * chir_q_tilde[..., None])
 
 
+
+def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_r: lfp.LocalFourPoint, bubble_gen: bub.LocalBubble, u, my_q_list, niv_shell = 0, niv_asympt=None):
+    '''
+        Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
+        Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
+    '''
+    niv_core = gamma_r.niv
+    niv_full = niv_shell
+    beta = gamma_r.beta
+    channel = gamma_r.channel
+
+    if(niv_asympt is None): niv_asympt = 2*niv_shell
+    # Build the different non-local Bubbles:
+    gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
+    chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
+    chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
+    chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full, niv_asympt, my_q_list)
+
+    gchiq_aux = get_gchir_aux_from_gammar_q(gamma_r, gchi0_q_core, u)
+
+    chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
+
+    chi_lad_urange = chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, channel)
+
+    chi_lad = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
+
+    # vrg_tilde:
+    vrg_q = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad, u, channel)
+
+    return vrg_q, chi_lad
+
+
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def cut_iv(mat=None, niv_cut=10):

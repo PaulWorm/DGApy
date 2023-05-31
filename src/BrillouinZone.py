@@ -240,15 +240,38 @@ class KGrid():
         self.ky = np.linspace(0, 2 * np.pi, self.nk[1], endpoint=False)
         self.kz = np.linspace(0, 2 * np.pi, self.nk[2], endpoint=False)
 
-    def map_irrk2fbz(self, mat):
+    def map_irrk2fbz(self, mat, shape='mesh'):
         ''' First dimenstion has to be irrk'''
         old_shape = np.shape(mat)
-        return  mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
+        if(shape == 'mesh'):
+            return  mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
+        elif(shape == 'list'):
+            return  mat[self.irrk_inv, ...].reshape((self.nk_tot, *old_shape[1:]))
+        else:
+            raise ValueError('shape has to be "mesh" or "list"')
+
+    def k_mean(self,mat,type='irrk'):
+        ''' Performs summation over the k-mesh'''
+        if(type == 'fbz-mesh'):
+            return np.mean(mat, axis=(0, 1, 2))
+        elif(type == 'fbz-list'):
+            return np.mean(mat, axis=(0,))
+        elif(type == 'irrk'):
+            return 1/(self.nk_tot)*np.dot(np.moveaxis(mat,0,-1),self.irrk_count)
+        else:
+            raise ValueError('type has to be "fbz-mesh", "fbz-list" or "irrk"')
 
     def map_fbz2irrk(self, mat):
         '''[kx,ky,kz,...]'''
         return  mat.reshape((-1,*np.shape(mat)[3:]))[self.irrk_ind, ...]
 
+    def map_fbz_mesh2list(self,mat):
+        ''' [kx,ky,kz,...] -> [k,...] '''
+        return mat.reshape((self.nk_tot, *np.shape(mat)[3:]))
+
+    def map_fbz_list2mesh(self,mat):
+        '''[k,...] -> [kx,ky,kz,...]'''
+        return mat.reshape((*self.nk, *np.shape(mat)[1:]))
 
     def symmetrize_irrk(self, mat):
         '''Shape of mat has to be [kx,ky,kz,...]'''
