@@ -32,15 +32,15 @@ def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_poin
                                                             vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * q_point_duplicity[i]
     return sigma_F
 
-def schwinger_dyson_q_shell(chir_phys, giwk, beta, u, n_shell, n_core, wn, q_list, q_point_duplicity, nqtot):
+def schwinger_dyson_q_shell(chir_phys, giwk, beta, u, n_shell, n_core, wn, q_list, nqtot):
     sigma_F = np.zeros([*np.shape(giwk)[:3],2*n_shell], dtype=complex)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
         mat_grid = mf.wn_slices_shell(gkpq, n_shell,n_core, wn=wn)
-        sigma_F += 1 / nqtot * u**2 / 2 * 1 / beta * np.sum(chir_phys[i, :, None,None,None,None] * mat_grid, axis=0) * q_point_duplicity[i]
+        sigma_F += 1 / nqtot * u**2 / 2 * 1 / beta * np.sum(chir_phys[i, :, None,None,None,None] * mat_grid, axis=0)
     return sigma_F
 
-def schwinger_dyson_full_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_point_duplicity, wn, nqtot,niv_shell=0):
+def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_point_duplicity, wn, nqtot,niv_shell=0):
     siwk_core = schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_point_duplicity, wn, nqtot)
     if (niv_shell == 0):
         return siwk_core
@@ -50,7 +50,37 @@ def schwinger_dyson_full_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_poi
         return mf.concatenate_core_asmypt(siwk_core, siwk_shell)
 
 
+def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, F_dc, gchi0_core, beta, u, q_list, wn, nqtot, niv_shell=0):
+    kernel = get_kernel(vrg_dens, chi_dens, u, 'dens')
+    kernel += 3*get_kernel(vrg_magn, chi_magn, u, 'magn')
+    kernel += get_kernel_dc(F_dc, gchi0_core, beta, u, 'magn')
+    siwk_core = schwinger_dyson_kernel_q(kernel,giwk,beta,q_list, wn, nqtot)
 
+    if (niv_shell == 0):
+        return siwk_core
+    else:
+        niv_core = np.shape(siwk_core)[-1] // 2
+        siwk_shell = schwinger_dyson_q_shell(chi_dens, giwk, beta, u, niv_shell, niv_core, wn, q_list, nqtot)
+        siwk_shell += schwinger_dyson_q_shell(chi_magn, giwk, beta, u, niv_shell, niv_core, wn, q_list, nqtot)
+        return mf.concatenate_core_asmypt(siwk_core, siwk_shell)
+
+def get_kernel(vrg, chi_phys, u, channel):
+    u_r = get_ur(u,channel)
+    return u_r * (1 - (1 - u_r * chi_phys[:,:,None]) * vrg)
+
+def get_kernel_dc(F,gchi0_core,beta, u,channel):
+    u_r = get_ur(u,channel)
+    return u_r * 1 / beta * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1)
+
+
+def schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot):
+    niv = np.shape(kernel)[-1]//2
+    sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * niv], dtype=complex)
+    for i, q in enumerate(q_list):
+        gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
+        mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv, wn=wn)
+        sigma_F +=  np.sum(kernel[i,:,None,None,None,:] * mat_grid, axis=0)
+    return 1 / nqtot *  1 / beta * sigma_F
 
 def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqtot):
     '''

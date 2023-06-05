@@ -18,7 +18,7 @@ def get_lambda_start(chi_r):
 
 def lambda_correction_single(beta,lambda_start=0, chir: fp.LadderSusceptibility = None,
                              chi_loc_sum=None,
-                             maxiter=1000, eps=1e-7, delta=0.1):
+                             maxiter=1000, eps=1e-7, delta=0.1,verbose=False):
     lambda_old = lambda_start + delta
     lambda_ = lambda_old
 
@@ -27,7 +27,7 @@ def lambda_correction_single(beta,lambda_start=0, chir: fp.LadderSusceptibility 
         f_lam = chir_sum - chi_loc_sum
         fp_lam = -1. / (beta) * np.mean(np.sum((1. / (1. / chir + lambda_)) ** 2.,axis=-1))
         lambda_ = lambda_old - np.real(f_lam / fp_lam)
-        print('Lambda: ',lambda_,'f_lam: ', f_lam,'fp_lam: ', fp_lam)
+        if(verbose): print('Lambda: ',lambda_,'f_lam: ', f_lam,'fp_lam: ', fp_lam)
         if (np.abs(f_lam.real) < eps):
             break
 
@@ -39,17 +39,17 @@ def lambda_correction_single(beta,lambda_start=0, chir: fp.LadderSusceptibility 
             lambda_old = lambda_
     return lambda_
 
-def lambda_correction(chi_lad_dens, chi_lad_magn, beta, chi_loc_dens, chi_loc_magn, type='spch'):
+def lambda_correction(chi_lad_dens, chi_lad_magn, beta, chi_loc_dens, chi_loc_magn, type='spch',verbose=False):
 
     if(type=='spch'):
         lambda_dens_start = get_lambda_start(chi_lad_dens)
         lambda_dens = lambda_correction_single(beta, lambda_start=lambda_dens_start, chir=chi_lad_dens,
-                                                  chi_loc_sum=1 / beta * np.sum(chi_loc_dens))
+                                                  chi_loc_sum=1 / beta * np.sum(chi_loc_dens),verbose=verbose)
         chi_lad_dens = use_lambda(chi_lad_dens, lambda_dens)
 
         lambda_magn_start = get_lambda_start(chi_lad_magn)
         lambda_magn = lambda_correction_single(beta, lambda_start=lambda_magn_start, chir=chi_lad_magn,
-                                                  chi_loc_sum=1 / beta * np.sum(chi_loc_magn))
+                                                  chi_loc_sum=1 / beta * np.sum(chi_loc_magn),verbose=verbose)
         chi_lad_magn = use_lambda(chi_lad_magn, lambda_magn)
 
         return chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn

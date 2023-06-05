@@ -268,25 +268,25 @@ class LocalBubble():
         if (freq_notation is None):
             freq_notation = self.freq_notation
         if (self.chi0_method == 'sum'):
-            return np.array([get_chi0_q(self.giw.full, self.beta, niv, iwn, q, freq_notation) for iwn in self.wn])
+            return np.array([get_chi0_q(self.giw.g_full(), self.beta, niv, iwn, q, freq_notation) for iwn in self.wn])
 
     def get_chi0_q_list(self, niv, q_list, freq_notation=None):
         if (freq_notation is None):
             freq_notation = self.freq_notation
         if (self.chi0_method == 'sum'):
-            return vec_get_chi0_q(self.giw.full, self.beta, niv, self.wn, q_list, freq_notation)
+            return vec_get_chi0_q(self.giw.g_full(), self.beta, niv, self.wn, q_list, freq_notation)
 
     def get_gchi0_single_q(self, niv, q=(0, 0, 0), freq_notation=None):
         if (freq_notation is None):
             freq_notation = self.freq_notation
         if (self.chi0_method == 'sum'):
-            return np.array([get_gchi0_q(self.giw.full, self.beta, niv, iwn, q, freq_notation) for iwn in self.wn])
+            return np.array([get_gchi0_q(self.giw.g_full(), self.beta, niv, iwn, q, freq_notation) for iwn in self.wn])
 
     def get_gchi0_q_list(self, niv, q_list, freq_notation=None):
         if (freq_notation is None):
             freq_notation = self.freq_notation
         if (self.chi0_method == 'sum'):
-            return vec_get_gchi0_q(self.giw.full, self.beta, niv, self.wn, q_list, freq_notation)
+            return vec_get_gchi0_q(self.giw.g_full(), self.beta, niv, self.wn, q_list, freq_notation)
 
 
 # ======================================================================================================================

@@ -14,94 +14,31 @@ def get_extent(kgrid=None):
 def get_extent_pi_shift(kgrid=None):
     return [kgrid.kx[0] - np.pi, kgrid.kx[-1] - np.pi, kgrid.ky[0] - np.pi, kgrid.ky[-1] - np.pi]
 
-
-def find_arc_node(ak_fs=None, kgrid=None):
-    mask = kgrid.kmesh[0] == kgrid.kmesh[1]
-    ind = tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])])
-    return ind
-
-
-def find_arc_anti_node(ak_fs=None, kgrid=None):
-    mask = kgrid.kmesh[0] == 0
-    ind = tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])])
-    return ind
-
-
-def shift_mat_by_pi(mat, nk):
+def shift_mat_by_pi(mat, nk=None):
+    if nk is None:
+        nk = [mat.shape[0], mat.shape[1]]
     mat_shift = np.copy(mat)
     mat_shift = np.roll(mat_shift, nk[0] // 2, 0)
     mat_shift = np.roll(mat_shift, nk[1] // 2, 1)
     return mat_shift
 
 
-def find_fermi_surface_peak(ak_fs=None, kgrid=None):
-    eps = 0.000001
+def find_zeros(mat):
+    ''' Finds the zero crossings of a 2D matrix.
+        Not sure if this should be transfered to the Plotting module.
+    '''
+    ind_x = np.arange(mat.shape[0])
+    ind_y = np.arange(mat.shape[1])
 
-    ind = []
-    ind2 = []
-    kmesh = kgrid.kmesh
-
-    mask = np.logical_and(np.pi / 2 - eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
-    kx = kgrid.kx[mask]
-    for ikx in kx:
-        mask = np.logical_and(kmesh[1] == ikx, kmesh[0] <= np.pi + eps)
-        ind.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
-    for ikx in kx:
-        mask = np.logical_and(kmesh[0] == ikx, kmesh[1] <= np.pi + eps)
-        ind2.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
-
-    ind = ind[::-1] + ind2
-    return ind
-
-
-def find_arc_peaks(ak_fs=None, kgrid=None):
-    eps = 0.000001
-
-    ind = []
-    kmesh = kgrid.kmesh
-
-    mask = np.logical_and(np.pi / 2 - eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
-    kx = kgrid.kx[mask]
-    for ikx in kx:
-        mask = np.logical_and(kmesh[1] == ikx, kmesh[0] <= np.pi + eps)
-        ind.append(tuple(np.argwhere(mask)[np.argmax(ak_fs[mask])]))
-
-    ind = ind[::-1]
-    return ind
-
-
-def find_qpd_zeros(qpd=None, kgrid=None):
-    eps = 0.000001
-    ind = []
-    kmesh = kgrid.kmesh
-    # mask = np.logical_and(0 <= kgrid.kx, kgrid.kx <= np.pi / 2 - eps)
-    mask = np.logical_and(np.pi / 2 - eps <= kgrid.kx, kgrid.kx <= np.pi + eps)
-    kx = kgrid.kx[mask]
-    for ikx in kx:
-        mask = np.logical_and(kmesh[0] == ikx, kmesh[1] <= np.pi + eps)
-        ind.append(tuple(np.argwhere(mask)[np.argmin(np.abs(qpd[mask]))]))
-        # asign = np.sign(qpd[mask])
-        # signchange = ((np.roll(asign, 1) - asign) != 0).astype(int)
-        # signchange[0] = 0
-        # ind.append(tuple(np.squeeze(np.argwhere(mask)[np.argwhere(signchange)])))
-
-    ind = ind[::-1]
-    return ind
-
-
-def get_fermi_surface_ind(qpd_fs):
-    nk = np.shape(qpd_fs)[0]
-    ind_kx = np.arange(nk)
-    cs1 = plt.contour(ind_kx, ind_kx, qpd_fs, cmap='RdBu', levels=[0, ])
+    cs1 = plt.contour(ind_x, ind_y, mat.real, cmap='RdBu', levels=[0, ])
     paths = cs1.collections[0].get_paths()
     plt.close()
-    ind = []
+    paths = np.atleast_1d(paths)
+    vertices = []
     for path in paths:
-        ind_kx = np.array(np.round(path.vertices[:, 0], 0).astype(int))
-        ind_ky = np.array(np.round(path.vertices[:, 1], 0).astype(int))
-        ind.append(np.stack((ind_kx, ind_ky), axis=1))
-    return ind
-
+        vertices.extend(path.vertices)
+    vertices = np.array(vertices,dtype=int)
+    return vertices
 
 def two_dimensional_square_symmetries():
     return ['x-inv', 'y-inv', 'x-y-sym']

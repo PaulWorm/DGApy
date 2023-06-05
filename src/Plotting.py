@@ -46,7 +46,41 @@ class MidpointNormalize(colors.Normalize):
 # -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-def plot_kx_ky(mat,kx,ky,do_save=True,pdir='./',name='',cmap='RdBu',figsize=ps.FIGSIZE,verbose=False):
+def plot_along_fs(mat,fs_ind,step_size=1,figsize=ps.FIGSIZE, cmap='rainbow', verbose=False, pdir='./', do_save=True
+                  , niv_plot_min = 0, niv_plot = -1, name='',ikz=0):
+    if(niv_plot == -1):
+        niv_plot = np.shape(mat)[-1]//2
+    vn = mf.vn_from_mat(mat)
+    ind_v = np.logical_and(vn >= niv_plot_min, vn <= niv_plot)
+
+    n_plots = len(fs_ind[::step_size])
+    line_colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, n_plots))
+    lines = []
+
+    fig, axes = plt.subplots(nrows=1, ncols=2,figsize=figsize)
+
+    for i, ind in enumerate(fs_ind[::step_size]):
+        tmp, = axes[0].plot(vn[ind_v], mat[ind[0],ind[1],ikz,ind_v].real,'-o', color=line_colors[i],ms=4,alpha=0.8)
+        lines.append(tmp)
+    plt.legend(handles=[lines[0], lines[-1]], labels=['Anti-Node', 'Node'])
+    plt.xlabel(r'$n$')
+    plt.ylabel(r'$\Re '+'\\' + name + '$')
+
+    for i, ind in enumerate(fs_ind[::step_size]):
+        axes[1].plot(vn[ind_v], mat[ind[0],ind[1],ikz,ind_v].imag,'-o', color=line_colors[i],ms=4,alpha=0.8)
+    plt.hlines(0,vn[ind_v][0],vn[ind_v][-1],linestyles='dashed', colors='k')
+    plt.xlabel(r'$n$')
+    plt.ylabel(r'$\Im '+'\\' + name + '$')
+    plt.tight_layout()
+    if (do_save):
+        plt.savefig(pdir + '/' + f'{name}_along_Fermi_surface.png')
+    if(verbose):
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_kx_ky(mat,kx,ky,do_save=True,pdir='./',name='',cmap='RdBu',figsize=ps.FIGSIZE,verbose=False, scatter=None):
     fig, axes = plt.subplots(ncols=2, figsize=figsize, dpi=500)
     axes = axes.flatten()
     im1 = axes[0].pcolormesh(kx, ky, mat.real, cmap=cmap)
@@ -62,6 +96,10 @@ def plot_kx_ky(mat,kx,ky,do_save=True,pdir='./',name='',cmap='RdBu',figsize=ps.F
                  pad=0.05)
     fig.colorbar(im2, ax=(axes[1]), aspect=15, fraction=0.08, location='right',
                  pad=0.05)
+    if(scatter is not None):
+        for ax in axes:
+            colours = plt.cm.get_cmap(cmap)(np.linspace(0,1,np.shape(scatter)[0]))
+            ax.scatter(scatter[:,0],scatter[:,1],marker='o',c = colours)
     plt.tight_layout()
     if (do_save): plt.savefig(pdir + '/' + name + '.png')
     if (verbose):
@@ -586,7 +624,7 @@ def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
     ax[0].plot(qgrid.kx, chi_w0[:, qgrid.nk[1] // 2, 0].real, 'o', label='$\chi$')
     ax[0].plot(qgrid.kx, oz[:, qgrid.nk[1] // 2, 0].real, '-', label='oz-fit')
     ax[0].legend()
-    ax[0].set_title('$q_y = np.pi$')
+    ax[0].set_title('$q_y = \pi$')
     ax[0].set_xlabel('$q_x$')
     ax[0].set_ylabel('$\chi$')
 

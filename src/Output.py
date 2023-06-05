@@ -68,19 +68,19 @@ def prepare_and_plot_vrg_dga(dga_conf: conf.DgaConfig = None, distributor=None):
     np.save(output_path + 'spin_fermion_vertex.npy', spin_fermion_vertex)
 
 
-def fit_and_plot_oz(dga_conf: conf.DgaConfig = None):
-    output_path = dga_conf.nam.output_path
-    chi_lambda = np.load(output_path + 'chi_lambda.npy', allow_pickle=True).item()
+def fit_and_plot_oz(output_path, q_grid):
+    chi_lambda_magn = np.load(output_path + '/chi_magn_lam.npy', allow_pickle=True)
+    niw0 = np.shape(chi_lambda_magn)[-1] // 2
     try:
-        oz_coeff, _ = ozfunc.fit_oz_spin(dga_conf.q_grid,
-                                         chi_lambda['magn'].mat[:, :, :, dga_conf.box.niw_core].real.flatten())
+
+        oz_coeff, _ = ozfunc.fit_oz_spin(q_grid,chi_lambda_magn[:, :, :, niw0].real.flatten())
     except:
         oz_coeff = [-1, -1]
 
-    np.savetxt(output_path + 'oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f')
-    plotting.plot_oz_fit(chi_w0=chi_lambda['magn'].mat[:, :, :, dga_conf.box.niw_core], oz_coeff=oz_coeff,
-                         qgrid=dga_conf.q_grid,
-                         pdir=output_path, name='oz_fit')
+    np.savetxt(output_path + '/oz_coeff.txt', oz_coeff, delimiter=',', fmt='%.9f', header='A xi')
+    plotting.plot_oz_fit(chi_w0=chi_lambda_magn[:, :, :, niw0], oz_coeff=oz_coeff,
+                         qgrid=q_grid,
+                         pdir=output_path + '/', name='oz_fit')
 
 
 def poly_fit(dga_conf: conf.DgaConfig = None, mat_data=None, name='poly_cont'):

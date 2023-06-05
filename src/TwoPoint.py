@@ -8,6 +8,7 @@ import numpy as np
 import MatsubaraFrequencies as mf
 import scipy.linalg
 import scipy.optimize
+import BrillouinZone as bz
 
 
 # -------------------------------------------- SELF ENERGY ----------------------------------------------------------
@@ -21,9 +22,10 @@ def get_smom1(u, n):
     ''' return 1/ivu asymptotic prefactor of Im(Sigma) for the single-band SU(2) symmetric case'''
     return -u ** 2 * n / 2 * (1 - n / 2)
 
+
 def get_sum_chiupup(n):
     ''' return 1/ivu asymptotic prefactor of Im(Sigma) for the single-band SU(2) symmetric case'''
-    return  n / 2 * (1 - n / 2)
+    return n / 2 * (1 - n / 2)
 
 
 def fit_smom(iv=None, siwk=None, only_positive=True):
@@ -40,15 +42,17 @@ def fit_smom(iv=None, siwk=None, only_positive=True):
     iwfit = iv[niv - n_freq_fit:]
     fitdata = s_loc[niv - n_freq_fit:]
     mom0 = np.mean(fitdata.real)
-    mom1 = np.mean(fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
+    mom1 = np.mean(
+        fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
 
     return mom0, mom1
 
 
-def sigma_const(beta,delta,nk,v):
-    sigma = np.ones(nk+(len(v),),dtype = complex)
+def sigma_const(beta, delta, nk, v):
+    sigma = np.ones(nk + (len(v),), dtype=complex)
     sigma *= -1j * delta
-    return SelfEnergy(sigma,beta,pos=False)
+    return SelfEnergy(sigma, beta, pos=False)
+
 
 class SelfEnergy():
     ''' class to handle self-energies'''
@@ -66,6 +70,8 @@ class SelfEnergy():
         :param err:
         '''
         assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
+
+        # Generate negative Matsubara frequencies if not provided:
         if (not pos):
             niv = sigma.shape[-1] // 2
             sigma = sigma[..., niv:]
@@ -73,11 +79,12 @@ class SelfEnergy():
         self.sigma = sigma
         self.beta = beta
         iv_plus = mf.iv_plus(beta, self.niv)
-        fit_mom0, fit_mom1 = fit_smom(iv_plus, sigma)
+        fit_mom0, fit_mom1 = fit_smom(iv_plus, sigma)  # Currently moment fitting is local. Non-local parts should decay quickly
+        # enough to be negligible.
 
         self.err = err
 
-        # Set the moments for the symptotic behaviour:
+        # Set the moments for the asymptotic behaviour:
         if (smom0 is None):
             self.smom0 = fit_mom0
         else:
@@ -108,7 +115,7 @@ class SelfEnergy():
 
     def estimate_niv_core(self):
         '''check when the real and the imaginary part are within error margin of the asymptotic'''
-        asympt = self.get_asympt(niv_asympt=self.niv,n_min=0)
+        asympt = self.get_asympt(niv_asympt=self.niv, n_min=0)
         ind_real = np.argmax(np.abs(self.k_mean().real - asympt.real) < self.err)
         ind_imag = np.argmax(np.abs(self.k_mean().imag - asympt.imag) < self.err)
         niv_core = max(ind_real, ind_imag)
@@ -117,22 +124,22 @@ class SelfEnergy():
         else:
             return niv_core
 
-    def get_siw(self, niv = -1):
-        if (niv  == -1):
+    def get_siw(self, niv=-1):
+        if (niv == -1):
             niv = self.niv
         if (niv <= self.niv):
             return mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
-            niv_asympt = niv-self.niv
+            niv_asympt = niv - self.niv
             iv_asympt = mf.iv_plus(self.beta, n=niv_asympt, n_min=self.niv)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
             sigma_asympt = np.concatenate((self.sigma[..., :self.niv], asympt), axis=-1)
             return mf.fermionic_full_nu_range(sigma_asympt)
 
-    def get_asympt(self, niv_asympt,n_min=None, pos=True):
-        if(n_min is None):
+    def get_asympt(self, niv_asympt, n_min=None, pos=True):
+        if (n_min is None):
             n_min = self.niv_core
-        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt+n_min, n_min=n_min)
+        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt + n_min, n_min=n_min)
         asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
         if (pos):
             return asympt
@@ -172,28 +179,32 @@ def get_g_model(mu=None, iv=None, hloc=None, smom0=None):
 
 # ==================================================================================================================
 
-def get_fill_primitive(g_loc,beta,verbose=False):
+def get_fill_primitive(g_loc, beta, verbose=False):
     '''
     Primitive way of computing the filling on the matsubara axis.
     giwk: [kx,ky,kz,iv] - currently no easy extension to multi-orbital
     '''
     n = (1 / beta * np.sum(g_loc) + 0.5) * 2
-    if(verbose): print('n = ',n)
+    if (verbose): print('n = ', n)
     return n
+
 
 def root_fun_primitive(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, verbose=False):
     """Auxiliary function for the root finding"""
     g_loc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
-    return get_fill_primitive(g_loc,beta,verbose)[0] - target_filling
+    return get_fill_primitive(g_loc, beta, verbose)[0] - target_filling
 
-def update_mu_primitive(mu0=0.0,target_filling=None, iv=None, hk=None, siwk=None, beta=None, smom0=None, tol=1e-6, verbose=False):
+
+def update_mu_primitive(mu0=0.0, target_filling=None, iv=None, hk=None, siwk=None, beta=None, smom0=None, tol=1e-6,
+                        verbose=False):
     '''
         Find mu to satisfy target_filling.
     '''
     if (verbose): print('Update mu...')
     mu = mu0
     hloc = None
-    if (verbose): print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    if (verbose): print(
+        root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
     try:
         mu = scipy.optimize.newton(root_fun_primitive, mu, tol=tol,
                                    args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
@@ -245,7 +256,8 @@ def update_mu(mu0=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0
     if (verbose): print('Update mu...')
     hloc = hk.mean()
     mu = mu0
-    if (verbose): print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    if (verbose): print(
+        root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
     try:
         mu = scipy.optimize.newton(root_fun, mu, tol=tol,
                                    args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
@@ -271,18 +283,20 @@ class GreensFunction():
     mu0 = 0
     mu_tol = 1e-6
 
-    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None,niv_asympt = 2000):
+    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None, niv_asympt=2000):
         self.sigma = sigma
         self.iv_core = mf.iv(sigma.beta, self.sigma.niv_core)
         self.ek = ek
         if (n is not None):
             self._n = n
-            self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,
-                                tol=self.mu_tol)
+            self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core,
+                                 beta=self.beta, smom0=sigma.smom0,
+                                 tol=self.mu_tol)
             # self._mu = update_mu_primitive(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,)
         elif (mu is not None):
             self._mu = mu
-            self._n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek), mu=mu)
+            self._n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek),
+                               mu=mu)
             # self._n = get_fill_primitive(self.g_loc)
         else:
             raise ValueError('Either mu or n, but bot both, must be supplied.')
@@ -305,15 +319,15 @@ class GreensFunction():
 
     @property
     def v_core(self):
-        return mf.v(self.beta,self.niv_core)
+        return mf.v(self.beta, self.niv_core)
 
     @property
     def v(self):
-        return mf.v(self.beta,self.niv_core+self.niv_asympt)
+        return mf.v(self.beta, self.niv_core + self.niv_asympt)
 
     @property
     def vn(self):
-        return mf.vn(self.niv_core+self.niv_asympt)
+        return mf.vn(self.niv_core + self.niv_asympt)
 
     @property
     def beta(self):
@@ -330,18 +344,17 @@ class GreensFunction():
     @property
     def mem(self):
         ''' returns the memory consumption of the Green's function'''
-        if(self.full is not None):
+        if (self.full is not None):
             return self.full.size * self.full.itemsize * 1e-9
         else:
             return self.core.size * self.core.itemsize * 1e-9
 
-    @property
-    def g_full(self):
+    def g_full(self, pi_shift=False):
         if (self.asympt is None):
-            return self.core
+            return self.core if not pi_shift else bz.shift_mat_by_pi(self.core)
         else:
-            return mf.concatenate_core_asmypt(self.core, self.asympt)
-
+            return mf.concatenate_core_asmypt(self.core, self.asympt) if not pi_shift else bz.shift_mat_by_pi(
+                mf.concatenate_core_asmypt(self.core, self.asympt))
 
     def build_g_core(self):
         return build_g(self.iv_core, self.ek, self.mu, self.sigma.sigma_core)
@@ -350,7 +363,7 @@ class GreensFunction():
         if (iv_range == 'core'):
             return np.mean(self.core, axis=(0, 1, 2))
         elif (iv_range == 'full'):
-            if(self.full is None):
+            if (self.full is None):
                 raise ValueError('Full Greens function has to be set first.')
             return np.mean(self.full, axis=(0, 1, 2))
         else:
@@ -362,18 +375,18 @@ class GreensFunction():
     def set_g_asympt(self, niv_asympt):
         self.asympt = self.build_asympt(niv_asympt)
         self.niv_asympt = niv_asympt
-        self.full = self.g_full
+        self.full = self.g_full()
         self.set_gloc()
 
     def build_asympt(self, niv_asympt):
         sigma_asympt = self.sigma.get_asympt(niv_asympt)
-        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt+self.niv_core, n_min=self.niv_core)
+        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt + self.niv_core, n_min=self.niv_core)
         return mf.fermionic_full_nu_range(build_g(iv_asympt, self.ek, self.mu, sigma_asympt))
 
     @property
     def e_kin(self):
-        ekin = 1/self.beta * np.sum(np.mean(self.ek[...,None] * self.g_full, axis=(0,1,2)))
-        assert(np.abs(ekin.imag) < 1e-8)
+        ekin = 1 / self.beta * np.sum(np.mean(self.ek[..., None] * self.g_full(), axis=(0, 1, 2)))
+        assert (np.abs(ekin.imag) < 1e-8)
         return ekin.real
 
 
@@ -409,15 +422,17 @@ if __name__ == '__main__':
     g_loc = giwk.k_mean(iv_range='full')
 
     vn_core = mf.vn(giwk.niv_core)
-    vn_asympt = mf.vn(giwk.niv_core+giwk.niv_asympt)
+    vn_asympt = mf.vn(giwk.niv_core + giwk.niv_asympt)
 
     n_start = 800
     n_plot = 50
-    fig, ax = plt.subplots(1,2,figsize=(7,3.5))
-    ax[0].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(g_loc,n_plot,n_start).real, '-o', color='cornflowerblue')
-    ax[0].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(giw_dmft,n_plot,n_start).real, '-', color='k')
-    ax[1].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(g_loc,n_plot,n_start).imag, '-o', color='cornflowerblue')
-    ax[1].plot(mf.cut_v_1d_pos(vn_asympt,n_plot,n_start), mf.cut_v_1d_pos(giw_dmft,n_plot,n_start).imag, '-', color='k')
+    fig, ax = plt.subplots(1, 2, figsize=(7, 3.5))
+    ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(g_loc, n_plot, n_start).real, '-o',
+               color='cornflowerblue')
+    ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(giw_dmft, n_plot, n_start).real, '-', color='k')
+    ax[1].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(g_loc, n_plot, n_start).imag, '-o',
+               color='cornflowerblue')
+    ax[1].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(giw_dmft, n_plot, n_start).imag, '-', color='k')
     ax[0].set_xlabel(r'$\nu_n$')
     ax[1].set_xlabel(r'$\nu_n$')
     ax[0].set_ylabel(r'$\Re G$')

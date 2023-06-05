@@ -7,6 +7,7 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import sys, os
+
 sys.path.insert(0, '../src')
 import h5py
 import numpy as np
@@ -26,6 +27,8 @@ import Plotting as plotting
 import LambdaCorrection as lc
 import matplotlib.pyplot as plt
 import MatsubaraFrequencies as mf
+import Loggers as loggers
+import Output as output
 import PlotSpecs
 
 # Define MPI communicator:
@@ -48,15 +51,20 @@ hr = hamr.one_band_2d_t_tp_tpp(1.0, -0.2, 0.1)
 input_type = 'EDFermion'  # 'w2dyn'
 # input_type = 'w2dyn'#'w2dyn'
 input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
-output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk), np.prod(nq),
+output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk),
+                                                                                     np.prod(nq),
                                                                                      niw_core, niv_core, niv_shell)
-output_dir = out.uniquify(output_dir)
 
 # Create output directory:
+output_dir = out.uniquify(output_dir)
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
 comm.barrier()
 
+# Initialize Logger:
+logger = loggers.MpiLogger(logfile=output_dir + '/dga.log', comm=comm)
+
+logger.log_event(message=' Config Init and folder set up done!')
 # %%
 # ------------------------------------------- LOAD THE INPUT --------------------------------------------------------
 dmft_input = input.load_1p_data(input_type, input_dir)
@@ -88,11 +96,10 @@ giwk_dmft = twop.GreensFunction(siwk_dmft, ek, mu=dmft_input['mu_dmft'])
 gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
 gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
 
+logger.log_cpu_time(task=' Data loading completed. ')
+# ------------------------------------------- Extract the irreducible Vertex --------------------------------------------------------
 # Create Bubble generator:
 bubble_gen = bub.LocalBubble(wn=g2_dens.wn, giw=giwk_dmft)
-
-# ------------------------------------------- Extract the irreducible Vertex --------------------------------------------------------
-
 gchi0_core = bubble_gen.get_gchi0(niv_core)
 gchi0_urange = bubble_gen.get_gchi0(niv_full)
 gamma_dens = lfp.gammar_from_gchir(gchi_dens, gchi0_urange, dmft_input['u'])
@@ -105,6 +112,10 @@ if (comm.rank == 0):
     gamma_magn.plot(-10, pdir=output_dir, niv=min(niv_core, 2 * int(dmft_input['beta'])), name='Gamma_magn')
     gamma_dens.plot(10, pdir=output_dir, niv=min(niv_core, 2 * int(dmft_input['beta'])), name='Gamma_dens')
 
+    np.save(output_dir + '/gamma_dens.npy', gamma_dens.mat)
+    np.save(output_dir + '/gamma_magn.npy', gamma_magn.mat)
+
+logger.log_cpu_time(task=' Gamma-loc finished. ')
 # ----------------------------------- Compute the Susceptibility and Threeleg Vertex --------------------------------------------------------
 
 
@@ -112,8 +123,10 @@ vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, 
 vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_magn, bubble_gen, dmft_input['u'], niv_shell=niv_shell)
 
 # Create checks of the susceptibility:
-if (comm.rank == 0): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, output_dir, verbose=False, do_plot=True, name='loc')
+if (comm.rank == 0): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, output_dir, verbose=False,
+                                         do_plot=True, name='loc')
 
+logger.log_cpu_time(task=' Vrg and Chi-phys loc done. ')
 # --------------------------------------- Local Schwinger-Dyson equation --------------------------------------------------------
 
 # Perform the local SDE for box-size checks:
@@ -121,36 +134,31 @@ siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, 
                                         niv_shell=niv_shell)
 
 # Create checks of the self-energy:
-if (comm.rank == 0): plotting.sigma_loc_checks([siw_sde_full, dmft_input['siw']], ['SDE', 'Input'], dmft_input['beta'], output_dir, verbose=False,
-                                               do_plot=True)
+if (comm.rank == 0):
+    plotting.sigma_loc_checks([siw_sde_full, dmft_input['siw']], ['SDE', 'Input'], dmft_input['beta'], output_dir, verbose=False,
+                              do_plot=True)
+    np.save(output_dir + '/siw_sde_loc.npy', siw_sde_full)
+    np.save(output_dir + '/chi_dens_loc.npy', chi_dens)
+    np.save(output_dir + '/chi_magn_loc.npy', chi_magn)
 
+logger.log_cpu_time(task=' Local SDE finished. ')
+
+# ---------------------------------------------------------------------------------------------------------------------
 # --------------------------------------------- NON-LOCAL PART --------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
+
 # Split the momenta between the different cores.
 q_grid = bz.KGrid(nk=nq, symmetries=symmetries)
-mpi_distributor = mpi_aux.MpiDistributor(ntasks=q_grid.nk_irr, comm=comm, output_path=output_dir, name='Q')
+mpi_distributor = mpi_aux.MpiDistributor(ntasks=q_grid.nk_irr, comm=comm, output_path=output_dir + '/', name='Q')
 my_q_list = q_grid.irrk_mesh_ind.T[mpi_distributor.my_slice]
-
 # %%
 
+vrg_q_dens, chi_lad_dens = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens, bubble_gen, dmft_input['u'], my_q_list,
+                                                                         niv_shell=niv_shell)
+vrg_q_magn, chi_lad_magn = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_magn, bubble_gen, dmft_input['u'], my_q_list,
+                                                                         niv_shell=niv_shell)
 
-# #%%
-# # Check that the local Bubbles agree with the k-summed ones:
-# if (comm.rank == 0):
-#
-#     chi0s = [[bubble_gen.get_chi0(niv_core), q_grid.k_mean(q_grid.map_irrk2fbz(chi0_q_core),type='fbz-mesh')],
-#              [bubble_gen.get_chi0(niv_full), q_grid.k_mean(chi0_q_urange,type='irrk')],
-#              [bubble_gen.get_chi0(niv_full, do_asmypt=True, niv_shell=2*niv_shell), q_grid.k_mean(chi0_q_urange+chi0q_shell,type='irrk')]]
-#     labels = [["Core-loc",'Core-ksum'],
-#               ["Urange-loc",'Urange-ksum'],
-#                ["Full-loc", 'Full-ksum']]
-#
-#     plotting.local_diff_checks(chi0s,labels,output_dir,name='chi0')
-
-# %%
-
-vrg_q_dens, chi_lad_dens = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens, bubble_gen, dmft_input['u'], my_q_list, niv_shell=niv_shell)
-vrg_q_magn, chi_lad_magn = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_magn, bubble_gen, dmft_input['u'], my_q_list, niv_shell=niv_shell)
-
+logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 # %% Collect the results from the different cores:
 
 chi_lad_dens = mpi_distributor.allgather(rank_result=chi_lad_dens)
@@ -164,7 +172,8 @@ chi_lad_magn = q_grid.map_irrk2fbz(chi_lad_magn)
 if (comm.rank == 0):
     chi_lad_dens_loc = q_grid.k_mean(chi_lad_dens, type='fbz-mesh')
     chi_lad_magn_loc = q_grid.k_mean(chi_lad_magn, type='fbz-mesh')
-    plotting.chi_checks([chi_dens, chi_lad_dens_loc], [chi_magn, chi_lad_magn_loc], ['loc', 'ladder-sum'], giwk_dmft, output_dir, verbose=False,
+    plotting.chi_checks([chi_dens, chi_lad_dens_loc], [chi_magn, chi_lad_magn_loc], ['loc', 'ladder-sum'], giwk_dmft, output_dir,
+                        verbose=False,
                         do_plot=True, name='lad_q_tilde')
 
     plotting.plot_kx_ky(chi_lad_dens[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_ladder_dens_kz0')
@@ -172,18 +181,31 @@ if (comm.rank == 0):
 
 # %% Lambda-corrected susceptibility:
 
-chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn = lc.lambda_correction(chi_lad_dens, chi_lad_magn, dmft_input['beta'], chi_dens, chi_magn,
+chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn = lc.lambda_correction(chi_lad_dens, chi_lad_magn, dmft_input['beta'],
+                                                                            chi_dens, chi_magn,
                                                                             type=lambda_correction_type)
+
+
 
 # %%
 if (comm.rank == 0):
     chi_lad_dens_loc = q_grid.k_mean(chi_lad_dens, type='fbz-mesh')
     chi_lad_magn_loc = q_grid.k_mean(chi_lad_dens, type='fbz-mesh')
-    plotting.chi_checks([chi_lad_dens_loc, chi_dens], [chi_lad_magn_loc, chi_magn], ['lam-loc', 'loc'], giwk_dmft, output_dir, verbose=False,
+    plotting.chi_checks([chi_lad_dens_loc, chi_dens], [chi_lad_magn_loc, chi_magn], ['lam-loc', 'loc'], giwk_dmft, output_dir,
+                        verbose=False,
                         do_plot=True, name='q_lam')
 
     plotting.plot_kx_ky(chi_lad_dens[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_lam_dens_kz0')
     plotting.plot_kx_ky(chi_lad_magn[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_lam_magn_kz0')
+
+    np.save(output_dir + '/chi_dens_lam.npy', chi_lad_dens)
+    np.save(output_dir + '/chi_magn_lam.npy', chi_lad_magn)
+    np.savetxt(output_dir + '/lambda.txt', [[lambda_dens, lambda_magn]],header='dens magn',fmt='%.6f')
+
+logger.log_cpu_time(task=' Lambda-correction done. ')
+
+#%% Perform Ornstein-zernicke fitting of the susceptibility:
+if(comm.rank == 0): output.fit_and_plot_oz(output_dir,q_grid)
 
 # %% Non-local Schwinger-Dyson equation:
 # collect vrg vertices:
@@ -193,17 +215,15 @@ vrg_q_magn = mpi_distributor.allgather(rank_result=vrg_q_magn)
 vrg_q_dens = q_grid.map_irrk2fbz(vrg_q_dens, shape='list')
 vrg_q_magn = q_grid.map_irrk2fbz(vrg_q_magn, shape='list')
 
-
-
 # %%
 if (comm.rank == 0):
     vrg_q_dens_sum = np.mean(vrg_q_dens, axis=0)
     vrg_q_magn_sum = np.mean(vrg_q_magn, axis=0)
 
-    plotting.plot_kx_ky(vrg_q_dens.reshape(q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir,
-                        name='Vrg_dens_w0')
-    plotting.plot_kx_ky(vrg_q_magn.reshape(q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir,
-                        name='Vrg_magn_w0')
+    plotting.plot_kx_ky(vrg_q_dens.reshape(q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky,
+                        pdir=output_dir,name='Vrg_dens_w0')
+    plotting.plot_kx_ky(vrg_q_magn.reshape(q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core], q_grid.kx, q_grid.ky,
+                        pdir=output_dir,name='Vrg_magn_w0')
 
     iwn_plot = niv_core
     vn_core = mf.vn(niv_core)
@@ -236,30 +256,45 @@ chi_lad_dens = q_grid.map_fbz_mesh2list(chi_lad_dens)
 chi_lad_magn = q_grid.map_fbz_mesh2list(chi_lad_magn)
 
 # Create new mpi-distributor for the full fbz:
-mpi_dist_fbz = mpi_aux.MpiDistributor(ntasks=q_grid.nk_tot, comm=comm, output_path=output_dir, name='FBZ')
+mpi_dist_fbz = mpi_aux.MpiDistributor(ntasks=q_grid.nk_tot, comm=comm, output_path=output_dir + '/', name='FBZ')
 my_full_q_list = full_q_list[mpi_dist_fbz.my_slice]
-chi_lad_dens = chi_lad_dens[mpi_dist_fbz.my_slice,...]
-chi_lad_magn = chi_lad_magn[mpi_dist_fbz.my_slice,...]
+chi_lad_dens = chi_lad_dens[mpi_dist_fbz.my_slice, ...]
+chi_lad_magn = chi_lad_magn[mpi_dist_fbz.my_slice, ...]
 
-vrg_q_dens = vrg_q_dens[mpi_dist_fbz.my_slice,...]
-vrg_q_magn = vrg_q_magn[mpi_dist_fbz.my_slice,...]
+vrg_q_dens = vrg_q_dens[mpi_dist_fbz.my_slice, ...]
+vrg_q_magn = vrg_q_magn[mpi_dist_fbz.my_slice, ...]
 
-#%%
-siw_dga_dens = fp.schwinger_dyson_full_q(vrg_q_dens, chi_lad_dens, 'dens', giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], my_full_q_list,
+# %%
+siw_dga_dens = fp.schwinger_dyson_full_q(vrg_q_dens, chi_lad_dens, 'dens', giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'],
+                                         my_full_q_list,
                                          q_dupl, g2_dens.wn, np.prod(q_grid.nk), niv_shell)
-siw_dga_magn = fp.schwinger_dyson_full_q(vrg_q_magn, chi_lad_magn, 'magn', giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], my_full_q_list,
+siw_dga_magn = fp.schwinger_dyson_full_q(vrg_q_magn, chi_lad_magn, 'magn', giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'],
+                                         my_full_q_list,
                                          q_dupl, g2_dens.wn, np.prod(q_grid.nk), niv_shell)
 
+logger.log_cpu_time(task=' Non-local SDE done. ')
 # %%
 F_dens_urange = lfp.Fob2_from_gamob2_urange(gamma_dens, gchi0_urange, dmft_input['u'])
 F_magn_urange = lfp.Fob2_from_gamob2_urange(gamma_magn, gchi0_urange, dmft_input['u'])
-F_dens_urange.plot(pdir=output_dir, name='F_dens_urange')
-F_magn_urange.plot(pdir=output_dir, name='F_magn_urange')
-F_dc = F_magn_urange.mat
-gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_full_q_list)
-qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_urange[:, :, None, :] * F_dc[None, ...], axis=-1)
-siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full, dmft_input['u'], my_full_q_list, q_dupl, g2_dens.wn, np.prod(q_grid.nk))
 
+if(comm.rank == 0):
+    F_dens_urange.plot(pdir=output_dir, name='F_dens_urange')
+    F_magn_urange.plot(pdir=output_dir, name='F_magn_urange')
+
+F_dc = F_magn_urange.mat
+gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
+qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_urange[:, :, None, :] * F_dc[None, ...], axis=-1)
+logger.log_cpu_time(task=' gChi0 urange computed. ')
+
+# Collect from ranks and map to fbz and take own slice:
+qchiq_Fupdo = mpi_distributor.allgather(rank_result=qchiq_Fupdo)
+qchiq_Fupdo = q_grid.map_irrk2fbz(qchiq_Fupdo,shape='list')
+qchiq_Fupdo = qchiq_Fupdo[mpi_dist_fbz.my_slice, ...]
+
+
+siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full(), dmft_input['u'], my_full_q_list, q_dupl, g2_dens.wn,
+                               np.prod(q_grid.nk))
+logger.log_cpu_time(task=' Double counting correction SDE computed. ')
 # %%
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 siw_dga = (siw_dga_dens + 3 * siw_dga_magn) - siw_dc
@@ -286,3 +321,37 @@ if (comm.rank == 0):
     plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dc_loc, siw_dga_dens_loc, siw_dga_magn_loc],
                               ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
                               output_dir, verbose=False, do_plot=True, name='dga_loc', xmax=niv_shell)
+
+    np.save(output_dir + '/siw_dga.npy', siw_dga)
+
+logger.log_cpu_time(task=' Siwk collected and plotted. ')
+# %% Build the DGA Green's function:
+
+if (comm.rank == 0):
+    sigma_dga = twop.SelfEnergy(siw_dga, dmft_input['beta'])
+    giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=niv_full * 2)
+
+
+    kx_shift = np.linspace(-np.pi, np.pi, nk[0], endpoint=False)
+    ky_shift = np.linspace(-np.pi, np.pi, nk[1], endpoint=False)
+    fs_ind = bz.find_zeros(giwk_dga.g_full(pi_shift=True)[..., 0, giwk_dga.niv_full])
+    n_fs = np.shape(fs_ind)[0]
+    fs_ind = fs_ind[:n_fs//8+n_fs%8//4]
+
+    fs_points = np.stack((kx_shift[fs_ind[:,0]], ky_shift[fs_ind[:,1]]),axis=1)
+    plotting.plot_kx_ky(giwk_dga.g_full(pi_shift=True)[..., 0, giwk_dga.niv_full], kx_shift, ky_shift,
+                        pdir=output_dir, name='Giwk_dga_kz0', scatter=fs_points)
+
+    np.save(output_dir + '/giwk_dga.npy', giwk_dga.g_full())
+    np.savetxt(output_dir + '/mu.txt', [[giwk_dga.mu,dmft_input['mu_dmft']]], header='mu_dga, mu_dmft',fmt='%1.6f')
+
+    # Plots along Fermi-Luttinger surface:
+
+    siwk_dga = sigma_dga.get_siw(niv_full)
+    plotting.plot_along_fs(siwk_dga, fs_ind,pdir=output_dir, niv_plot_min=0, niv_plot=20, name='Sigma_{dga}')
+
+
+logger.log_cpu_time(task=' Giwk build and plotted. ')
+mpi_distributor.delete_file()
+mpi_dist_fbz.delete_file()
+# --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
