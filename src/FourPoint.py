@@ -29,18 +29,21 @@ def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_poin
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
         mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv_vrg, wn=wn)
         sigma_F += 1 / nqtot * u_r / 2 * 1 / beta * np.sum((1 - (1 - u_r * chir_phys[i, :, None, None, None, None]) *
-                                                            vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * q_point_duplicity[i]
+                                                            vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * \
+                   q_point_duplicity[i]
     return sigma_F
+
 
 def schwinger_dyson_q_shell(chir_phys, giwk, beta, u, n_shell, n_core, wn, q_list, nqtot):
-    sigma_F = np.zeros([*np.shape(giwk)[:3],2*n_shell], dtype=complex)
+    sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * n_shell], dtype=complex)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
-        mat_grid = mf.wn_slices_shell(gkpq, n_shell,n_core, wn=wn)
-        sigma_F += 1 / nqtot * u**2 / 2 * 1 / beta * np.sum(chir_phys[i, :, None,None,None,None] * mat_grid, axis=0)
+        mat_grid = mf.wn_slices_shell(gkpq, n_shell, n_core, wn=wn)
+        sigma_F += 1 / nqtot * u ** 2 / 2 * 1 / beta * np.sum(chir_phys[i, :, None, None, None, None] * mat_grid, axis=0)
     return sigma_F
 
-def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_point_duplicity, wn, nqtot,niv_shell=0):
+
+def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_point_duplicity, wn, nqtot, niv_shell=0):
     siwk_core = schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_point_duplicity, wn, nqtot)
     if (niv_shell == 0):
         return siwk_core
@@ -50,11 +53,12 @@ def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_
         return mf.concatenate_core_asmypt(siwk_core, siwk_shell)
 
 
-def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, F_dc, gchi0_core, beta, u, q_list, wn, nqtot, niv_shell=0):
+def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, kernel_dc, giwk, beta, u, q_list, wn, nqtot,
+                           niv_shell=0):
     kernel = get_kernel(vrg_dens, chi_dens, u, 'dens')
-    kernel += 3*get_kernel(vrg_magn, chi_magn, u, 'magn')
-    kernel += get_kernel_dc(F_dc, gchi0_core, beta, u, 'magn')
-    siwk_core = schwinger_dyson_kernel_q(kernel,giwk,beta,q_list, wn, nqtot)
+    kernel +=  3*get_kernel(vrg_magn, chi_magn, u, 'magn')
+    kernel -= kernel_dc  # minus because we subtract the double counting part
+    siwk_core = schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot)
 
     if (niv_shell == 0):
         return siwk_core
@@ -64,23 +68,27 @@ def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, F_dc, gchi0_c
         siwk_shell += schwinger_dyson_q_shell(chi_magn, giwk, beta, u, niv_shell, niv_core, wn, q_list, nqtot)
         return mf.concatenate_core_asmypt(siwk_core, siwk_shell)
 
-def get_kernel(vrg, chi_phys, u, channel):
-    u_r = get_ur(u,channel)
-    return u_r * (1 - (1 - u_r * chi_phys[:,:,None]) * vrg)
 
-def get_kernel_dc(F,gchi0_core,beta, u,channel):
-    u_r = get_ur(u,channel)
-    return u_r * 1 / beta * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1)
+def get_kernel(vrg, chi_phys, u, channel):
+    u_r = get_ur(u, channel)
+    return u_r/2 * (1 - (1 - u_r * chi_phys[:, :, None]) * vrg)
+
+
+def get_kernel_dc(F, gchi0_core, u, channel):
+    u_r = get_ur(u, channel)
+    return u_r * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1) # 1/beta is contained in the SDE
 
 
 def schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot):
-    niv = np.shape(kernel)[-1]//2
+    niv = np.shape(kernel)[-1] // 2
     sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * niv], dtype=complex)
+    giwk = mf.cut_v(giwk,niv_cut=niv+np.max(np.abs(wn)),axes=-1)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
         mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv, wn=wn)
-        sigma_F +=  np.sum(kernel[i,:,None,None,None,:] * mat_grid, axis=0)
-    return 1 / nqtot *  1 / beta * sigma_F
+        sigma_F += np.sum(kernel[i, :, None, None, None, :] * mat_grid, axis=0)
+    return 1 / nqtot * 1 / beta * sigma_F
+
 
 def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqtot):
     '''
@@ -88,11 +96,10 @@ def schwinger_dyson_dc(gchiq_Fupdo, giwk, u, q_list, q_point_duplicity, wn, nqto
     '''
     niv_core = np.shape(gchiq_Fupdo)[-1] // 2
     sigma_dc = np.zeros([*np.shape(giwk)[:3], 2 * niv_core], dtype=complex)
-    niv_giwk = np.shape(giwk)[-1] // 2
     for iq, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
-        mat_grid = mf.wn_slices_gen(gkpq, niv_core,wn=wn)
-        sigma_dc += + u * 1 / (nqtot) * q_point_duplicity[iq] * np.sum(gchiq_Fupdo[iq, :, None, None, None, :] * mat_grid,axis=0)
+        mat_grid = mf.wn_slices_gen(gkpq, niv_core, wn=wn)
+        sigma_dc += + u * 1 / (nqtot) * q_point_duplicity[iq] * np.sum(gchiq_Fupdo[iq, :, None, None, None, :] * mat_grid, axis=0)
     return sigma_dc
 
 
@@ -161,7 +168,8 @@ def vrg_from_gchi_aux(gchir_aux, gchi0_core, chir_urange, chir_asympt, u, channe
     vrg = np.zeros([nq, niw, niv], dtype=complex)
     for iq in range(nq):
         for iwn in range(niw):
-            vrg[iq,iwn,:] = 1 / gchi0_core[iq,iwn] * np.sum(gchir_aux[iq,iwn], axis=-1)*(1 - u_r * chir_urange[iq,iwn]) / (1 - u_r * chir_asympt[iq,iwn])
+            vrg[iq, iwn, :] = 1 / gchi0_core[iq, iwn] * np.sum(gchir_aux[iq, iwn], axis=-1) * (1 - u_r * chir_urange[iq, iwn]) / (
+                        1 - u_r * chir_asympt[iq, iwn])
     return vrg
 
 
@@ -195,8 +203,8 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
     return (1 + sign * lam_tilde) / (1 - u_r * chir_q_tilde[..., None])
 
 
-
-def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_r: lfp.LocalFourPoint, bubble_gen: bub.LocalBubble, u, my_q_list, niv_shell = 0, niv_asympt=None):
+def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_r: lfp.LocalFourPoint, bubble_gen: bub.LocalBubble, u, my_q_list,
+                                               niv_shell=0, niv_asympt=None):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
@@ -206,7 +214,7 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_r: lfp.LocalFourPoint, bubb
     beta = gamma_r.beta
     channel = gamma_r.channel
 
-    if(niv_asympt is None): niv_asympt = 2*niv_shell
+    if (niv_asympt is None): niv_asympt = 2 * niv_shell
     # Build the different non-local Bubbles:
     gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
     chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
@@ -326,7 +334,8 @@ class FourPointBase():
     def __init__(self, matrix=None, beta=None, wn=None, shell=None, mat_tilde=None):
         if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
         if (matrix is not None):
-            assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
+            assert (matrix.shape[
+                        0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
         self._mat = matrix  # [iw, iv, iv']
         self._beta = beta
         self._wn = wn  # bosonic frequency index
@@ -377,7 +386,8 @@ class LocalSusceptibility():
     def __init__(self, matrix=None, channel=None, beta=None, wn=None, shell=None, mat_tilde=None):
         if wn is None: wn = mf.wn(n=matrix.shape[0] // 2)
         if (matrix is not None):
-            assert (matrix.shape[0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
+            assert (matrix.shape[
+                        0] == wn.size), f'Size of iw_core ({wn.size}) does not match first dimension of four_point ({matrix.shape[0]}).'
         self.mat = matrix  # [iw, iv, iv']
         self.beta = beta
         self.wn = wn  # bosonic frequency index
@@ -440,7 +450,8 @@ class LocalFourPoint(FourPointBase):
         self._mat = cut_iv(self.mat, niv_cut)
 
     def contract_legs(self):
-        return LocalSusceptibility(matrix=1. / self.beta ** 2 * np.sum(self.mat, axis=(-2, -1)), channel=self.channel, beta=self.beta, wn=self.wn)
+        return LocalSusceptibility(matrix=1. / self.beta ** 2 * np.sum(self.mat, axis=(-2, -1)), channel=self.channel,
+                                   beta=self.beta, wn=self.wn)
 
     def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1):
         assert iwn in self.wn, 'omega index not in dataset.'
@@ -478,7 +489,8 @@ def get_chi0_sum(giw, beta, niv, iwn=0):
     # iwnd2mod2 = iwn // 2 + iwn % 2
     iwnd2 = 0
     iwnd2mod2 = -iwn
-    return - 1. / beta * np.sum(giw[niv_giw - niv + iwnd2:niv_giw + niv + iwnd2] * giw[niv_giw - niv - iwnd2mod2:niv_giw + niv - iwnd2mod2])
+    return - 1. / beta * np.sum(
+        giw[niv_giw - niv + iwnd2:niv_giw + niv + iwnd2] * giw[niv_giw - niv - iwnd2mod2:niv_giw + niv - iwnd2mod2])
 
 
 def vec_get_chi0_sum(giw, beta, niv, wn):
@@ -510,7 +522,8 @@ KNOWN_CHI0_METHODS = ['sum']
 class LocalBubble():
     ''' Computes the local Bubble suszeptibility \chi_0 = - beta GG '''
 
-    def __init__(self, wn=None, giw: tp.LocalGreensFunction = None, niv=-1, chi0_method='sum', is_inv=False, niv_shell=1000, do_chi0=True,
+    def __init__(self, wn=None, giw: tp.LocalGreensFunction = None, niv=-1, chi0_method='sum', is_inv=False, niv_shell=1000,
+                 do_chi0=True,
                  do_shell=True):
         self._wn = wn
         self._giw = giw
@@ -533,7 +546,8 @@ class LocalBubble():
 
     @niv.setter
     def niv(self, value):
-        assert value <= self.niv_giw - np.max(np.abs(self.wn)), f'niv ({value}) exceeds the limit of: {self.niv_giw - np.max(np.abs(self.wn))}'
+        assert value <= self.niv_giw - np.max(
+            np.abs(self.wn)), f'niv ({value}) exceeds the limit of: {self.niv_giw - np.max(np.abs(self.wn))}'
         if (value == -1):
             value = self.niv_giw - np.max(np.abs(self.wn))
         self._niv = value
@@ -701,7 +715,8 @@ def schwinger_dyson_F(F: LocalFourPoint = None, chi0: LocalBubble = None, giw=No
     return hartree + sigma_F
 
 
-def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None, u=None,
+def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None,
+                        u=None,
                         do_tilde=True, scalfac=1, scalfac_2=1, sign=None):
     ''' Sigma = U*n/2 + '''
     if (sign is None):
@@ -710,14 +725,17 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibil
         u_r = sign * u
     mat_grid = wn_slices(giw.mat, n_cut=vrg.niv, wn=vrg.wn)
     if (do_tilde):
-        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta * scalfac - (1 * scalfac_2 - u_r * chir_phys.mat_tilde[:, None]) * vrg.mat_tilde) * mat_grid,
-                                    axis=0)
+        sigma_F = u_r / 2 * jnp.sum(
+            (1 / vrg.beta * scalfac - (1 * scalfac_2 - u_r * chir_phys.mat_tilde[:, None]) * vrg.mat_tilde) * mat_grid,
+            axis=0)
     else:
-        sigma_F = u_r / 2 * jnp.sum((1 / vrg.beta * scalfac - (1 * scalfac_2 - u_r * chir_phys.mat[:, None]) * vrg.mat) * mat_grid, axis=0)
+        sigma_F = u_r / 2 * jnp.sum(
+            (1 / vrg.beta * scalfac - (1 * scalfac_2 - u_r * chir_phys.mat[:, None]) * vrg.mat) * mat_grid, axis=0)
     return sigma_F
 
 
-def schwinger_dyson_vrg_updo(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None, giw: tp.LocalGreensFunction = None, u=None,
+def schwinger_dyson_vrg_updo(vrg: LocalThreePoint = None, chir_phys: LocalSusceptibility = None,
+                             giw: tp.LocalGreensFunction = None, u=None,
                              do_tilde=True):
     ''' Sigma = U*n/2 + '''
     mat_grid = wn_slices(giw.mat, n_cut=vrg.niv, wn=vrg.wn)
@@ -749,7 +767,8 @@ def chi_phys_tilde_FisUr(chir: LocalFourPoint = None, gchi0: LocalBubble = None,
     chi_core = chir.contract_legs()
     chi_shell = gchi0.shell - u_r * gchi0.shell ** 2 - 2 * u_r * gchi0.shell * gchi0.chi0
     chi_tilde = (chi_core.mat + chi_shell)
-    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell, mat_tilde=chi_tilde)
+    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell,
+                               mat_tilde=chi_tilde)
 
 
 def lam_from_chir(chir: LocalFourPoint = None, gchi0: LocalBubble = None, u=None):
@@ -775,7 +794,8 @@ def chi_phys_tilde(chir: LocalFourPoint = None, gchi0: LocalBubble = None, lam: 
     chi_tilde = 1 / (1 - (u * gchi0.shell) ** 2) * (chi_core.mat + chi_shell)
     chi_shell = gchi0.shell - u_r * gchi0.shell ** 2 - 2 * u_r * gchi0.shell * gchi0.chi0
     chi_tilde = (chi_core.mat + chi_shell) * 1 / (1 - (u * gchi0.shell) ** 2)
-    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell, mat_tilde=chi_tilde)
+    return LocalSusceptibility(matrix=chi_core.mat, channel=chir.channel, beta=chir.beta, wn=chir.wn, shell=chi_shell,
+                               mat_tilde=chi_tilde)
 
 
 def add_chi(chi1: LocalFourPoint = None, chi2: LocalFourPoint = None):
@@ -964,8 +984,12 @@ def local_vertex_urange(gchi_aux: LocalFourPoint = None, gchi0_urange=None, gchi
     niv_core = np.shape(gchi_aux.mat)[-1] // 2
     F_urange = u_r * (1 - u_r * chi[:, None, None]) * vrg.mat[:, :, None] * vrg.mat[:, None, :]
     unity = np.eye(np.shape(gchi0_core)[-1], dtype=complex)
-    F_urange[:, niv_urange - niv_core:niv_urange + niv_core, niv_urange - niv_core:niv_urange + niv_core] += 1. / gchi0_core[:, :, None] * (
-            unity - gchi_aux.mat * 1. / gchi0_core[:, None, :])
+    F_urange[:, niv_urange - niv_core:niv_urange + niv_core, niv_urange - niv_core:niv_urange + niv_core] += 1. / gchi0_core[:, :,
+                                                                                                                  None] * (
+                                                                                                                     unity - gchi_aux.mat * 1. / gchi0_core[
+                                                                                                                                                 :,
+                                                                                                                                                 None,
+                                                                                                                                                 :])
     return F_urange
 
 
@@ -980,7 +1004,8 @@ def local_vertex_inverse_bse_wn(gamma=None, chi0=None, u_r=None, beta=None):
 
 def local_vertex_inverse_bse(gamma=None, chi0=None, u=None):
     u_r = get_ur(u=u, channel=gamma.channel)
-    return np.array([local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.wn_lin])
+    return np.array(
+        [local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.wn_lin])
 
 
 # ======================================================================================================================

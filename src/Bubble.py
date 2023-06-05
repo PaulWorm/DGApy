@@ -45,6 +45,7 @@ def get_gchi0_q(giwk, beta, niv, iwn, q, freq_notation='minus'):
 
 def vec_get_gchi0_q(giwk, beta, niv, wn, q_list, freq_notation='minus'):
     gchi0_q = np.zeros((len(q_list), len(wn), niv * 2), dtype=complex)
+    giwk = mf.cut_v(giwk,niv_cut=niv+np.max(np.abs(wn)),axes=(-1,))
     for i, q in enumerate(q_list):
         gchi0_q[i, ...] = np.array([get_gchi0_q(giwk, beta, niv, iwn, q, freq_notation) for iwn in wn])
     return gchi0_q
@@ -61,6 +62,7 @@ def get_chi0_q(giwk, beta, niv, iwn, q, freq_notation='minus'):
 
 def vec_get_chi0_q(giwk, beta, niv, wn, q_list, freq_notation='minus'):
     chi0_q = np.zeros((len(q_list), len(wn)), dtype=complex)
+    giwk = mf.cut_v(giwk, niv_cut=niv + np.max(np.abs(wn)), axes=(-1,))
     for i, q in enumerate(q_list):
         chi0_q[i, :] = np.array([get_chi0_q(giwk, beta, niv, iwn, q, freq_notation) for iwn in wn])
     return chi0_q
@@ -312,95 +314,100 @@ if __name__ == '__main__':
     giwk = tp.GreensFunction(siwk, ek, n=n)
     niv_asympt = 3000
     giwk.set_g_asympt(niv_asympt)
-    bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
-
+    niw_chi0 = 10
     niv_core = 10
-    niv_shell = 190
-    chi0_core = bubble_gen.get_chi0(niv_core)
-    chi0_shell = bubble_gen.get_chi0(niv_shell)
-    chi0_asympt = bubble_gen.get_chi0_shell(niv_core, niv_shell)
-    chi0_asympt_axact = bubble_gen.get_exact_asymptotics()
-    chi0_asympt_sum2 = bubble_gen.get_asympt_sum(niv_shell + niv_core)
-    import matplotlib.pyplot as plt
-
-    plt.figure()
-    ind = wn > 0
-    ind_chi0 = wn > 0
-    plt.loglog(wn[ind], chi0_core.real[ind], '-h', color='cornflowerblue', markeredgecolor='cornflowerblue', alpha=0.8)
-    plt.loglog(wn[ind_chi0], (chi0_shell[ind_chi0].real), '-h', color='firebrick', markeredgecolor='firebrick', alpha=0.8)
-    plt.loglog(wn[ind_chi0], (chi0_core.real[ind_chi0] + chi0_asympt[ind_chi0].real), '-h', color='seagreen', markeredgecolor='seagreen', alpha=0.8)
-    plt.loglog(wn[ind_chi0], (chi0_asympt_axact[ind_chi0].real), '-h', color='navy', markeredgecolor='navy', alpha=0.8)
-    plt.loglog(wn[ind_chi0], (chi0_asympt_sum2[ind_chi0].real), '-h', color='goldenrod', markeredgecolor='goldenrod', alpha=0.8)
-    plt.show()
-
-    # %% Test non-local Bubble:
-    bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
-    niv_core = 10
-    niv_shell = 2*niv_core
     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
     q_list = q_grid.irrk_mesh_ind
-    niv_giw = np.shape(giwk.full)[-1] // 2
-    iws, iws2 = get_freq_shift(0, 'minus')
-    giwkpq = bz.shift_mat_by_ind(giwk.full, ind=[-iq for iq in q_list.T[0]])
-    print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
-                                       giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
-    chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
-    chi0_q_shell = bubble_gen.get_chi0q_shell(chi0_q,niv_core, niw_chi0, q_list.T)
-    # %%
-    chi0_q_fbz = q_grid.map_irrk2fbz(chi0_q)
-    chi0_q_fbz_asympt = q_grid.map_irrk2fbz(chi0_q_shell)
-    #%%
-    chi0_loc = np.mean(chi0_q_fbz, axis=(0,1,2))
-    chi0_loc_asympt = np.mean(chi0_q_fbz_asympt, axis=(0,1,2))
-    print('Finished!')
+    wn = mf.wn(niw_chi0)
+    bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
+    import time
 
-    # %%
-    chi0_core = bubble_gen.get_chi0(niv_core)
-    chi0_shell = bubble_gen.get_chi0_shell(niv_core, niw_chi0)
-    plt.figure()
-    plt.loglog(wn, chi0_loc.real, color='cornflowerblue',label='ksum-core')
-    plt.loglog(wn, chi0_core.real, color='firebrick',label='core')
-    plt.loglog(wn, chi0_core.real+chi0_shell.real, color='seagreen')
-    plt.loglog(wn, chi0_loc.real+chi0_loc_asympt.real, color='goldenrod')
-    plt.show()
+    start_time = time.time()
+    gchi0_q = bubble_gen.get_gchi0_q_list(niv_core, q_list=q_list.T)
+    print("--- %s seconds ---" % (time.time() - start_time))
 
-    #%%
+#     bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
+#
+#     niv_core = 10
+#     niv_shell = 190
+#     chi0_core = bubble_gen.get_chi0(niv_core)
+#     chi0_shell = bubble_gen.get_chi0(niv_shell)
+#     chi0_asympt = bubble_gen.get_chi0_shell(niv_core, niv_shell)
+#     chi0_asympt_axact = bubble_gen.get_exact_asymptotics()
+#     chi0_asympt_sum2 = bubble_gen.get_asympt_sum(niv_shell + niv_core)
+#     import matplotlib.pyplot as plt
+#
+#     plt.figure()
+#     ind = wn > 0
+#     ind_chi0 = wn > 0
+#     plt.loglog(wn[ind], chi0_core.real[ind], '-h', color='cornflowerblue', markeredgecolor='cornflowerblue', alpha=0.8)
+#     plt.loglog(wn[ind_chi0], (chi0_shell[ind_chi0].real), '-h', color='firebrick', markeredgecolor='firebrick', alpha=0.8)
+#     plt.loglog(wn[ind_chi0], (chi0_core.real[ind_chi0] + chi0_asympt[ind_chi0].real), '-h', color='seagreen', markeredgecolor='seagreen', alpha=0.8)
+#     plt.loglog(wn[ind_chi0], (chi0_asympt_axact[ind_chi0].real), '-h', color='navy', markeredgecolor='navy', alpha=0.8)
+#     plt.loglog(wn[ind_chi0], (chi0_asympt_sum2[ind_chi0].real), '-h', color='goldenrod', markeredgecolor='goldenrod', alpha=0.8)
+#     plt.show()
+#
+#     # %% Test non-local Bubble:
+#     bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
+#     niv_core = 10
+#     niv_shell = 2*niv_core
+#     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
+#     q_list = q_grid.irrk_mesh_ind
+#     niv_giw = np.shape(giwk.full)[-1] // 2
+#     iws, iws2 = get_freq_shift(0, 'minus')
+#     giwkpq = bz.shift_mat_by_ind(giwk.full, ind=[-iq for iq in q_list.T[0]])
+#     print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
+#                                        giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
+#     chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
+#     chi0_q_shell = bubble_gen.get_chi0q_shell(chi0_q,niv_core, niw_chi0, q_list.T)
+#     # %%
+#     chi0_q_fbz = q_grid.map_irrk2fbz(chi0_q)
+#     chi0_q_fbz_asympt = q_grid.map_irrk2fbz(chi0_q_shell)
+#     #%%
+#     chi0_loc = np.mean(chi0_q_fbz, axis=(0,1,2))
+#     chi0_loc_asympt = np.mean(chi0_q_fbz_asympt, axis=(0,1,2))
+#     print('Finished!')
+#
+#     # %%
+#     chi0_core = bubble_gen.get_chi0(niv_core)
+#     chi0_shell = bubble_gen.get_chi0_shell(niv_core, niw_chi0)
+#     plt.figure()
+#     plt.loglog(wn, chi0_loc.real, color='cornflowerblue',label='ksum-core')
+#     plt.loglog(wn, chi0_core.real, color='firebrick',label='core')
+#     plt.loglog(wn, chi0_core.real+chi0_shell.real, color='seagreen')
+#     plt.loglog(wn, chi0_loc.real+chi0_loc_asympt.real, color='goldenrod')
+#     plt.show()
+#
+#     #%%
+#
+#     plt.figure()
+#     plt.loglog(wn, np.abs(chi0_loc.real-chi0_core.real), color='cornflowerblue',label='diff-core')
+#     plt.loglog(wn, np.abs(chi0_loc.real+chi0_loc_asympt.real-chi0_core.real-chi0_shell.real), color='firebrick',label='diff-asympt')
+#     plt.show()
+#
+#     # %%
+#
+#     asympt_sum_q = bubble_gen.get_asympt_sum_q(niv_shell+niv_core, q_list.T)
+#     asympt_sum_q = np.mean(q_grid.map_irrk2fbz(asympt_sum_q),axis=(0,1,2))
+#     asympt_loc = bubble_gen.get_asympt_sum(niv_shell+niv_core)
+#
+#     asympt_exact_q = bubble_gen.get_exact_asymptotics_q(q_list.T)
+#     asympt_exact_q = np.mean(q_grid.map_irrk2fbz(asympt_exact_q),axis=(0,1,2))
+#     asympt_exact_loc = bubble_gen.get_exact_asymptotics()
+#
+#     plt.figure()
+#     plt.loglog(wn, asympt_sum_q.real, color='cornflowerblue',label='ksum')
+#     plt.loglog(wn, asympt_loc.real, color='firebrick',label='loc')
+#     plt.loglog(wn, asympt_exact_q.real, color='seagreen',label='exact-ksum')
+#     plt.loglog(wn, asympt_exact_loc.real, color='goldenrod',label='exact-loc')
+#     plt.show()
+#
+# #%%
+#     plt.figure()
+#     plt.loglog(wn, np.abs(asympt_sum_q.real-asympt_loc.real), color='cornflowerblue',label='ksum')
+#     plt.loglog(wn, np.abs(asympt_exact_q.real-asympt_exact_loc.real), color='firebrick',label='ksum')
+#     plt.show()
 
-    plt.figure()
-    plt.loglog(wn, np.abs(chi0_loc.real-chi0_core.real), color='cornflowerblue',label='diff-core')
-    plt.loglog(wn, np.abs(chi0_loc.real+chi0_loc_asympt.real-chi0_core.real-chi0_shell.real), color='firebrick',label='diff-asympt')
-    plt.show()
 
-    # %%
 
-    asympt_sum_q = bubble_gen.get_asympt_sum_q(niv_shell+niv_core, q_list.T)
-    asympt_sum_q = np.mean(q_grid.map_irrk2fbz(asympt_sum_q),axis=(0,1,2))
-    asympt_loc = bubble_gen.get_asympt_sum(niv_shell+niv_core)
 
-    asympt_exact_q = bubble_gen.get_exact_asymptotics_q(q_list.T)
-    asympt_exact_q = np.mean(q_grid.map_irrk2fbz(asympt_exact_q),axis=(0,1,2))
-    asympt_exact_loc = bubble_gen.get_exact_asymptotics()
-
-    plt.figure()
-    plt.loglog(wn, asympt_sum_q.real, color='cornflowerblue',label='ksum')
-    plt.loglog(wn, asympt_loc.real, color='firebrick',label='loc')
-    plt.loglog(wn, asympt_exact_q.real, color='seagreen',label='exact-ksum')
-    plt.loglog(wn, asympt_exact_loc.real, color='goldenrod',label='exact-loc')
-    plt.show()
-
-#%%
-    plt.figure()
-    plt.loglog(wn, np.abs(asympt_sum_q.real-asympt_loc.real), color='cornflowerblue',label='ksum')
-    plt.loglog(wn, np.abs(asympt_exact_q.real-asympt_exact_loc.real), color='firebrick',label='ksum')
-    plt.show()
-
-    # gchi0_q = bubble_gen.get_gchi0_q_list(niv_core, q_list=q_list.T)
-    # chi0_q =
-    # gchi0_q_single = bubble_gen.get_gchi0_single_q(niv_core, q = q_list.T[0])
-    # chi0_q = vec_get_chi0_q(giwk.full, beta, niv_core, wn, q_list.T, freq_notation='minus')
-
-    # test = get_chi0_q(giwk.full, beta, niv=200, iwn=1, q=(1, 1, 1), freq_notation='minus')
-
-    # plt.figure()
-    # plt.plot(wn,chi0_asympt_axact.real-chi0_asympt_sum2.real)
-    # plt.show()

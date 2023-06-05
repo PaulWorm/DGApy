@@ -40,6 +40,11 @@ def find_zeros(mat):
     vertices = np.array(vertices,dtype=int)
     return vertices
 
+# def get_bz_quarter(k_grid,n=0):
+#     ''' return the nth quarter of the Brillouin zone'''
+#     if(n == 0):
+        # return k_grid[]
+
 def two_dimensional_square_symmetries():
     return ['x-inv', 'y-inv', 'x-y-sym']
 

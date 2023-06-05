@@ -104,6 +104,7 @@ def cut_iv_2d(arr=None, niv_cut=0):
 
 
 def cut_v(arr=None, niv_cut=0, axes=(0,)):
+    axes = np.atleast_1d(axes)
     axes = np.flip(np.sort(axes))
     tmp = arr
     for axis in axes:
