@@ -54,11 +54,12 @@ def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_
 
 
 def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, kernel_dc, giwk, beta, u, q_list, wn, nqtot,
-                           niv_shell=0):
+                           niv_shell=0, logger=None):
     kernel = get_kernel(vrg_dens, chi_dens, u, 'dens')
-    kernel +=  3*get_kernel(vrg_magn, chi_magn, u, 'magn')
+    kernel += 3 * get_kernel(vrg_magn, chi_magn, u, 'magn')
     kernel -= kernel_dc  # minus because we subtract the double counting part
     siwk_core = schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot)
+    if (logger is not None): logger.log_cpu_time(task=' SDE solved in Core. ')
 
     if (niv_shell == 0):
         return siwk_core
@@ -71,18 +72,18 @@ def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, kernel_dc, gi
 
 def get_kernel(vrg, chi_phys, u, channel):
     u_r = get_ur(u, channel)
-    return u_r/2 * (1 - (1 - u_r * chi_phys[:, :, None]) * vrg)
+    return u_r / 2 * (1 - (1 - u_r * chi_phys[:, :, None]) * vrg)
 
 
 def get_kernel_dc(F, gchi0_core, u, channel):
     u_r = get_ur(u, channel)
-    return u_r * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1) # 1/beta is contained in the SDE
+    return u_r * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1)  # 1/beta is contained in the SDE
 
 
 def schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot):
     niv = np.shape(kernel)[-1] // 2
     sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * niv], dtype=complex)
-    giwk = mf.cut_v(giwk,niv_cut=niv+np.max(np.abs(wn)),axes=-1)
+    giwk = mf.cut_v(giwk, niv_cut=niv + np.max(np.abs(wn)), axes=-1)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
         mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv, wn=wn)
@@ -169,7 +170,7 @@ def vrg_from_gchi_aux(gchir_aux, gchi0_core, chir_urange, chir_asympt, u, channe
     for iq in range(nq):
         for iwn in range(niw):
             vrg[iq, iwn, :] = 1 / gchi0_core[iq, iwn] * np.sum(gchir_aux[iq, iwn], axis=-1) * (1 - u_r * chir_urange[iq, iwn]) / (
-                        1 - u_r * chir_asympt[iq, iwn])
+                    1 - u_r * chir_asympt[iq, iwn])
     return vrg
 
 
@@ -203,36 +204,46 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
     return (1 + sign * lam_tilde) / (1 - u_r * chir_q_tilde[..., None])
 
 
-def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_r: lfp.LocalFourPoint, bubble_gen: bub.LocalBubble, u, my_q_list,
-                                               niv_shell=0, niv_asympt=None):
+def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, gamma_magn: lfp.LocalFourPoint,
+                                               bubble_gen: bub.LocalBubble, u, my_q_list,
+                                               niv_shell=0, niv_asympt=None, logger=None):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
     '''
-    niv_core = gamma_r.niv
+    niv_core = gamma_dens.niv
     niv_full = niv_shell
-    beta = gamma_r.beta
-    channel = gamma_r.channel
+    beta = gamma_dens.beta
 
     if (niv_asympt is None): niv_asympt = 2 * niv_shell
     # Build the different non-local Bubbles:
     gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
     chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
     chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
-    chi0q_shell = bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full, niv_asympt, my_q_list)
+    # chi0_q_urange = chi0_q_core + bubble_gen.get_asympt_sum_q(niv_full,my_q_list) - bubble_gen.get_asympt_sum_q(niv_core,my_q_list)
+    chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list) #bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full,
+    # niv_asympt,
+    # my_q_list)
+    if (logger is not None): logger.log_cpu_time(task=' Bubbles constructed. ')
 
-    gchiq_aux = get_gchir_aux_from_gammar_q(gamma_r, gchi0_q_core, u)
 
+    # Density channel:
+    gchiq_aux = get_gchir_aux_from_gammar_q(gamma_dens, gchi0_q_core, u)
     chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
+    chi_lad_urange = chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, gamma_dens.channel)
+    chi_lad_dens = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
 
-    chi_lad_urange = chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, channel)
+    vrg_q_dens = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_dens, u, gamma_dens.channel)
 
-    chi_lad = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
+    # Magnetic channel:
+    gchiq_aux = get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core, u)
+    chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
+    chi_lad_urange = chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, gamma_magn.channel)
+    chi_lad_magn = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
 
-    # vrg_tilde:
-    vrg_q = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad, u, channel)
+    vrg_q_magn = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
 
-    return vrg_q, chi_lad
+    return vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------

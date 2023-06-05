@@ -37,28 +37,34 @@ comm = mpi.COMM_WORLD
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 
 # Momentum and frequency grids:
-niw_core = 50
-niv_core = 50
-niv_shell = 150
+niw_core = 15
+niv_core = 15
+niv_shell = 100
 niv_full = niv_core + niv_shell
 lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
-nk = (30, 30, 1)
+nk = (24, 24, 1)
 nq = nk  # Currently nk and nq have to be equal. For inequal grids the q-list would have to be adjusted.
 symmetries = bz.two_dimensional_square_symmetries()
 hr = hamr.one_band_2d_t_tp_tpp(1.0, -0.2, 0.1)
 
+# Parameters for Poly fitting:
+n_fit = 4
+order = 3
+
 # Input and output directories:
 # input_type = 'EDFermion'  # 'w2dyn'
-input_type = 'w2dyn'#'w2dyn'
-input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+input_type = 'w2dyn'  # 'w2dyn'
+input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
 output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk),
                                                                                      np.prod(nq),
                                                                                      niw_core, niv_core, niv_shell)
 
 # Create output directory:
 output_dir = out.uniquify(output_dir)
+poly_fit_dir = output_dir + '/PolyFits/'
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
+if (comm.rank == 0): os.mkdir(poly_fit_dir)
 comm.barrier()
 
 # Initialize Logger:
@@ -91,7 +97,7 @@ k_grid = bz.KGrid(nk=nk, symmetries=symmetries)
 ek = hamk.ek_3d(k_grid.grid, hr)
 
 siwk_dmft = twop.SelfEnergy(sigma=dmft_input['siw'][None, None, None, :], beta=dmft_input['beta'])
-giwk_dmft = twop.GreensFunction(siwk_dmft, ek, mu=dmft_input['mu_dmft'],niv_asympt=niv_full+niw_core*2)
+giwk_dmft = twop.GreensFunction(siwk_dmft, ek, mu=dmft_input['mu_dmft'], niv_asympt=niv_full * 2 + niw_core * 2)
 
 gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
 gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
@@ -153,10 +159,11 @@ mpi_distributor = mpi_aux.MpiDistributor(ntasks=q_grid.nk_irr, comm=comm, output
 my_q_list = q_grid.irrk_mesh_ind.T[mpi_distributor.my_slice]
 # %%
 
-vrg_q_dens, chi_lad_dens = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens, bubble_gen, dmft_input['u'],
-                                                                                       my_q_list, niv_shell=niv_shell)
-vrg_q_magn, chi_lad_magn = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_magn, bubble_gen, dmft_input['u'],
-                                                                                       my_q_list, niv_shell=niv_shell)
+vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens, gamma_magn,
+                                                                                                  bubble_gen,
+                                                                                                  dmft_input['u'],
+                                                                                                  my_q_list, niv_shell=niv_shell,
+                                                                                                  logger=logger)
 
 logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 # %% Collect the results from the different cores:
@@ -265,32 +272,31 @@ vrg_q_magn = vrg_q_magn[mpi_dist_fbz.my_slice, ...]
 # %%
 
 F_dc = lfp.Fob2_from_gamob2_urange(gamma_magn, gchi0_urange, dmft_input['u'])
-if(comm.rank == 0): F_dc.plot(pdir=output_dir, name='F_magn_urange')
-gchi0_urange_q = bubble_gen.get_gchi0_q_list(niv_full,my_q_list)
+if (comm.rank == 0): F_dc.plot(pdir=output_dir, name='F_magn_urange')
+gchi0_urange_q = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
 
-kernel_dc = mf.cut_v(fp.get_kernel_dc(F_dc.mat,gchi0_urange_q,dmft_input['u'],'magn'), niv_core, axes=(-1,))
+kernel_dc = mf.cut_v(fp.get_kernel_dc(F_dc.mat, gchi0_urange_q, dmft_input['u'], 'magn'), niv_core, axes=(-1,))
 
 kernel_dc = mpi_distributor.allgather(kernel_dc)
-kernel_dc = q_grid.map_irrk2fbz(kernel_dc,'list')[mpi_dist_fbz.my_slice,...]
+kernel_dc = q_grid.map_irrk2fbz(kernel_dc, 'list')[mpi_dist_fbz.my_slice, ...]
 logger.log_cpu_time(task=' DC kernel constructed. ')
-
 
 siwk_dga = fp.schwinger_dyson_full_q(vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc,
                                      giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'], my_full_q_list, g2_magn.wn,
-                                     np.prod(q_grid.nk), niv_shell)
+                                     np.prod(q_grid.nk), 0, logger)
 
 logger.log_cpu_time(task=' Non-local SDE done. ')
 
 # %%
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
-siwk_dga +=  mf.cut_v(dmft_input['siw'], niv_full) - mf.cut_v(siw_sde_full, niv_full)
+siwk_dga += mf.cut_v(dmft_input['siw'], niv_core) - mf.cut_v(siw_sde_full, niv_core)
 
 # Collect from the different cores:
 siwk_dga = mpi_dist_fbz.allreduce(siwk_dga)
 
 siwk_dga += hartree
-#%%
-
+# %%
+siwk_dga = twop.SelfEnergy(siwk_dga, dmft_input['beta'], smom0=siwk_dmft.smom0, smom1=siwk_dmft.smom1).get_siw(niv_full)
 if (comm.rank == 0):
     plotting.plot_kx_ky(siwk_dga[..., 0, niv_full], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_kz0')
     siw_dga_loc = np.mean(siwk_dga, axis=(0, 1, 2))
@@ -314,10 +320,10 @@ if (comm.rank == 0):
     kx_shift = np.linspace(-np.pi, np.pi, nk[0], endpoint=False)
     ky_shift = np.linspace(-np.pi, np.pi, nk[1], endpoint=False)
 
-    giwk_shift = giwk_dga.g_full(pi_shift=False)[..., 0, giwk_dga.niv_full][:nk[0]//2,:nk[1]//2]
+    giwk_shift = giwk_dga.g_full(pi_shift=False)[..., 0, giwk_dga.niv_full][:nk[0] // 2, :nk[1] // 2]
     fs_ind = bz.find_zeros(giwk_shift)
     n_fs = np.shape(fs_ind)[0]
-    fs_ind = fs_ind[:n_fs//2]
+    fs_ind = fs_ind[:n_fs // 2]
 
     fs_points = np.stack((k_grid.kx[fs_ind[:, 0]], k_grid.ky[fs_ind[:, 1]]), axis=1)
     plotting.plot_kx_ky(giwk_dga.g_full(pi_shift=True)[..., 0, giwk_dga.niv_full], kx_shift, ky_shift,
@@ -334,3 +340,22 @@ logger.log_cpu_time(task=' Giwk build and plotted. ')
 mpi_distributor.delete_file()
 mpi_dist_fbz.delete_file()
 # --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
+
+# %%
+# ------------------------------------------------- POLYFIT ------------------------------------------------------------
+# Extrapolate the self-energy to the Fermi-level via polynomial fit:
+if comm.rank == 0: output.poly_fit(sigma_dga.get_siw(niv_full, pi_shift=True), dmft_input['beta'], k_grid, n_fit, order,
+                                   name='Siwk_poly_cont_',
+                                   output_path=poly_fit_dir)
+
+if comm.rank == 0:
+    output.poly_fit(giwk_dga.g_full(pi_shift=True), dmft_input['beta'], k_grid, n_fit, order, name='Giwk_dga_poly_cont_',
+                    output_path=poly_fit_dir)
+
+if comm.rank == 0:
+    output.poly_fit(giwk_dmft.g_full(pi_shift=True), dmft_input['beta'], k_grid, n_fit, order, name='Giwk_dmft_poly_cont_',
+                    output_path=poly_fit_dir)
+
+logger.log_cpu_time(task=' Poly-fits ')
+
+# %%

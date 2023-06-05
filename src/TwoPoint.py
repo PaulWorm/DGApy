@@ -124,17 +124,19 @@ class SelfEnergy():
         else:
             return niv_core
 
-    def get_siw(self, niv=-1):
+    def get_siw(self, niv=-1, pi_shift=False):
         if (niv == -1):
             niv = self.niv
         if (niv <= self.niv):
-            return mf.fermionic_full_nu_range(self.sigma[..., :niv])
+            sigma = mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
             niv_asympt = niv - self.niv
             iv_asympt = mf.iv_plus(self.beta, n=niv_asympt, n_min=self.niv)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
             sigma_asympt = np.concatenate((self.sigma[..., :self.niv], asympt), axis=-1)
-            return mf.fermionic_full_nu_range(sigma_asympt)
+            sigma = mf.fermionic_full_nu_range(sigma_asympt)
+
+        return sigma if not pi_shift else bz.shift_mat_by_pi(sigma)
 
     def get_asympt(self, niv_asympt, n_min=None, pos=True):
         if (n_min is None):

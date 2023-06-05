@@ -15,6 +15,7 @@ import TwoPoint_old as twop
 import MpiAux as mpiaux
 import Indizes as ind
 import PairingVertex as pv
+import BrillouinZone as bz
 import gc
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
@@ -83,15 +84,15 @@ def fit_and_plot_oz(output_path, q_grid):
                          pdir=output_path + '/', name='oz_fit')
 
 
-def poly_fit(dga_conf: conf.DgaConfig = None, mat_data=None, name='poly_cont'):
-    v = mf.v_plus(beta=dga_conf.sys.beta, n=mat_data.shape[-1] // 2)
+def poly_fit(mat_data, beta, k_grid: bz.KGrid, n_fit, order, name='poly_cont', output_path='./'):
+    v = mf.v_plus(beta=beta, n=mat_data.shape[-1] // 2)
 
     re_fs, im_fs, Z = a_cont.extract_coeff_on_ind(
         siwk=np.squeeze(mat_data.reshape(-1, mat_data.shape[-1])[:, mat_data.shape[-1] // 2:]),
-        indizes=dga_conf.k_grid.irrk_ind, v=v, N=dga_conf.npf, order=dga_conf.opf)
-    re_fs = dga_conf.k_grid.irrk2fbz(mat=re_fs)
-    im_fs = dga_conf.k_grid.irrk2fbz(mat=im_fs)
-    Z = dga_conf.k_grid.irrk2fbz(mat=Z)
+        indizes=k_grid.irrk_ind, v=v, N=n_fit, order=order)
+    re_fs = k_grid.map_irrk2fbz(mat=re_fs)
+    im_fs = k_grid.map_irrk2fbz(mat=im_fs)
+    Z = k_grid.map_irrk2fbz(mat=Z)
 
     extrap = {
         're_fs': re_fs,
@@ -99,9 +100,9 @@ def poly_fit(dga_conf: conf.DgaConfig = None, mat_data=None, name='poly_cont'):
         'Z': Z
     }
 
-    np.save(dga_conf.nam.output_path_pf + '{}.npy'.format(name), extrap, allow_pickle=True)
-    plotting.plot_siwk_extrap(siwk_re_fs=re_fs, siwk_im_fs=im_fs, siwk_Z=Z, output_path=dga_conf.nam.output_path_pf,
-                              name=name, k_grid=dga_conf.k_grid)
+    np.save(output_path + '{}.npy'.format(name), extrap, allow_pickle=True)
+    plotting.plot_siwk_extrap(siwk_re_fs=re_fs, siwk_im_fs=im_fs, siwk_Z=Z, output_path=output_path,
+                              name=name, k_grid=k_grid)
 
 
 def max_ent_loc_bw_range(dga_conf: conf.DgaConfig = None, me_conf: conf.MaxEntConfig = None, bw_range=None, sigma=None,
