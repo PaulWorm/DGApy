@@ -10,9 +10,10 @@ from datetime import datetime
 class MpiLogger():
     ''' Logs the progress of the code '''
 
-    def __init__(self, logfile = 'dga.log', comm=None):
+    def __init__(self, logfile = 'dga.log', comm=None, output_path='./'):
         self.logfile = logfile
         self.comm = comm
+        self.out_dir = output_path
         self.rt = realt.real_time()
         # create file
         if(self.is_root):

@@ -130,8 +130,8 @@ class SelfEnergy():
         if (niv <= self.niv):
             sigma = mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
-            niv_asympt = niv - self.niv
-            iv_asympt = mf.iv_plus(self.beta, n=niv_asympt, n_min=self.niv)
+            # niv_asympt = niv - self.niv
+            iv_asympt = mf.iv_plus(self.beta, n=niv, n_min=self.niv)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
             sigma_asympt = np.concatenate((self.sigma[..., :self.niv], asympt), axis=-1)
             sigma = mf.fermionic_full_nu_range(sigma_asympt)

@@ -215,6 +215,8 @@ def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,n
 
     axes[0].set_xlim(0, xmax)
     axes[1].set_xlim(0, xmax)
+    axes[2].set_xlim(0, xmax)
+    axes[3].set_xlim(0, xmax)
     plt.legend()
     axes[1].set_ylim(None, 0)
     plt.tight_layout()
@@ -410,7 +412,7 @@ def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None,
     plt.close()
 
 
-def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1):
+def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1, verbose=False):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
     siwk_re_fs = np.squeeze(bz.shift_mat_by_pi(mat=siwk_re_fs, nk=k_grid.nk))
@@ -436,7 +438,7 @@ def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=
     plt.tight_layout()
     fig.suptitle(name)
     plt.savefig(output_path + '{}.png'.format(name))
-    plt.show()
+    if(verbose): plt.show()
     plt.close()
 
 

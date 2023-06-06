@@ -82,6 +82,12 @@ def cut_v_1d(arr=None, niv_cut=0):
     if (niv_cut == -1): niv_cut = niv
     return arr[niv - niv_cut:niv + niv_cut]
 
+def inv_cut_v_1d(arr=None, niv_core=0,niv_shell=-1):
+    assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
+    niv = arr.shape[0] // 2
+    if (niv_shell == -1): niv_shell = niv
+    return np.concatenate((arr[niv-niv_shell-niv_core:niv-niv_core],arr[niv+niv_core:niv+niv_core+niv_shell]))
+
 
 def cut_v_1d_pos(arr=None, niv_cut=0, niv_min=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
@@ -109,6 +115,14 @@ def cut_v(arr=None, niv_cut=0, axes=(0,)):
     tmp = arr
     for axis in axes:
         tmp = np.apply_along_axis(cut_v_1d, axis=axis, arr=tmp, niv_cut=niv_cut)
+    return tmp
+
+def inv_cut_v(arr=None, niv_core=0,niv_shell=0, axes=(0,)):
+    axes = np.atleast_1d(axes)
+    axes = np.flip(np.sort(axes))
+    tmp = arr
+    for axis in axes:
+        tmp = np.apply_along_axis(inv_cut_v_1d, axis=axis, arr=tmp, niv_core=niv_core,niv_shell=niv_shell)
     return tmp
 
 def cut_w(arr=None, niw_cut=0,axes=(0,)):
@@ -248,4 +262,15 @@ def wn_sum(mat, beta, niw_sum=-1):
 
 
 if __name__ == '__main__':
+    niv_core = 30
+    niv_shell = 100
+    niv_full = niv_shell+ niv_core
+    vn = vn(niv_full)
+    vn_core = cut_v(vn,niv_core)
+    vn_shell = inv_cut_v(vn,niv_core,niv_shell)
+
+    assert np.size(vn_core) == niv_core*2, 'Cutting to core does not work'
+    assert np.size(vn_shell) == niv_shell*2, 'Cutting to shell does not work'
+
+
     pass

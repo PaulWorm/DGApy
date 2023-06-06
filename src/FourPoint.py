@@ -205,26 +205,34 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
 
 
 def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, gamma_magn: lfp.LocalFourPoint,
+                                               F_dc,vrg_magn_loc, chi_magn_loc,
                                                bubble_gen: bub.LocalBubble, u, my_q_list,
-                                               niv_shell=0, niv_asympt=None, logger=None):
+                                               niv_shell=0, logger=None):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
     '''
     niv_core = gamma_dens.niv
-    niv_full = niv_shell
+    niv_full = niv_core + niv_shell
     beta = gamma_dens.beta
 
-    if (niv_asympt is None): niv_asympt = 2 * niv_shell
     # Build the different non-local Bubbles:
-    gchi0_q_core = bubble_gen.get_gchi0_q_list(niv_core, my_q_list)
+    gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
+    chi0_q_urange = 1 / beta ** 2 * np.sum(gchi0_q_urange, axis=-1)
+    gchi0_q_core = mf.cut_v(gchi0_q_urange,niv_cut=niv_core,axes=-1)
     chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
-    chi0_q_urange = bubble_gen.get_chi0_q_list(niv_full, my_q_list)
-    # chi0_q_urange = chi0_q_core + bubble_gen.get_asympt_sum_q(niv_full,my_q_list) - bubble_gen.get_asympt_sum_q(niv_core,my_q_list)
-    chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list) #bubble_gen.get_chi0q_shell(chi0_q_urange, niv_full,
-    # niv_asympt,
-    # my_q_list)
+    chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list)
+    chi0q_shell_dc = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list)
     if (logger is not None): logger.log_cpu_time(task=' Bubbles constructed. ')
+
+    # double-counting kernel:
+    if(logger is not None):
+        if(logger.is_root):
+            F_dc.plot(pdir=logger.out_dir + '/',name='F_dc')
+
+    kernel_dc = mf.cut_v(get_kernel_dc(F_dc.mat, gchi0_q_urange, u, 'magn'), niv_core, axes=(-1,))
+    if (logger is not None): logger.log_cpu_time(task=' DC kernel constructed. ')
+
 
 
     # Density channel:
@@ -241,9 +249,12 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, g
     chi_lad_urange = chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, gamma_magn.channel)
     chi_lad_magn = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
 
+    u_r = get_ur(u, gamma_magn.channel)
+    # 1/beta**2 since we want F/beta**2
+    kernel_dc += u_r/gamma_magn.beta * (1 - u_r * chi_magn_loc[None,:,None])*vrg_magn_loc.mat[None,:,:]*chi0q_shell_dc[:,:,None]
     vrg_q_magn = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
 
-    return vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn
+    return vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------

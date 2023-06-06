@@ -137,12 +137,12 @@ class LocalFourPoint():
     def contract_legs_centered(self, niv_sum):
         return mf.vn_centered_sum(self.mat, self.wn, self.beta, niv_sum=niv_sum)
 
-    def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1):
+    def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1, verbose=False):
         assert iwn in self.wn, 'omega index not in dataset.'
         iwn_lin = self.wn_lin[self.wn == iwn][0]
         data = mf.cut_iv_2d(self.mat[iwn_lin], niv_cut=niv)
         vn = mf.cut_v_1d(self.vn, niv_cut=niv)
-        plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name + f'_wn{iwn}_niv{niv}', do_save=do_save)
+        plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name + f'_wn{iwn}_niv{niv}', do_save=do_save, show=verbose)
 
 
 def get_ggv(giw=None, niv_ggv=-1):
@@ -344,7 +344,17 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
     # Compute the fermion-boson vertex:
     vrg = vrg_from_gchi_aux(gchi_aux, gchi0_core, chi_urange, chi_asympt, u)
 
+    # F_dc = get_F_dc_asympt(vrg, gchi_aux, chi_asympt, gchi0_core, u)
+
     return vrg, chi_asympt
+
+def get_F_dc_asympt(vrg: LocalThreePoint, gchi_aux, chi_phys, gchi0,  u):
+    ''' Has an additional beta**2 compared to Motoharus paper due to different definitions of Chi0. '''
+    u_r = get_ur(u, vrg.channel)
+    eye = np.eye(vrg.niv*2)
+    mat = np.array([vrg.beta**2* 1. / gchi0[i][:,None] * (eye - gchi_aux.mat[i] * 1/gchi0[i][None,:])
+                    + u_r * (1-u_r *chi_phys[i]) * vrg.mat[i][:,None] * vrg.mat[i][None,:] for i in vrg.wn_lin])
+    return LocalFourPoint(channel=vrg.channel,matrix=mat,beta=vrg.beta,wn=vrg.wn)
 
 def get_vrg_and_chir_tilde_from_chir_uasympt(chir: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell = 0, niv_asympt=None):
     '''
@@ -392,7 +402,6 @@ def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0,
     full = u / (beta * beta) + np.diag(1. / gchi0_urange)
     inv_full = np.linalg.inv(full)
     inv_core = mf.cut_v(inv_full, niv_core, axes=(-2, -1))
-    # inv_core = mf.cut_iv_2d(inv_full, niv_core)
     core = np.linalg.inv(inv_core)
     chigr_inv = np.linalg.inv(gchir)
     return -(core - chigr_inv - u / (beta * beta))
