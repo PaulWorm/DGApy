@@ -277,11 +277,9 @@ if (comm.rank == 0):
 
 logger.log_cpu_time(task=' Siwk collected and plotted. ')
 # %% Build the DGA Green's function:
-
+sigma_dga = twop.SelfEnergy(siwk_dga, dmft_input['beta'])
+giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full * 2)
 if (comm.rank == 0):
-    sigma_dga = twop.SelfEnergy(siwk_dga, dmft_input['beta'])
-    giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full * 2)
-
     giwk_shift = giwk_dga.g_full(pi_shift=False)[..., 0, giwk_dga.niv_full][:dga_config.lattice_conf.nk[0] // 2, :dga_config.lattice_conf.nk[1] // 2]
     fs_ind = bz.find_zeros(giwk_shift)
     n_fs = np.shape(fs_ind)[0]
