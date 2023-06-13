@@ -34,7 +34,8 @@ comm = mpi.COMM_WORLD
 # Momentum and frequency grids:
 niw_core = 30
 niv_core = 30
-niv_shell = 2 * niv_core
+niv_shell = 10 # 2 * niv_core
+niv_full = niv_core + niv_shell
 lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
 nk = (16, 16, 1)
 nq = nk
@@ -105,7 +106,7 @@ siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, 
 
 # Create checks of the self-energy:
 if (comm.rank == 0): plotting.sigma_loc_checks([siw_sde_full, dmft_input['siw']], ['SDE', 'Input'], dmft_input['beta'], output_dir, verbose=False,
-                                               do_plot=True)
+                                               do_plot=True,xmax=niv_full)
 
 # --------------------------------------------- NON-LOCAL PART --------------------------------------------------------
 # %% Extract the local irreducible vertex Gamma:
@@ -281,9 +282,11 @@ gchi0_q_core = q_grid.map_irrk2fbz(gchi0_q_core).reshape((-1, *gchi0_q_core.shap
 chi_lad_dens = chi_lad_dens.reshape((-1, *chi_lad_dens.shape[3:]))
 chi_lad_magn = chi_lad_magn.reshape((-1, *chi_lad_magn.shape[3:]))
 # %%
-siw_dga_dens = fp.schwinger_dyson_vrg_q(vrg_q_dens, chi_lad_dens, giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], 'dens', full_q_list,
+siw_dga_dens = fp.schwinger_dyson_vrg_q(vrg_q_dens, chi_lad_dens, giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'],
+                                        'dens', full_q_list,
                                         q_dupl, g2_dens.wn, np.prod(q_grid.nk))
-siw_dga_magn = fp.schwinger_dyson_vrg_q(vrg_q_magn, chi_lad_magn, giwk_dmft.g_full, dmft_input['beta'], dmft_input['u'], 'magn', full_q_list,
+siw_dga_magn = fp.schwinger_dyson_vrg_q(vrg_q_magn, chi_lad_magn, giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'],
+                                        'magn', full_q_list,
                                         q_dupl, g2_dens.wn, np.prod(q_grid.nk))
 F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
 F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)
@@ -293,13 +296,15 @@ F_updo = 0.5 * (F_dens.mat - F_magn.mat)
 chi0q_shell = q_grid.map_irrk2fbz(chi0q_shell).reshape((-1, *chi0q_shell.shape[1:]))
 qchiq_Fupdo = -1 / dmft_input['beta'] * np.sum(gchi0_q_core[:, :, None, :] * F_magn.mat[None, ...], axis=-1) + 1 / dmft_input['beta'] \
               * chi0q_shell[:, :, None] * dmft_input['u']
-siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full, dmft_input['u'], full_q_list, q_dupl, g2_dens.wn, np.prod(q_grid.nk))
+siw_dc = fp.schwinger_dyson_dc(qchiq_Fupdo, giwk_dmft.g_full(), dmft_input['u'], full_q_list, q_dupl, g2_dens.wn,
+                               np.prod(q_grid.nk))
 
 # %%
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 # siw_dga = hartree + (siw_dga_dens + siw_dga_magn)
 # siw_dga = hartree + (siw_dga_dens + 3 * siw_dga_magn) - siw_dc
-siw_dga = hartree + (1 * siw_dga_dens + 3 * siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full, niv_core) + mf.cut_v(dmft_input['siw'], niv_core)
+siw_dga = hartree + (1 * siw_dga_dens + 3 * siw_dga_magn) - siw_dc - mf.cut_v(siw_sde_full, niv_core) + mf.cut_v(dmft_input[
+                                                                                                                     'siw'], niv_core)
 
 if (comm.rank == 0):
     plotting.plot_kx_ky(siw_dga[..., 0, niv_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Siwk_dga_kz0')
@@ -313,4 +318,4 @@ if (comm.rank == 0):
     siw_dc_loc = np.mean(siw_dc + hartree, axis=(0, 1, 2))
     plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dc_loc, siw_dga_dens_loc, siw_dga_magn_loc],
                               ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
-                              output_dir, verbose=False, do_plot=True, name='dga_loc', xmax=niv_shell)
+                              output_dir, verbose=False, do_plot=True, name='dga_loc', xmax=niv_full)

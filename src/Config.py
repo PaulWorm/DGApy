@@ -7,6 +7,19 @@ import numpy as np
 import MatsubaraFrequencies as mf
 import BrillouinZone as bz
 import OmegaMeshes as omesh
+import argparse
+from typing import List, Tuple
+import Hr as hamr
+
+
+# ----------------------------------------------- ARGUMENT PARSER ------------------------------------------------------
+
+def create_dga_argparser():
+    ''' Set up an argument parser for the DGA code. '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', nargs='?', default='./dga_config.yaml', type=str, help=' File and location of the config '
+                                                                                         'file. ')
+    return parser
 
 
 # ----------------------------------------------- CLASSES --------------------------------------------------------------
@@ -15,11 +28,24 @@ class ConfigBase():
         Base config class.
     '''
 
-    def set(self, **kwargs):
+    def update_dict(self, **kwargs):
         self.__dict__.update(kwargs)
+
+    def set_from_obj(self,obj):
+        for key in self.__dict__.keys():
+            if hasattr(obj, key):
+                setattr(self,key,obj.__dict__[key])
+        return None
 
     def as_dict(self):
         return self.__dict__
+
+    def set(self,obj):
+        if(type(obj) == dict):
+            self.update_dict(**obj)
+        else:
+            self.set_from_obj(obj)
+        return None
 
 
 class BoxSizes(ConfigBase):
@@ -27,114 +53,82 @@ class BoxSizes(ConfigBase):
         Contains the grid size parameters for a DGA run.
     '''
 
-    def __init__(self):
-        self._niw_core = None  # Number of bosonic Matsubaras for Gamma
-        self._niv_core = None  # Number of fermionic Matsubaras for Gamma
-        self._niv_urange = None  # Number of fermionic Matsubaras for Gamma = U
-        self.niw_urange = None  # Number of bosonic Matsubaras for Gamma = U. For this range DGA reduces to RPA
-        self.niv_invbse = None  # Number of frequencies used for the inversion to obtain Gamma-local
-        self._niv_asympt = None  # Number of frequencies for the asymptotic chi = chi_0 range.
-        self._niv_dmft = None  # Number of fermionic Matsubaras for the DMFT self-energy
-        self.niw_vrg_save = None  # Number of bosonic Matsubaras for saving the spin-fermion vertex
-        self.niv_vrg_save = None  # Number of fermionic Matsubaras for saving the spin-fermion vertex
-        self.nk = None  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
-        self.nq = None  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
+    def __init__(self, config_dict=None):
+        self.niw_core: int = -1  # Number of bosonic Matsubaras for Gamma
+        self.niv_core: int = -1  # Number of fermionic Matsubaras for Gamma
+        self.niv_shell: int = 0  # Number of fermionic Matsubaras for Gamma = U
 
-        # Corresponding grids:
-        self.vn_dmft = None
-        self.vn_core = None
-        self.vn_urange = None
-        self.vn_asympt = None
-        self.wn_core_plus = None
-
-    def set(self):
-        raise NotImplementedError('This method is not implemented for the BoxSizes object.')
+        if(config_dict is not None):
+            self.update_dict(**config_dict) # forwards parameters from config
 
     @property
-    def niw_core(self):
-        return self._niw_core
+    def niv_full(self):
+        return self.niv_shell + self.niw_core
 
     @property
-    def niv_padded(self):
-        return self.niv_urange + self.niw_core
-
-    @property
-    def vn_padded(self):
-        return mf.vn(n=self.niv_padded)
-
-    @niw_core.setter
-    def niw_core(self, value):
-        self._niw_core = value
-        self.wn_core = mf.wn(n=self.niw_core)
-        self.wn_core_plus = mf.wn_plus(n=self.niw_core)
-
-    @property
-    def niv_core(self):
-        return self._niv_core
-
-    @niv_core.setter
-    def niv_core(self, value):
-        self._niv_core = value
-        self.vn_core = mf.vn(n=self.niv_core)
-
-    @property
-    def niv_dmft(self):
-        return self._niv_dmft
-
-    @niv_dmft.setter
-    def niv_dmft(self, value):
-        self._niv_dmft = value
-        self.vn_dmft = mf.vn(n=self.niv_dmft)
-
-    @property
-    def niv_urange(self):
-        return self._niv_urange
-
-    @niv_urange.setter
-    def niv_urange(self, value):
-        self._niv_urange = value
-        self.vn_urange = mf.vn(n=self.niv_urange)
+    def vn_full(self):
+        return mf.vn(n=self.niv_full)
 
     @property
     def niv_asympt(self):
-        return self._niv_asympt
-
-    @niv_urange.setter
-    def niv_asympt(self, value):
-        self._niv_asympt = value
-        self.vn_asympt = mf.vn(n=self.niv_asympt)
-
-    @property
-    def wn_rpa(self):
-        assert self.niw_urange is not None, "niw_core is None, but must have a value >= 0"
-        assert self.niw_core is not None, "niw_core is None, but must have a value >= 0"
-        return mf.wn_outer(n_core=self.niw_core, n_outer=self.niw_urange)
-
-    @property
-    def wn_rpa_plus(self):
-        assert self.niw_urange is not None, "niw_core is None, but must have a value >= 0"
-        assert self.niw_core is not None, "niw_core is None, but must have a value >= 0"
-        return mf.wn_outer_plus(n_core=self.niw_core, n_outer=self.niw_urange)
+        return self.niv_full * 2 + self.niw_core * 2
 
     @property
     def niv_pp(self):
         '''Number of fermionic Matsubaras for the singlet/triplet vertex'''
         return np.min((self.niw_core // 2, self.niv_core // 2))
 
-    # @property
+class LatticeConfig(ConfigBase):
+    '''
+        Contains the information about the Lattice and Brillouin zone
+    '''
 
-    # def set_niw_core(self, value):
-    #     self.niw_core = value
-    #     self.wn_core = mf.wn(n=self.box.niw_core)
-    #     # Set Matsubara grids:
-    #     self.vn_dmft = mf.vn(n=self.box.niv_dmft)
-    #     self.vn_core = mf.vn(n=self.v.niv_core)
-    #     self.vn_urange = mf.vn(n=self.box.niv_urange)
-    #     self.vn_asympt = mf.vn(n=self.box.niv_asympt)
-    #
-    #     self.wn_core_plus = mf.wn_plus(n=self.box.niw_core)
-    #     self.wn_rpa = mf.wn_outer(n_core=self.box.niw_core, n_outer=self.box.niw_urange)
-    #     self.wn_rpa_plus = mf.wn_outer_plus(n_core=self.box.niw_core, n_outer=self.box.niw_urange)
+    def __init__(self, config_dict):
+        self.nk: Tuple[int,int,int] = (16,16,1)  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
+        self.nq: Tuple[int,int,int] = (16,16,1)  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
+        self.symmetries = []                   # Lattice symmetries. Either string or tuple of strings
+        self.tb_params = None                  # Tight binding parameter. Loading Hr will maybe be implemented later.
+        self.type = None
+
+        self.update_dict(**config_dict) # forwards parameters from config
+        if('nq' not in config_dict):
+            print('Notification: nq not set in config. Setting nq = nk')
+            self.nq = self.nk
+
+        self.check_symmetries()
+
+        # set k-grids:
+        self.nk = tuple(self.nk)
+        self.nq = tuple(self.nq)
+
+        self.k_grid = bz.KGrid(self.nk,self.symmetries)
+        self.q_grid = bz.KGrid(self.nq,self.symmetries)
+
+
+        if(self.tb_params is None):
+            raise ValueError('tb_params connot be none. Tight-bindign parameters must be supplied.')
+
+
+    def check_symmetries(self):
+        ''' Set symmetries if known: '''
+        if(self.symmetries == "two_dimensional_square"):
+            self.symmetries = bz.two_dimensional_square_symmetries()
+
+    @property
+    def nk_tot(self):
+        return np.prod(self.nk)
+
+    @property
+    def nq_tot(self):
+        return np.prod(self.nq)
+
+    def set_hr(self):
+        ''' Return the tight-binding hamiltonian.'''
+        if(self.tb_params is not None):
+            if(self.type == 't_tp_tpp'):
+                return hamr.one_band_2d_t_tp_tpp(*self.tb_params)
+        else:
+            raise  NotImplementedError('Currently only t_tp_tpp tight-binding model implemented.')
 
 
 class Names(ConfigBase):
@@ -297,58 +291,48 @@ class DgaConfig(ConfigBase):
         Contains the configuration parameters and flags for a DGA run.
     '''
 
-    def __init__(self, BoxSizes: BoxSizes = None, Names: Names = None, Options: Options = None,
-                 SystemParameter: SystemParamter = None, ek_funk=None):
-        self.box = BoxSizes
-        self.nam = Names
-        self.opt = Options
-        self.sys = SystemParameter
-        self.k_grid = None  # Kgrid object for handling operations in the Brillouin zone
-        self.q_grid = None  # same as k_grid but for bosonic objects
-        self.ek_func = ek_funk  # Function to use for obtaining e(k)from H(r)
+    box_sizes: BoxSizes = None
+    lattice_conf: LatticeConfig = None
+    output_path: str = None
+    do_poly_fitting: bool = False
 
-        self.dec = 11  # Number of decimals for ek check
+    def __init__(self, conf_file):
+        # Create config file:
+        self.build_box_sizes(conf_file)
+        self.build_lattice_conf(conf_file)
 
-        # Set the k and q grid:
-        self.k_grid = self.set_kgrid()
-        self.q_grid = self.set_kgrid()
+        # Optional configs, only set if contained in config file:
+        # Polyfitting:
+        self.n_fit = 4
+        self.o_fit = 3
+        if('poly_fitting' in conf_file):
+            self.do_poly_fitting = True
+            self.update_dict(**conf_file['poly_fitting'])
 
-        # Settings for the poly-fit:
-        self.npf = 4  # Number of Matsubara Frequencies used for the fit
-        self.opf = 3  # order of the polynom used for the fit
+        # Set input parameters:
+        self.input_type = 'w2dyn'
+        self.input_path = './'
+        self.fname_1p = '1p-data.hdf5'
+        self.fname_2p = 'g4iw_sym.hdf5'
 
-    # Forwarding attributes (kinda polluted the name space, but there should be no reason that it creates errors):
-    # def __getattr__(self, attr):
-    #     if hasattr(self.box, attr):
-    #         return getattr(self.box, attr)
-    #     elif (hasattr(self.nam, attr)):
-    #         return getattr(self.nam, attr)
-    #     elif (hasattr(self.opt, attr)):
-    #         return getattr(self.opt, attr)
-    #     else:
-    #         return getattr(self.sys, attr)
+        self.update_dict(**conf_file['dmft_input'])
 
-    def set_kgrid(self):
-        k_grid = bz.KGrid(nk=self.box.nk)
-        if (self.opt.use_fbz):
-            k_grid.set_irrk2fbz()
+        # Set dga routine specifications:
+        self.lambda_corr = 'spch'
+        self.update_dict(**conf_file['dga'])
+
+
+    def build_box_sizes(self, conf_file):
+        self.box_sizes = BoxSizes()
+        if ('box_sizes' in conf_file):
+            self.box_sizes.update_dict(**conf_file['box_sizes'])
+
+    def build_lattice_conf(self, conf_file):
+
+        if ('lattice' in conf_file):
+            self.lattice_conf = LatticeConfig(conf_file['lattice'])
         else:
-            ek = self.ek_func(kgrid=k_grid.grid, hr=self.sys.hr)
-            k_grid.get_irrk_from_ek(ek=ek, dec=self.dec)
-        return k_grid
-
-        # self.vn_dmft = None # Fermionic Matsubara frequencies for DMFT input
-        # self.vn_core = None # Fermionic Matsubara frequencies for
-
-    # def set_grids(self):
-    #     self.vn_dmft = mf.vn(n=self.box_sizes.niv_dmft)
-    #     self.vn_core = mf.vn(n=self.box_sizes.niv_core)
-    #     self.vn_urange = mf.vn(n=self.box_sizes.niv_urange)
-    #     self.vn_asympt = mf.vn(n=self.box_sizes.niv_asympt)
-    #     self.wn_core = mf.wn(n=self.box_sizes.niw_core)
-    #     self.wn_core_plus = mf.wn_plus(n=self.box_sizes.niw_core)
-    #     self.wn_rpa = mf.wn_outer(n_core=self.box_sizes.niw_core, n_outer=self.box_sizes.niw_urange)
-    #     self.wn_rpa_plus = mf.wn_outer_plus(n_core=self.box_sizes.niw_core, n_outer=self.box_sizes.niw_urange)
+            raise ValueError('Lattice must be contained in the config file.')
 
 
 if __name__ == '__main__':

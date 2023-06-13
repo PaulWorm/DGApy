@@ -19,6 +19,7 @@ import TwoPoint_old as twop
 import socket
 import PlotSpecs as ps
 
+
 if(socket.gethostname() != 'DESKTOP-OEHIPTV'):
     matplotlib.use('agg') # non GUI backend since VSC has no display
 
@@ -45,6 +46,57 @@ class MidpointNormalize(colors.Normalize):
 # ----------------------------------------------------------------------------------------------------------------------
 # -----------------------------------------START REIMPLEMENTATION OF THE DGA ROUTINES-----------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+def default_vrg_plots(vrg_q_dens,vrg_q_magn,vrg_dens, vrg_magn, dga_config: conf.DgaConfig):
+    niw_core = dga_config.box_sizes.niw_core
+    niv_core = dga_config.box_sizes.niv_core
+    output_dir = dga_config.output_path
+
+    vrg_q_dens_sum = np.mean(vrg_q_dens, axis=0)
+    vrg_q_magn_sum = np.mean(vrg_q_magn, axis=0)
+    plot_kx_ky(vrg_q_dens.reshape(dga_config.lattice_conf.q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core],
+                        dga_config.lattice_conf.q_grid.kx, dga_config.lattice_conf.q_grid.ky,
+                        pdir=output_dir, name='Vrg_dens_w0')
+    plot_kx_ky(vrg_q_magn.reshape(dga_config.lattice_conf.q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core],
+                        dga_config.lattice_conf.q_grid.kx, dga_config.lattice_conf.q_grid.ky,
+                        pdir=output_dir, name='Vrg_magn_w0')
+
+    iwn_plot = niv_core
+    vn_core = mf.vn(niv_core)
+    fig, axes = plt.subplots(2, 2, dpi=500, figsize=(8, 8))
+    axes = axes.flatten()
+    axes[0].plot(vn_core, vrg_q_dens_sum[iwn_plot].real)
+    axes[0].plot(vn_core, vrg_dens.mat[iwn_plot].real)
+
+    axes[1].plot(vn_core, vrg_q_dens_sum[iwn_plot].imag)
+    axes[1].plot(vn_core, vrg_dens.mat[iwn_plot].imag)
+
+    axes[2].plot(vn_core, vrg_q_magn_sum[iwn_plot].real)
+    axes[2].plot(vn_core, vrg_magn.mat[iwn_plot].real)
+
+    axes[3].plot(vn_core, vrg_q_magn_sum[iwn_plot].imag)
+    axes[3].plot(vn_core, vrg_magn.mat[iwn_plot].imag)
+    for ax in axes:
+        ax.set_xlim(0, None)
+    plt.legend()
+    plt.savefig(output_dir + f'/TestVrg_loc_wn{iwn_plot}.png')
+    plt.close()
+
+
+def default_g2_plots(g2_dens,g2_magn,output_dir):
+    g2_dens.plot(0, pdir=output_dir, name='G2_dens')
+    g2_magn.plot(0, pdir=output_dir, name='G2_magn')
+    g2_magn.plot(10, pdir=output_dir, name='G2_magn')
+    g2_magn.plot(-10, pdir=output_dir, name='G2_magn')
+
+def default_gamma_plots(gamma_dens,gamma_magn,output_dir,box_sizes,beta):
+    niv_core = box_sizes.niv_core
+    gamma_dens.plot(0, pdir=output_dir, niv=min(niv_core, 2 * int(beta)), name='Gamma_dens')
+    gamma_magn.plot(0, pdir=output_dir, niv=min(niv_core, 2 * int(beta)), name='Gamma_magn')
+    gamma_magn.plot(10, pdir=output_dir, niv=min(niv_core, 2 * int(beta)), name='Gamma_magn')
+    gamma_magn.plot(-10, pdir=output_dir, niv=min(niv_core, 2 * int(beta)), name='Gamma_magn')
+    gamma_dens.plot(10, pdir=output_dir, niv=min(niv_core, 2 * int(beta)), name='Gamma_dens')
+
 
 def plot_along_fs(mat,fs_ind,step_size=1,figsize=ps.FIGSIZE, cmap='rainbow', verbose=False, pdir='./', do_save=True
                   , niv_plot_min = 0, niv_plot = -1, name='',ikz=0):
@@ -215,8 +267,8 @@ def sigma_loc_checks(siw_arr,labels,beta,output_dir,verbose=False,do_plot=True,n
 
     axes[0].set_xlim(0, xmax)
     axes[1].set_xlim(0, xmax)
-    axes[2].set_xlim(0, xmax)
-    axes[3].set_xlim(0, xmax)
+    axes[2].set_xlim(None, xmax)
+    axes[3].set_xlim(None, xmax)
     plt.legend()
     axes[1].set_ylim(None, 0)
     plt.tight_layout()

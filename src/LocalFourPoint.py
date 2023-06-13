@@ -551,7 +551,8 @@ def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn, channel)
     return sigma_F
 
 
-def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, chi_dens, chi_magn, giw, u, n, niv_shell=0):
+def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, chi_dens, chi_magn,
+                         giw, u, n, niv_shell=0):
     siw_dens = schwinger_dyson_core_urange(vrg_dens, chi_dens, giw, u, niv_shell)
     siw_magn = schwinger_dyson_core_urange(vrg_magn, chi_magn, giw, u, niv_shell)
     hartree = twop.get_smom0(u, n)

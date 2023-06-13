@@ -35,6 +35,14 @@ class MpiLogger():
         else:
             pass
 
+    def log_message(self, message):
+        if(self.is_root):
+            f = open(self.logfile,'a')
+            f.write(self.local_time() + ':' + message + '\n')
+            f.close()
+        else:
+            pass
+
     def log_cpu_time(self, task):
         if(self.is_root):
             self.log_event(message=task)
