@@ -1,5 +1,5 @@
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
-# This code performs a DGA calculation starting from DMFT quantities as input.
+# This code performs a DGA calculation starting from DMFT quantities as io.
 # For the original paper look at: PHYSICAL REVIEW B 75, 045118 (2007)
 # For a detailed review of the procedure read my thesis: "Numerical analysis of many-body effects in cuprate and nickelate superconductors"
 # Asymptotics were adapted from Kitatani et al. J. Phys. Mat. 10.1088/2515-7639/ac7e6d (2022)
@@ -7,36 +7,29 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import sys, os
-
-sys.path.insert(0, '../src')
-sys.path.append(os.environ['HOME'] + "/Programs/dga/src")
-import h5py
 import numpy as np
-import Output as out
-from mpi4py import MPI as mpi
-import MpiAux as mpi_aux
-import numpy as np
-import Input
-import LocalFourPoint as lfp
-import FourPoint as fp
-import Hr as hamr
-import Hk as hamk
-import BrillouinZone as bz
-import TwoPoint as twop
-import Bubble as bub
-import Plotting as plotting
-import LambdaCorrection as lc
 import matplotlib.pyplot as plt
-import MatsubaraFrequencies as mf
-import Loggers as loggers
-import Output as output
-import Config as config
+from mpi4py import MPI as mpi
 from ruamel.yaml import YAML
-import PlotSpecs
+
+import dga.config as config
+import dga.matsubara_frequencies as mf
+import dga.brillouin_zone as bz
+import dga.loggers as loggers
+import dga.io as io
+import dga.four_point as fp
+import dga.local_four_point as lfp
+import dga.plotting as plotting
+import dga.lambda_correction as lc
+import dga.two_point as twop
+import dga.bubble as bub
+import dga.hk as hamk
+import dga.mpi_aux as mpi_aux
+
+import dga.plot_specs
 
 # Define MPI communicator:
 comm = mpi.COMM_WORLD
-# Initialize Logger:
 
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 # Parse config line arguments:
@@ -45,23 +38,22 @@ if (comm.rank == 0):
     args = parser.parse_args()
     # args = parser.parse_args(args=['--config','dga_config.yaml'])
     assert hasattr(args, 'config'), 'Config file location must be provided.'
-    conf_file = YAML().load(open(args.config))
-comm.barrier()
+    conf_file = YAML().load(open(args.path + args.config))
+else:
+    conf_file = None
+
 conf_file = comm.bcast(conf_file, root=0)
 lambda_correction_type = conf_file['dga']['lambda_corr']
 
 dga_config = config.DgaConfig(conf_file)
-
 # %%
 # --------------------------------------------------- LOAD THE INPUT -------------------------------------------------------------
-dmft_input = Input.load_1p_data(dga_config.input_type, dga_config.input_path, dga_config.fname_1p, dga_config.fname_2p)
-g2_dens, g2_magn = Input.load_g2(dga_config.box_sizes,dmft_input)
-
+dmft_input = io.load_1p_data(dga_config.input_type, dga_config.input_path, dga_config.fname_1p, dga_config.fname_2p)
+g2_dens, g2_magn = io.load_g2(dga_config.box_sizes,dmft_input)
 
 # ------------------------------------------- DEFINE THE OUTPUT DIRECTORY --------------------------------------------------------
 # Define output directory:
-input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
-output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
+output_dir = dga_config.input_path + '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
                                                                                      dga_config.lattice_conf.nk_tot,
                                                                                      dga_config.lattice_conf.nq_tot,
                                                                                      dga_config.box_sizes.niw_core,
@@ -72,7 +64,7 @@ dga_config.output_path = output_dir
 hr = dga_config.lattice_conf.set_hr()
 
 # Create output directory:
-output_dir = out.uniquify(output_dir)
+output_dir = io.uniquify(output_dir)
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
 comm.barrier()
@@ -99,13 +91,14 @@ gchi0_core = bubble_gen.get_gchi0(dga_config.box_sizes.niv_core)
 gchi0_urange = bubble_gen.get_gchi0(dga_config.box_sizes.niv_full)
 gamma_dens = lfp.gammar_from_gchir(gchi_dens, gchi0_urange, dmft_input['u'])
 gamma_magn = lfp.gammar_from_gchir(gchi_magn, gchi0_urange, dmft_input['u'])
+logger.log_cpu_time(task=' Gamma-loc finished. ')
 
 if (comm.rank == 0):
     plotting.default_gamma_plots(gamma_dens,gamma_magn,output_dir,dga_config.box_sizes,dmft_input['beta'])
     np.save(output_dir + '/gamma_dens.npy', gamma_dens.mat)
     np.save(output_dir + '/gamma_magn.npy', gamma_magn.mat)
 
-logger.log_cpu_time(task=' Gamma-loc finished. ')
+logger.log_cpu_time(task=' Gamma-loc plotting finished. ')
 
 # ----------------------------------- Compute the Susceptibility and Threeleg Vertex --------------------------------------------------------
 vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, bubble_gen, dmft_input['u'],
@@ -206,7 +199,7 @@ if (comm.rank == 0):
 logger.log_cpu_time(task=' Lambda-correction done. ')
 
 # %% Perform Ornstein-zernicke fitting of the susceptibility:
-if (comm.rank == 0): output.fit_and_plot_oz(output_dir, dga_config.lattice_conf.q_grid)
+if (comm.rank == 0): io.fit_and_plot_oz(output_dir, dga_config.lattice_conf.q_grid)
 
 # %% Non-local Schwinger-Dyson equation:
 # collect vrg vertices:
@@ -303,7 +296,7 @@ if (comm.rank == 0):
 
     # Plots along Fermi-Luttinger surface:
     siwk_dga = sigma_dga.get_siw(dga_config.box_sizes.niv_full)
-    plotting.plot_along_fs(siwk_dga, fs_ind, pdir=output_dir, niv_plot_min=0, niv_plot=20, name='Sigma_{dga}')
+    plotting.plot_along_ind(siwk_dga, fs_ind, pdir=output_dir, niv_plot_min=0, niv_plot=20, name='Sigma_{dga}')
 
 logger.log_cpu_time(task=' Giwk build and plotted. ')
 mpi_distributor.delete_file()
@@ -316,17 +309,17 @@ if (dga_config.do_poly_fitting):
     if (comm.rank == 0): os.mkdir(poly_fit_dir)
     # ------------------------------------------------- POLYFIT ------------------------------------------------------------
     # Extrapolate the self-energy to the Fermi-level via polynomial fit:
-    if comm.rank == 0: output.poly_fit(sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=True), dmft_input['beta'],
+    if comm.rank == 0: io.poly_fit(sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=True), dmft_input['beta'],
                                        dga_config.lattice_conf.k_grid, dga_config.n_fit,
                                        dga_config.o_fit,name='Siwk_poly_cont_',output_path=poly_fit_dir)
 
     if comm.rank == 0:
-        output.poly_fit(giwk_dga.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice_conf.k_grid, dga_config.n_fit, dga_config.o_fit,
+        io.poly_fit(giwk_dga.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice_conf.k_grid, dga_config.n_fit, dga_config.o_fit,
                         name='Giwk_dga_poly_cont_',
                         output_path=poly_fit_dir)
 
     if comm.rank == 0:
-        output.poly_fit(giwk_dmft.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice_conf.k_grid, dga_config.n_fit, dga_config.o_fit,
+        io.poly_fit(giwk_dmft.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice_conf.k_grid, dga_config.n_fit, dga_config.o_fit,
                         name='Giwk_dmft_poly_cont_',
                         output_path=poly_fit_dir)
 
@@ -344,10 +337,10 @@ if ('max_ent' in conf_file):
 
     if comm.rank == 0 and me_conf.cont_g_loc:
         g_loc_dmft = giwk_dmft.g_loc
-        output.max_ent_loc_bw_range(g_loc_dmft,me_conf, name='dmft')
+        io.max_ent_loc_bw_range(g_loc_dmft,me_conf, name='dmft')
 
         g_loc_dga  = giwk_dga.g_loc
-        me_conf.bw_dga.append(output.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga'))
+        me_conf.bw_dga.append(io.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga'))
         logger.log_cpu_time(task=' MaxEnt local ')
 #%%
 if ('max_ent' in conf_file):
@@ -357,7 +350,7 @@ if ('max_ent' in conf_file):
         if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_s)): os.mkdir(me_conf.output_path_nl_s)
 
         for bw in me_conf.bw_dga:
-            output.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
+            io.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
                                                name='siwk_dga')
 #%%
 if ('max_ent' in conf_file):
@@ -367,7 +360,7 @@ if ('max_ent' in conf_file):
         if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
 
         for bw in me_conf.bw_dga:
-            output.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
+            io.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
                                                name='Giwk_dga')
 
 

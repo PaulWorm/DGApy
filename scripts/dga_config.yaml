@@ -14,6 +14,7 @@ lattice:
 # Sepcify DGA settings and details:
 dga:
   lambda_corr: "spch" # Type of lambda correction, i.e. which channels are renormalized. Available: ['spch']
+  gui: False # Specify whether a gui exists. Relevant for plotting.
 
 
 # Specify dmft input:
@@ -34,7 +35,7 @@ poly_fitting:       # Optional
 max_ent:
   cont_g_loc: True   # Perform the continuation of the local Green's function; default: True 
   cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
-  cont_g_nl: False   # Perform the continuation of the non-local Green's function; default: False
+  cont_g_nl: True   # Perform the continuation of the non-local Green's function; default: False
   nwr: 501           # Number of mesh points on the real frequency axis; default: 501
   wmax: 15           # Maximum frequency in the mesh
   use_preblur: True  # default: True

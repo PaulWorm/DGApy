@@ -6,7 +6,7 @@ DGA (cool name will follow later) is a package for lambda corrected dynamical ve
 ToDo
 
 ## Installation
-ToDo
+Run "pip install -e ." in the root directory. This will provide the package dga. 
 
 ## Usage
 ToDo
