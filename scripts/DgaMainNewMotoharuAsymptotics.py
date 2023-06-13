@@ -9,6 +9,7 @@
 import sys, os
 
 sys.path.insert(0, '../src')
+sys.path.append(os.environ['HOME'] + "/Programs/dga/src")
 import h5py
 import numpy as np
 import Output as out

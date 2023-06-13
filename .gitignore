@@ -8,6 +8,12 @@
 _UpgradeReport_Files/
 [Pp]ackages/
 
+# Don't accidentially track output files:
+*.png
+*.npy
+*.dat
+*.txt
+
 Thumbs.db
 Desktop.ini
 .DS_Store
