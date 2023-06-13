@@ -10,6 +10,7 @@ import TwoPoint_old as twop
 import BrillouinZone as bz
 import Hk as hamk
 import gc
+import Config as config
 
 # --------------------------------------- Obtain the real frequency grid -----------------------------------------------
 
@@ -125,22 +126,15 @@ def check_filling(v_real=None, gloc_cont=None):
     n = np.trapz(-1. / np.pi * gloc_cont[ind_w].imag, v_real[ind_w]) * 2
     return n
 
-def max_ent_loc(me_conf = None, v_real=None, sigma=None,dga_conf=None,niv_cut=None, bw=0.0, nfit=60, adjust_mu=True, return_chi2=False):
-    # Create Green's function:
-    gk = twop.create_gk_dict(dga_conf=dga_conf, sigma=sigma, mu0=dga_conf.sys.mu_dmft, adjust_mu=adjust_mu, niv_cut=niv_cut)
+def max_ent_loc(mat,me_conf: config.MaxEntConfig, bw):
+    '''
+        Perform the analytic continuation for a local quantity
+    '''
 
-    gloc = gk['gk'].mean(axis=(0, 1, 2))
-
-    if(bw == 0):
-        use_preblur = False
-    else:
-        use_preblur = me_conf.use_preblur
-    gloc_cont, chi2 = max_ent(mat=gloc, v_real=v_real, beta=me_conf.beta, n_fit=nfit,
-                                    alpha_det_method=me_conf.alpha_det_method, err=me_conf.err, use_preblur=use_preblur, bw=bw, return_chi2=return_chi2)
-    if(return_chi2):
-        return gloc_cont, gk, chi2
-    else:
-        return gloc_cont, gk
+    gloc_cont, chi2 = max_ent(mat=mat, v_real=me_conf.mesh, beta=me_conf.beta, n_fit=me_conf.n_fit,
+                                    alpha_det_method=me_conf.alpha_det_method, err=me_conf.err,
+                              use_preblur=me_conf.use_preblur, bw=bw, return_chi2=True)
+    return gloc_cont, chi2
 
 def max_ent_on_fs(v_real=None, sigma=None,config=None,k_grid=None,niv_cut=None, use_preblur=False, bw=0.0, err=1e-3, nfit=60, adjust_mu=True):
     dmft1p = config['dmft1p']
@@ -198,7 +192,6 @@ def do_max_ent_on_ind_T(mat=None, ind_list=None, v_real=None, beta=None, n_fit=6
     if(bw==0):
         use_preblur = False
     for i, ind in enumerate(ind_list):
-        #print(i)
         mat_cont[i,:] = max_ent(mat=mat[ind], v_real=v_real, beta=beta, n_fit=n_fit, alpha_det_method=alpha_det_method, err=err, use_preblur = use_preblur, bw=bw, optimizer=optimizer)
 
     return mat_cont

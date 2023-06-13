@@ -72,7 +72,6 @@ hr = dga_config.lattice_conf.set_hr()
 
 # Create output directory:
 output_dir = out.uniquify(output_dir)
-poly_fit_dir = output_dir + '/PolyFits/'
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
 comm.barrier()
@@ -312,6 +311,7 @@ mpi_dist_fbz.delete_file()
 
 # %%
 if (dga_config.do_poly_fitting):
+    poly_fit_dir = output_dir + '/PolyFits/'
     if (comm.rank == 0): os.mkdir(poly_fit_dir)
     # ------------------------------------------------- POLYFIT ------------------------------------------------------------
     # Extrapolate the self-energy to the Fermi-level via polynomial fit:
@@ -332,31 +332,41 @@ if (dga_config.do_poly_fitting):
     logger.log_cpu_time(task=' Poly-fits ')
 
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
-# # %%
-# # Broadcast bw_opt_dga
-# comm.Barrier()
-# if comm.rank == 0:
-#     bw_opt_dga = np.empty((1,))
-#     bw_opt_vrg_re = np.empty((1,))
-# else:
-#     bw_opt_dga = np.empty((1,))
-#     bw_opt_vrg_re = np.empty((1,))
-#
-# if do_max_ent_loc:
-#     me_conf = config.MaxEntConfig(mesh_type='tan')
-#     if comm.rank == 0:
-#         bw_range_loc = np.array([0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]) * me_conf.get_bw_opt()
-#
-#         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc, sigma=dmft1p['sloc'],
-#                                     n_fit=n_fit, adjust_mu=True, name='dmft')
-#         bw_opt_dga[0] = output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
-#                                                     sigma=sigma,
-#                                                     n_fit=n_fit, adjust_mu=True, name='dga')
-#         output.max_ent_loc_bw_range(dga_conf=dga_conf, me_conf=me_conf, bw_range=bw_range_loc,
-#                                     sigma=sigma_nc, n_fit=n_fit, adjust_mu=True, name='dga_nc')
-#
-#     logger.log_cpu_time(task=' MaxEnt local ')
-#
-#     if dga_conf.opt.analyse_spin_fermion_contributions:
-#         comm.Bcast(bw_opt_vrg_re, root=0)
-#     comm.Bcast(bw_opt_dga, root=0)
+# %%
+# Broadcast bw_opt_dga
+comm.Barrier()
+if ('max_ent' in conf_file):
+    max_ent_dir = output_dir + '/MaxEnt/'
+    if (comm.rank == 0 and not os.path.exists(max_ent_dir)): os.mkdir(max_ent_dir)
+    me_conf = config.MaxEntConfig(t=hr[0,0],beta=dmft_input['beta'],config_dict=conf_file['max_ent'],
+                                  output_path_loc=max_ent_dir)
+
+    if comm.rank == 0 and me_conf.cont_g_loc:
+        g_loc_dmft = giwk_dmft.g_loc
+        output.max_ent_loc_bw_range(g_loc_dmft,me_conf, name='dmft')
+
+        g_loc_dga  = giwk_dga.g_loc
+        me_conf.bw_dga.append(output.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga'))
+        logger.log_cpu_time(task=' MaxEnt local ')
+#%%
+if ('max_ent' in conf_file):
+    comm.barrier()
+    if me_conf.cont_s_nl:
+        me_conf.output_path_nl_s = output_dir + '/MaxEntSiwk/'
+        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_s)): os.mkdir(me_conf.output_path_nl_s)
+
+        for bw in me_conf.bw_dga:
+            output.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
+                                               name='siwk_dga')
+#%%
+if ('max_ent' in conf_file):
+    comm.barrier()
+    if me_conf.cont_g_nl:
+        me_conf.output_path_nl_g = output_dir + '/MaxEntGiwk/'
+        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
+
+        for bw in me_conf.bw_dga:
+            output.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice_conf.k_grid, me_conf, comm, bw, logger=logger,
+                                               name='Giwk_dga')
+
+

@@ -330,18 +330,17 @@ def plot_f_dmft(f=None,path=None,name=None,niv_cut=-1):
     plt.close()
 
 
-def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fit=None, output_path=None, name=None):
+def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fits=None, output_path=None, name=None):
     plt.figure()
     plt.loglog(bw,chi2, '-o',label='$\chi^2(bw)$')
-    plt.loglog(bw,np.exp(np.polyval(fit[0],np.log10(bw))), label='lin-fit(1)')
-    plt.loglog(bw,np.exp(np.polyval(fit[1],np.log10(bw))), label='lin-fit(2)')
+    for i,fit in enumerate(fits):
+        plt.loglog(bw,fit, label=f'Fit-{i}')
     plt.vlines(bw_opt,np.min(chi2), np.max(chi2), 'k',label='$bw_{opt}$')
     plt.legend()
     plt.xlabel('bw')
     plt.ylabel('$\chi^2$')
     plt.tight_layout()
     plt.savefig(output_path + '{}.png'.format(name))
-    plt.show()
     plt.close()
 
 
@@ -427,7 +426,7 @@ def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None,
 
     cuts = np.round(np.linspace(1, nk[0] // 4, n_map, endpoint=True)).astype(int)
 
-    ind_fs = bz.find_qpd_zeros(qpd=(1. / gk_cont[:, :, :, v0_ind]).real, kgrid=k_grid)
+    ind_fs = bz.find_zeros((1. / gk_cont[:, :, 0, v0_ind]).real)
     kx_fs = np.array([k_grid.kmesh[0][i] for i in ind_fs])
     ky_fs = np.array([k_grid.kmesh[1][i] for i in ind_fs])
 

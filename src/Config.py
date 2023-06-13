@@ -189,17 +189,31 @@ class MaxEntConfig(ConfigBase):
         Settings for the analytical continuation.
     '''
 
-    def __init__(self, t=1.0, beta=None, mesh_type='lorentzian', cut=0.04, nwr=501, wmax=15, err=1e-2):
-        self.cut = cut  # Relevant for the lorentzian mesh
+    def __init__(self, t, beta, config_dict, output_path_loc = './', output_path_nl_s = './', output_path_nl_g = './'):
+        self.cut = 0.04  # Relevant for the lorentzian mesh
         self.t = t  # Unit of energy. Everything is scaled by this. We use t for this here.
-        self.nwr = nwr  # Number of frequencies on the real axis
-        self.wmax = wmax * self.t  # frequency range on the real axis
+        self.nwr = 501  # Number of frequencies on the real axis
+        self.wmax = 15  # frequency range on the real axis
         self.use_preblur = True  # whether o not to use the pre-blur feature
-        self.err = err  # Error for the analytical continuation
+        self.err = 1e-3  # Error for the analytical continuation
         self.beta = beta  # Inverse Temperature
         self.alpha_det_method = 'chi2kink'  # alpha determination method
         self.optimizer = 'newton'  # alpha determination method
-        self.mesh_type = mesh_type  # mesh type
+        self.mesh_type = 'tan'  # mesh type
+        self.n_fit = int(beta*3 + 10) # Number of frequencies used for the analytic continuation
+        self.bw_fit_position = 10  # Fit position for estimating the optimal blur width
+        self.bw_dga = [0.1,] # Blur width for DGA continuation
+
+        # Flags what continuation to perform:
+        self.cont_g_loc = True
+        self.cont_s_nl = True
+        self.cont_g_nl = False
+        self.output_path_loc = output_path_loc
+        self.output_path_nl_s = output_path_nl_s
+        self.output_path_nl_g = output_path_nl_g
+        self.bw_range_loc = np.array([0.001,0.01,0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1])
+
+        self.update_dict(**config_dict)
 
     @property
     def mesh_type(self):
