@@ -327,13 +327,4 @@ if __name__ == '__main__':
     qgrid = bz.KGrid(nk=nk)
     hr = hamr.standard_cuprates()
     ek = hamk.ek_3d(kgrid=qgrid.grid, hr=hr)
-    qgrid.get_irrk_from_ek(ek=ek)
-
-    irr_kmesh = [qgrid.kmesh[ax].flatten()[qgrid.irrk_ind] for ax in np.arange(3)]
-
-    print(f'{np.shape(qgrid.irrk_ind)=}')
-    print(f'{np.shape(qgrid.kmesh)=}')
-    print(f'{qgrid.irr_kmesh=}')
-    print(f'{qgrid.irr_kgrid=}')
-
     #indizes = IndexGrids(grid_arrays=(qgrid.irr_kgrid + (iw,)), keys=('irrqx','irrqy','irrqz','iw'),my_slice=my_slice)
