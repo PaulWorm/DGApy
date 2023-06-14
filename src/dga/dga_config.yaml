@@ -9,7 +9,7 @@ lattice:
   symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
   type: "t_tp_tpp" # Specify type of lattice
   tb_params: [1, -0.2, 0.1] # tight-binding parameters. Alternative to load an Hr file will follow later.
-  nk: [16, 16, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+  nk: [32, 32, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
 
 # Sepcify DGA settings and details:
 dga:

@@ -143,7 +143,7 @@ logger.log_cpu_time(task=' Local SDE finished. ')
 # ---------------------------------------------------------------------------------------------------------------------
 
 # Split the momenta between the different cores.
-mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice._q_grid.nk_irr, comm=comm, output_path=output_dir + '/',
+mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice._q_grid.nk_irr, comm=comm, output_path=dga_config.output_path,
                                          name='Q')
 my_q_list = dga_config.lattice._q_grid.irrk_mesh_ind.T[mpi_distributor.my_slice]
 # %%
@@ -371,3 +371,5 @@ if ('max_ent' in conf_file):
                                            name='Giwk_dga')
 
 
+# End program:
+comm.Barrier()
