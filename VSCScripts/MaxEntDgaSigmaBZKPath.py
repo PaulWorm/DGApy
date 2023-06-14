@@ -58,7 +58,7 @@ dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
 hartree = dmft_sde['hartree']
 
 beta = dga_conf.sys.beta
-k_grid = dga_conf.k_grid
+k_grid = dga_conf._k_grid
 hr = dga_conf.sys.hr
 g_fac = tp.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
 n = dga_conf.sys.n

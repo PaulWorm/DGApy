@@ -22,7 +22,7 @@ input_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta10
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dga_sde = np.load(input_path + 'sigma_dga.npy', allow_pickle=True).item()
 
-k_grid = config.k_grid
+k_grid = config._k_grid
 niv_urange = config.box.niv_urange
 niv_core = config.box.niv_core
 beta = config.sys.beta

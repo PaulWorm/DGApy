@@ -86,7 +86,7 @@ dga_sde = np.load(path + 'dga_sde.npy', allow_pickle=True).item()
 sigma = dga_sde['sigma']
 dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
 beta = dga_conf['system']['beta']
-k_grid = dga_conf['grids']['k_grid']
+k_grid = dga_conf['grids']['_k_grid']
 hr = dga_conf['system']['hr']
 g_fac = tp.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
 n = dga_conf['system']['n']

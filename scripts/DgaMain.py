@@ -270,7 +270,7 @@ if (dga_conf.opt.do_pairing_vertex and comm.rank == 0):
 #
 # # ---------------------------------------------- REMOVE THE RANK FILES -------------------------------------------------
 comm.Barrier()
-qiw = mpiaux.MpiDistributor(ntasks=dga_conf.k_grid.nk_irr, comm=comm,
+qiw = mpiaux.MpiDistributor(ntasks=dga_conf._k_grid.nk_irr, comm=comm,
                             output_path=dga_conf.nam.output_path,
                             name='Qiw')
 qiw.delete_file()

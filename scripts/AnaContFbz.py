@@ -48,7 +48,7 @@ else:
 
 comm.Bcast(sigma, root=0)
 
-k_grid = config['grids']['k_grid']
+k_grid = config['grids']['_k_grid']
 niv_urange = config['box_sizes']['niv_urange']
 niv_core = config['box_sizes']['niv_core']
 beta = config['dmft1p']['beta']

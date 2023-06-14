@@ -53,23 +53,32 @@ g2_dens, g2_magn = io.load_g2(dga_config.box_sizes,dmft_input)
 
 # ------------------------------------------- DEFINE THE OUTPUT DIRECTORY --------------------------------------------------------
 # Define output directory:
-output_dir = dga_config.input_path + '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
-                                                                                                  dga_config.lattice.nk_tot,
-                                                                                                  dga_config.lattice.nq_tot,
-                                                                                                  dga_config.box_sizes.niw_core,
-                                                                                                  dga_config.box_sizes.niv_core,
-                                                                                                  dga_config.box_sizes.niv_shell)
-dga_config.output_path = output_dir
+output_dir = dga_config.input_path + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
+                                                                                                 dga_config.lattice.nk_tot,
+                                                                                                 dga_config.lattice.nq_tot,
+                                                                                                 dga_config.box_sizes.niw_core,
+                                                                                                 dga_config.box_sizes.niv_core,
+                                                                                                 dga_config.box_sizes.niv_shell)
+
 # %%
 hr = dga_config.lattice.set_hr()
 
 # Create output directory:
 output_dir = io.uniquify(output_dir)
+dga_config.output_path = output_dir
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
 comm.barrier()
 logger = loggers.MpiLogger(logfile=output_dir + '/dga.log', comm=comm, output_path=output_dir)
+logger.log_message(f'Running on {comm.size} threads.')
 logger.log_event(message=' Config Init and folder set up done!')
+# Save the full config to yaml file:
+if(comm.rank == 0):
+    with open(dga_config.output_path + "/config.yaml", "w+") as file:
+        yaml = YAML()
+        yaml.dump(dga_config.as_dict(), file)
+        file.close()
+
 
 if (comm.rank == 0): plotting.default_g2_plots(g2_dens,g2_magn,output_dir)
 

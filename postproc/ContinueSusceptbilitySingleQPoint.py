@@ -82,7 +82,7 @@ u = config['system']['u']/t_scal
 niw = config['box_sizes']['niw_core']
 nk = config['box_sizes']['nk']
 iw = mf.w(beta=beta, n=niw)
-#q_grid = config.q_grid
+#_q_grid = config._q_grid
 q_grid = bz.KGrid(nk=nk)
 
 # Cut negative frequencies:

@@ -46,11 +46,11 @@ def default_vrg_plots(vrg_q_dens, vrg_q_magn, vrg_dens, vrg_magn, dga_config: co
 
     vrg_q_dens_sum = np.mean(vrg_q_dens, axis=0)
     vrg_q_magn_sum = np.mean(vrg_q_magn, axis=0)
-    plot_kx_ky(vrg_q_dens.reshape(dga_config.lattice_conf.q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core],
-               dga_config.lattice_conf.q_grid.kx, dga_config.lattice_conf.q_grid.ky,
+    plot_kx_ky(vrg_q_dens.reshape(dga_config.lattice._q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core],
+               dga_config.lattice._q_grid.kx, dga_config.lattice._q_grid.ky,
                pdir=output_dir, name='Vrg_dens_w0')
-    plot_kx_ky(vrg_q_magn.reshape(dga_config.lattice_conf.q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core],
-               dga_config.lattice_conf.q_grid.kx, dga_config.lattice_conf.q_grid.ky,
+    plot_kx_ky(vrg_q_magn.reshape(dga_config.lattice._q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core],
+               dga_config.lattice._q_grid.kx, dga_config.lattice._q_grid.ky,
                pdir=output_dir, name='Vrg_magn_w0')
 
     iwn_plot = niv_core

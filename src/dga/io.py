@@ -112,13 +112,13 @@ def uniquify(path=None):
 def spin_fermion_contributions_output(dga_conf=None, sigma_dga_contributions=None):
     output_path = dga_conf.nam.output_path_sp
     np.save(output_path + 'dga_sde_sf_contrib.npy', sigma_dga_contributions, allow_pickle=True)
-    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['magn_re'], plot_dir=output_path, kgrid=dga_conf.k_grid,
+    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['magn_re'], plot_dir=output_path, kgrid=dga_conf._k_grid,
                           do_shift=True, name='magn_spre')
-    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['magn_im'], plot_dir=output_path, kgrid=dga_conf.k_grid,
+    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['magn_im'], plot_dir=output_path, kgrid=dga_conf._k_grid,
                           do_shift=True, name='magn_spim')
-    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['dens_re'], plot_dir=output_path, kgrid=dga_conf.k_grid,
+    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['dens_re'], plot_dir=output_path, kgrid=dga_conf._k_grid,
                           do_shift=True, name='dens_spre')
-    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['dens_im'], plot_dir=output_path, kgrid=dga_conf.k_grid,
+    plotting.plot_siwk_fs(siwk=sigma_dga_contributions['dens_im'], plot_dir=output_path, kgrid=dga_conf._k_grid,
                           do_shift=True, name='dens_spim')
 
 
@@ -223,7 +223,7 @@ def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_con
 
         np.save(me_conf.output_path_nl_s + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), sigma_cont,
                 allow_pickle=True)
-        # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, k_grid=k_grid,
+        # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, _k_grid=_k_grid,
         #                             output_path=me_conf.output_path_nl_s,
         #                             name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
 
@@ -259,14 +259,14 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
 # def load_and_construct_pairing_vertex(dga_conf:config.DgaConfig = None, comm=None):
 #
 #     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',
-#                                                                                 mpi_size=comm.size, nq=dga_conf.q_grid.nk_irr,
+#                                                                                 mpi_size=comm.size, nq=dga_conf._q_grid.nk_irr,
 #                                                                                 niv_pp=dga_conf.box.niv_pp)
 #
 #     chi_lambda = np.load(dga_conf.nam.output_path + 'chi_lambda.npy', allow_pickle=True).item()
 #
 #     # Create f_magn:
-#     f1_magn = dga_conf.q_grid.irrk2fbz(mat=f1_magn)
-#     f2_magn = dga_conf.q_grid.irrk2fbz(mat=f2_magn)
+#     f1_magn = dga_conf._q_grid.irrk2fbz(mat=f1_magn)
+#     f2_magn = dga_conf._q_grid.irrk2fbz(mat=f2_magn)
 #     chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['magn'].mat, niv_pp=dga_conf.box.niv_pp)
 #     f_magn = f1_magn + (1 + dga_conf.sys.u * chi_magn_lambda_pp) * f2_magn
 #     del f1_magn, f2_magn, chi_magn_lambda_pp
@@ -274,8 +274,8 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
 #     plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_magn_loc')
 #
 #     # Create f_dens:
-#     f1_dens = dga_conf.q_grid.irrk2fbz(mat=f1_dens)
-#     f2_dens = dga_conf.q_grid.irrk2fbz(mat=f2_dens)
+#     f1_dens = dga_conf._q_grid.irrk2fbz(mat=f1_dens)
+#     f2_dens = dga_conf._q_grid.irrk2fbz(mat=f2_dens)
 #     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_lambda['dens'].mat, niv_pp=dga_conf.box.niv_pp)
 #     f_dens = f1_dens + (1 - dga_conf.sys.u * chi_dens_lambda_pp) * f2_dens
 #     del f1_dens, f2_dens, chi_dens_lambda_pp, chi_lambda
@@ -311,19 +311,19 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
 #
 #         plotting.plot_vertex_vvp(vertex=gamma_trip.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='gamma_trip_loc')
 #
-#         g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf.q_grid, hr=dga_conf.sys.hr,
+#         g_generator = twop.GreensFunctionGenerator(beta=dga_conf.sys.beta, kgrid=dga_conf._q_grid, hr=dga_conf.sys.hr,
 #                                                    sigma=sigma)
 #         mu_dga = g_generator.adjust_mu(n=dga_conf.sys.n, mu0=dga_conf.sys.mu_dmft)
 #         gk_dga = g_generator.generate_gk(mu=mu_dga, qiw=[0, 0, 0, 0], niv=dga_conf.box.niv_pp).gk
 #
 #         gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=el_conf.gap0_sing['k'], v_type=el_conf.gap0_sing['v'],
-#                                 k_grid=dga_conf.q_grid.grid)
-#         norm = dga_conf.q_grid.nk_tot * dga_conf.sys.beta
+#                                 _k_grid=dga_conf._q_grid.grid)
+#         norm = dga_conf._q_grid.nk_tot * dga_conf.sys.beta
 #         powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
 #                                                   n_eig=el_conf.n_eig)
 #
 #         gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=el_conf.gap0_trip['k'], v_type=el_conf.gap0_trip['v'],
-#                                 k_grid=dga_conf.q_grid.grid)
+#                                 _k_grid=dga_conf._q_grid.grid)
 #         powiter_trip = eq.EliashberPowerIteration(gamma=gamma_trip, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
 #                                                   n_eig=el_conf.n_eig)
 #
@@ -341,8 +341,8 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
 #
 #         for i in range(len(powiter_sing.gap)):
 #             plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=dga_conf.nam.output_path_el, name='sing_{}'.format(i),
-#                                        kgrid=dga_conf.q_grid,
+#                                        kgrid=dga_conf._q_grid,
 #                                        do_shift=True)
 #             plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=dga_conf.nam.output_path_el, name='trip_{}'.format(i),
-#                                        kgrid=dga_conf.q_grid,
+#                                        kgrid=dga_conf._q_grid,
 #                                        do_shift=True)

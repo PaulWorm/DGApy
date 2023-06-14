@@ -84,7 +84,7 @@ def load_data_dga(path, fname,**kwargs):
 
     beta = config.sys.beta
     niw = config.box.niw_core
-    nk = config.k_grid.nk
+    nk = config._k_grid.nk
     iw = mf.w(beta, niw)
     iw = iw[niw:niw + ncut]
     chi = chi[..., niw:niw + ncut]

@@ -40,10 +40,10 @@ def find_zeros(mat):
     vertices = np.array(vertices,dtype=int)
     return vertices
 
-# def get_bz_quarter(k_grid,n=0):
+# def get_bz_quarter(_k_grid,n=0):
 #     ''' return the nth quarter of the Brillouin zone'''
 #     if(n == 0):
-        # return k_grid[]
+        # return _k_grid[]
 
 def two_dimensional_square_symmetries():
     return ['x-inv', 'y-inv', 'x-y-sym']
@@ -486,20 +486,20 @@ if __name__ == '__main__':
     plt.pcolormesh(k_grid.fbz2irrk[..., 0], cmap='terrain')
     plt.show()
     # nk = 8
-    # k_grid = KGrid(nk=(nk,nk,1))
+    # _k_grid = KGrid(nk=(nk,nk,1))
     #
-    # ek = np.cos(k_grid.kx[:,None,None]) + np.cos(k_grid.ky[None,:,None])
+    # ek = np.cos(_k_grid.kx[:,None,None]) + np.cos(_k_grid.ky[None,:,None])
     #
     # import matplotlib.pyplot as plt
     # plt.imshow(ek[:,:,0], cmap='RdBu', origin='lower')
     # plt.show()
     #
-    # ek_shift = k_grid.shift_mat_by_q(mat=ek,q=(np.pi,np.pi,0))
-    # ek_shift_2 = k_grid.shift_mat_by_pi(mat=ek)
+    # ek_shift = _k_grid.shift_mat_by_q(mat=ek,q=(np.pi,np.pi,0))
+    # ek_shift_2 = _k_grid.shift_mat_by_pi(mat=ek)
     #
     # plt.imshow(ek_shift[:,:,0], cmap='RdBu', origin='lower')
     # plt.show()
     #
     # plt.imshow(ek_shift_2[:,:,0], cmap='RdBu', origin='lower')
     # plt.show()
-    # mat = k_grid.add_q_to_kgrid(q=(0,0,0))
+    # mat = _k_grid.add_q_to_kgrid(q=(0,0,0))

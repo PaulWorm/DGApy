@@ -85,7 +85,7 @@ class MpiLogger():
     def log_message(self, message):
         if(self.is_root):
             f = open(self.logfile,'a')
-            f.write(self.local_time() + ':' + message + '\n')
+            f.write(self.local_time() + ' : ' + message + '\n')
             f.close()
         else:
             pass

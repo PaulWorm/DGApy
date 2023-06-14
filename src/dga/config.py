@@ -39,8 +39,23 @@ class ConfigBase():
                 setattr(self,key,obj.__dict__[key])
         return None
 
-    def as_dict(self):
-        return self.__dict__
+    def as_dict(self,obj=None):
+        if obj is None:
+            obj = self
+        if not hasattr(obj, "__dict__"):
+            return obj
+        result = {}
+        for key, val in obj.__dict__.items():
+            if key.startswith("_"):
+                continue
+            element = []
+            if isinstance(val, list):
+                for item in val:
+                    element.append(self.as_dict(item))
+            else:
+                element = self.as_dict(val)
+            result[key] = element
+        return result
 
     def set(self,obj):
         if(type(obj) == dict):
@@ -103,8 +118,8 @@ class LatticeConfig(ConfigBase):
         self.nk = tuple(self.nk)
         self.nq = tuple(self.nq)
 
-        self.k_grid = bz.KGrid(self.nk,self.symmetries)
-        self.q_grid = bz.KGrid(self.nq,self.symmetries)
+        self._k_grid = bz.KGrid(self.nk, self.symmetries)
+        self._q_grid = bz.KGrid(self.nq, self.symmetries)
 
 
         if(self.tb_params is None):
@@ -308,7 +323,7 @@ class DgaConfig(ConfigBase):
     '''
 
     box_sizes: BoxSizes = None
-    lattice_conf: LatticeConfig = None
+    lattice: LatticeConfig = None
     output_path: str = None
     do_poly_fitting: bool = False
 
@@ -350,7 +365,7 @@ class DgaConfig(ConfigBase):
     def build_lattice_conf(self, conf_file):
 
         if ('lattice' in conf_file):
-            self.lattice_conf = LatticeConfig(conf_file['lattice'])
+            self.lattice = LatticeConfig(conf_file['lattice'])
         else:
             raise ValueError('Lattice must be contained in the config file.')
 

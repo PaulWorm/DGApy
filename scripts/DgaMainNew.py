@@ -161,8 +161,8 @@ chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2)
 
 # %%
 # if (comm.rank == 0):
-#     chi_lad_dens_loc = np.mean(q_grid.map_irrk2fbz(chi_lad_dens), axis=(0, 1, 2))
-#     chi_lad_magn_fbz = q_grid.map_irrk2fbz(chi_lad_magn)
+#     chi_lad_dens_loc = np.mean(_q_grid.map_irrk2fbz(chi_lad_dens), axis=(0, 1, 2))
+#     chi_lad_magn_fbz = _q_grid.map_irrk2fbz(chi_lad_magn)
 #     chi_lad_magn_loc = np.mean(chi_lad_magn_fbz, axis=(0, 1, 2))
 #     # plotting.chi_checks(chi_lad_dens_loc, chi_lad_magn_loc, giwk_dmft, output_dir, verbose=False, do_plot=True,name='q_core')
 #
@@ -171,7 +171,7 @@ chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2)
 #     plt.colorbar()
 #     plt.show()
 #
-#     gchi_lad_dens_fbz = np.mean(q_grid.map_irrk2fbz(gchi_lad_dens), axis=(0, 1, 2))
+#     gchi_lad_dens_fbz = np.mean(_q_grid.map_irrk2fbz(gchi_lad_dens), axis=(0, 1, 2))
 #     plt.figure()
 #     plt.imshow(gchi_lad_dens_fbz[niw_core, ...].real, cmap='RdBu')
 #     plt.colorbar()
@@ -239,8 +239,8 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(chi_lad_magn[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_lam_magn_kz0')
 
 # %% Non-local Schwinger-Dyson equation:
-# chi_lad_dens = q_grid.map_fbz2irrk(chi_lad_dens)
-# chi_lad_magn = q_grid.map_fbz2irrk(chi_lad_magn)
+# chi_lad_dens = _q_grid.map_fbz2irrk(chi_lad_dens)
+# chi_lad_magn = _q_grid.map_fbz2irrk(chi_lad_magn)
 full_q_list = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
 q_dupl = np.ones((np.shape(full_q_list)[0]))
 

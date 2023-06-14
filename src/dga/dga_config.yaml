@@ -20,7 +20,7 @@ dga:
 # Specify dmft input:
 dmft_input:
   type: "w2dyn"     # Input format; available: w2dyn, EDFermion
-  input_path: "../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/"        # Location of the files; default: "./"
+  input_path: "../../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/"        # Location of the files; default: "./"
   fname_1p: '1p-data.hdf5' # Name of the one-particle DMFT calculation; default: 1p-data.hdf5
   fname_2p: 'g4iw_sym.hdf5' # Name of the two-particle DMFT calculation; default: g4iw_sym.hdf5
 
@@ -33,9 +33,9 @@ poly_fitting:
 # Uses the ana_cont package of Josef Kaufmann (https://doi.org/10.1016/j.cpc.2022.108519)
 
 max_ent:
-  cont_g_loc: True   # Perform the continuation of the local Green's function; default: True 
-  cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
-  cont_g_nl: True   # Perform the continuation of the non-local Green's function; default: False
+  cont_g_loc: False   # Perform the continuation of the local Green's function; default: True
+  cont_s_nl: False    # Perform the continuation of the non-local self-energy; default: True
+  cont_g_nl: False   # Perform the continuation of the non-local Green's function; default: False
   nwr: 501           # Number of mesh points on the real frequency axis; default: 501
   wmax: 15           # Maximum frequency in the mesh
   use_preblur: True  # default: True

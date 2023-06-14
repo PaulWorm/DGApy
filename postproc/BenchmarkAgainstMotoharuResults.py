@@ -30,7 +30,7 @@ chi_dmft_magn = dmft_sde['chi_magn']
 
 niv = config['box_sizes']['niv_urange']
 iv = config['grids']['vn_urange']
-nk = config['grids']['k_grid'].nk[0]
+nk = config['grids']['_k_grid'].nk[0]
 sigma = dga_sde['sigma']
 hartree = config['dmft1p']['n'] * config['dmft1p']['u']/2
 sigma = np.roll(sigma, nk // 2, 0)

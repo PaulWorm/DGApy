@@ -137,7 +137,7 @@ nk = chi.shape[2:-1]
 n_band = chi.shape[0]
 
 iw = mf.w(beta=beta, n=niw)
-#q_grid = config.q_grid
+#_q_grid = config._q_grid
 
 # Cut negative frequencies:
 
@@ -238,8 +238,8 @@ np.save(out_dir + 'chi', s)
 np.save(out_dir + 'w', w)
 
 # plt.figure()
-# plt.plot(q_grid.kx[q_path.ikx])
-# plt.plot(q_grid.ky[q_path.iky])
+# plt.plot(_q_grid.kx[q_path.ikx])
+# plt.plot(_q_grid.ky[q_path.iky])
 # plt.savefig(out_dir + 'q_path.png'.format(err, use_preblur, bw, alpha_det), dpi=300)
 # plt.show()
 # plt.close()

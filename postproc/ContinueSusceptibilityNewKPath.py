@@ -104,8 +104,8 @@ elif(result=='chi0'):
     n = config.sys.n
     u = config.sys.u
     niw = config.box.niw_core
-    nk = config.k_grid.nk
-    q_grid = config.q_grid
+    nk = config._k_grid.nk
+    q_grid = config._q_grid
 elif(result=='adga'):
     import h5py
     hfile = h5py.File(input_path + 'adga.hdf5')
@@ -133,15 +133,15 @@ else:
     n = config.sys.n
     u = config.sys.u / t_scal
     niw = config.box.niw_core
-    nk = config.k_grid.nk
-    q_grid = config.q_grid
+    nk = config._k_grid.nk
+    q_grid = config._q_grid
 
 
 chi = add_lambda(chi,lambda_add)
 if ncut == -1:
     ncut = niw
 iw = mf.w(beta=beta, n=niw)
-#q_grid = config.q_grid
+#_q_grid = config._q_grid
 
 # Cut negative frequencies:
 chi = chi[..., niw+nmin:niw+nmin+ncut]

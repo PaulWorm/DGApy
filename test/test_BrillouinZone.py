@@ -84,14 +84,14 @@ if __name__ == '__main__':
 
     #
     # nk = (3, 3, 1)
-    # k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
+    # _k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
     # hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
-    # ek = hamk.ek_3d(k_grid.grid, hr)
+    # ek = hamk.ek_3d(_k_grid.grid, hr)
     #
-    # ek_irrk = k_grid.map_fbz2irrk(ek)
-    # # print(ek_irrk - ek[k_grid.fbz2irrk].flatten())
-    # ek_b2fbz = k_grid.map_irrk2fbz(ek_irrk)
-    # count_fbz = k_grid.map_irrk2fbz(k_grid.irrk_count)
+    # ek_irrk = _k_grid.map_fbz2irrk(ek)
+    # # print(ek_irrk - ek[_k_grid.fbz2irrk].flatten())
+    # ek_b2fbz = _k_grid.map_irrk2fbz(ek_irrk)
+    # count_fbz = _k_grid.map_irrk2fbz(_k_grid.irrk_count)
     #
     # import matplotlib.pyplot as plt
     #
@@ -112,12 +112,12 @@ if __name__ == '__main__':
     # # plt.show()
     #
     # plt.figure()
-    # plt.pcolormesh(k_grid.kx, k_grid.ky, count_fbz[:, :, 0], cmap='RdBu')
+    # plt.pcolormesh(_k_grid.kx, _k_grid.ky, count_fbz[:, :, 0], cmap='RdBu')
     # plt.colorbar()
     # plt.show()
     #
     # plt.figure()
-    # plt.pcolormesh(k_grid.kx, k_grid.ky, k_grid.fbz2irrk[:, :, 0], cmap='RdBu')
+    # plt.pcolormesh(_k_grid.kx, _k_grid.ky, _k_grid.fbz2irrk[:, :, 0], cmap='RdBu')
     # plt.colorbar()
     # plt.show()
     #

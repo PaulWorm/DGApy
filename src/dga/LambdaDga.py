@@ -452,8 +452,8 @@ def lambda_dga(config=None, verbose=False, outpfunc=None):
     lc_use_only_positive = config['options']['lc_use_only_positive']
     analyse_spin_fermion_contributions = config['options']['analyse_spin_fermion_contributions']
 
-    k_grid = config['grids']['k_grid']
-    q_grid = config['grids']['q_grid']
+    k_grid = config['grids']['_k_grid']
+    q_grid = config['grids']['_q_grid']
 
     nq_tot = q_grid.nk_tot
     nq_irr = q_grid.nk_irr

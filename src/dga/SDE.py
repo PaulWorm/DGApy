@@ -164,16 +164,16 @@ def rpa_sde(dga_conf=None, chir: fp.LocalSusceptibility = None, g_generator: two
     for iqw in range(qiw_grid.shape[0]):
         wn = qiw_grid[iqw][-1]
         q_ind = qiw_grid[iqw][0]
-        q = dga_conf.q_grid.irr_kmesh[:, q_ind]
+        q = dga_conf._q_grid.irr_kmesh[:, q_ind]
         qiw = np.append(q, wn)
         gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
-        sigma += chir.mat[iqw, None] * gkpq.gk * dga_conf.q_grid.irrk_count[q_ind]
+        sigma += chir.mat[iqw, None] * gkpq.gk * dga_conf._q_grid.irrk_count[q_ind]
         if (wn != 0):
             qiw = np.append(q, -wn)
             gkpq = g_generator.generate_gk_plus(mu=mu, qiw=qiw, niv=niv_giw)
-            sigma += np.conj(chir.mat[iqw, None]) * gkpq.gk * dga_conf.q_grid.irrk_count[q_ind]
+            sigma += np.conj(chir.mat[iqw, None]) * gkpq.gk * dga_conf._q_grid.irrk_count[q_ind]
 
-    sigma = u_r ** 2 / (2. * chir.beta) * 1. / (dga_conf.q_grid.nk_tot) * sigma
+    sigma = u_r ** 2 / (2. * chir.beta) * 1. / (dga_conf._q_grid.nk_tot) * sigma
     return sigma
 
 

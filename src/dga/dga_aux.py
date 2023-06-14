@@ -32,7 +32,7 @@ class DgaDataManager():
 
     @property
     def kgrid(self):
-        return self.config.k_grid
+        return self.config._k_grid
 
     @property
     def mu_dmft(self):

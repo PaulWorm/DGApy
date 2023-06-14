@@ -18,7 +18,7 @@ output_path = input_path
 
 config = np.load(input_path + 'config.npy', allow_pickle=True).item()
 dmft1p = config['dmft1p']
-k_grid = config['grids']['k_grid']
+k_grid = config['grids']['_k_grid']
 k_grid = bz.KGrid(nk=config['box_sizes']['nk'])
 niv_urange = config['box_sizes']['niv_urange']
 hr = config['system']['hr']
@@ -45,6 +45,6 @@ plotting.plot_giwk_fs(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_
 plotting.plot_giwk_qpd(giwk=gf_dict_mu_dmft['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga_mu_dft')
 
 # # DGA with adjusted mu:
-# plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga',
+# plotting.plot_giwk_fs(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=_k_grid, do_shift=True, name='dga',
 #                       ind_fs=ind_fs_mu_dmft)
-# plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=k_grid, do_shift=True, name='dga')
+# plotting.plot_giwk_qpd(giwk=gf_dict['gk'], plot_dir=output_path, kgrid=_k_grid, do_shift=True, name='dga')
