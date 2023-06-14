@@ -53,7 +53,7 @@ g2_dens, g2_magn = io.load_g2(dga_config.box_sizes,dmft_input)
 
 # ------------------------------------------- DEFINE THE OUTPUT DIRECTORY --------------------------------------------------------
 # Define output directory:
-output_dir = dga_config.input_path + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
+output_dir = dga_config.input_path + '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
                                                                                                  dga_config.lattice.nk_tot,
                                                                                                  dga_config.lattice.nq_tot,
                                                                                                  dga_config.box_sizes.niw_core,
@@ -372,4 +372,5 @@ if ('max_ent' in conf_file):
 
 
 # End program:
+logger.log_event('Completed DGA run!')
 comm.Barrier()

@@ -29,7 +29,7 @@ class MpiDistributor():
 
         if(output_path is not None):
             # Read/write file. Create if it does not exist.
-            self.fname = output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
+            self.fname = output_path +'/' +name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
             self.file = h5py.File(self.fname,'a')
             self.file.close()
 
