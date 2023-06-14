@@ -9,7 +9,7 @@ lattice:
   symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
   type: "t_tp_tpp" # Specify type of lattice
   tb_params: [1, -0.2, 0.1] # tight-binding parameters. Alternative to load an Hr file will follow later.
-  nk: [32, 32, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+  nk: [12, 12, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
 
 # Sepcify DGA settings and details:
 dga:
@@ -34,7 +34,7 @@ poly_fitting:
 
 max_ent:
   cont_g_loc: False   # Perform the continuation of the local Green's function; default: True
-  cont_s_nl: False    # Perform the continuation of the non-local self-energy; default: True
+  cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
   cont_g_nl: False   # Perform the continuation of the non-local Green's function; default: False
   nwr: 501           # Number of mesh points on the real frequency axis; default: 501
   wmax: 15           # Maximum frequency in the mesh
