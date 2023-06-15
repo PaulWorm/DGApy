@@ -160,8 +160,7 @@ siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, 
                                         dmft_input['u'],
                                         dmft_input['n'],
                                         niv_shell=dga_config.box_sizes.niv_shell)
-del vrg_magn, vrg_dens
-gc.collect()
+
 
 # Create checks of the self-energy:
 if (comm.rank == 0):
@@ -193,7 +192,7 @@ vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc = fp.get_vrg_and_c
                                                                                                               my_q_list,
                                                                                                               niv_shell=dga_config.box_sizes.niv_shell,
                                                                                                               logger=logger)
-del gamma_magn, gamma_dens, F_dc
+del gamma_magn, gamma_dens, F_dc, vrg_magn, vrg_dens
 gc.collect()
 logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 logger.log_memory_usage()
