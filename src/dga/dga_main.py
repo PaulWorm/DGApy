@@ -242,8 +242,14 @@ vrg_q_magn = vrg_q_magn[mpi_dist_fbz.my_slice, ...]
 
 # %%
 kernel_dc = mpi_distributor.allgather(kernel_dc)
-kernel_dc = dga_config.lattice._q_grid.map_irrk2fbz(kernel_dc, 'list')[mpi_dist_fbz.my_slice, ...]
+kernel_dc = dga_config.lattice._q_grid.map_irrk2fbz(kernel_dc, 'list')
+if(comm.rank == 0):
+    kernel_dc_mesh = dga_config.lattice._q_grid.map_fbz_list2mesh(kernel_dc)
+    plotting.plot_kx_ky(kernel_dc_mesh[:,:,0,dga_config.box_sizes.niw_core,dga_config.box_sizes.niv_core],
+                        dga_config.lattice._q_grid.kx,dga_config.lattice._q_grid.ky,
+                        pdir=dga_config.output_path, name='dc_kernel')
 
+kernel_dc = kernel_dc[mpi_dist_fbz.my_slice, ...]
 siwk_dga = fp.schwinger_dyson_full_q(vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc,
                                      giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'], my_full_q_list, g2_magn.wn,
                                      np.prod(dga_config.lattice._q_grid.nk), 0, logger)

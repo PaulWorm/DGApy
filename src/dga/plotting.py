@@ -455,7 +455,6 @@ def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w
     plt.tight_layout()
     fig.suptitle(name)
     plt.savefig(output_path + '{}.png'.format(name))
-    plt.show()
     plt.close()
 
 
