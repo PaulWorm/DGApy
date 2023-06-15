@@ -95,6 +95,10 @@ class BoxSizes(ConfigBase):
         '''Number of fermionic Matsubaras for the singlet/triplet vertex'''
         return np.min((self.niw_core // 2, self.niv_core // 2))
 
+    @property
+    def wn(self):
+        return mf.wn(self.niw_core)
+
 class LatticeConfig(ConfigBase):
     '''
         Contains the information about the Lattice and Brillouin zone

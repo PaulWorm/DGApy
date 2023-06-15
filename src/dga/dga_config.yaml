@@ -34,7 +34,7 @@ poly_fitting:
 
 max_ent:
   cont_g_loc: False   # Perform the continuation of the local Green's function; default: True
-  cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
+  cont_s_nl: False    # Perform the continuation of the non-local self-energy; default: True
   cont_g_nl: False   # Perform the continuation of the non-local Green's function; default: False
   nwr: 501           # Number of mesh points on the real frequency axis; default: 501
   wmax: 15           # Maximum frequency in the mesh

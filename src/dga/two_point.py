@@ -10,6 +10,7 @@ import scipy.linalg
 import scipy.optimize
 import dga.brillouin_zone as bz
 
+
 # -------------------------------------------- SELF ENERGY ----------------------------------------------------------
 
 def get_smom0(u, n):

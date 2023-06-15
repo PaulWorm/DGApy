@@ -201,13 +201,14 @@ def max_ent_irrk(mat, k_grid, me_conf: config.MaxEntConfig, comm, bw):
 
 def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_conf: config.MaxEntConfig, comm, bw, logger=None,
                                 name=''):
-    sigma = k_grid.map_fbz2irrk(sigma.get_siw(niv=me_conf.n_fit) - sigma.smom0)
+    hartree = sigma.smom0
+    sigma = k_grid.map_fbz2irrk(sigma.get_siw(niv=me_conf.n_fit) - hartree)
     sigma_cont = max_ent_irrk(sigma, k_grid, me_conf, comm, bw)
     if (logger is not None): logger.log_cpu_time(task=' for {} MaxEnt done left are plots and gather '.format(name))
 
     if (logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
     if (comm.rank == 0):
-        sigma_cont = k_grid.map_irrk2fbz(sigma_cont)
+        sigma_cont = k_grid.map_irrk2fbz(sigma_cont) + hartree # re-add the hartree term
 
         plotting.plot_cont_fs(output_path=me_conf.output_path_nl_s,
                               name='swk_fermi_surface_' + name + '_cont_w0-bw{}'.format(bw),

@@ -2,8 +2,10 @@
 # Handels the logging of program progress.
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
+import os
 import time
 import datetime
+import psutil
 # ----------------------------------------------- CLASSES --------------------------------------------------------------
 
 class real_time():
@@ -73,6 +75,16 @@ class MpiLogger():
         return self.comm.rank == 0
 
 
+    def log_memory_usage(self):
+        if(self.is_root):
+            f = open(self.logfile,'a')
+            process = psutil.Process(os.getpid())
+            mem = process.memory_full_info().uss/(1024.0**3)
+            message = f'RAM Used (GB): {mem}'
+            f.write(self.local_time() + ' : ' + message + '\n')
+            f.close()
+        else:
+            pass
 
     def log_event(self, message):
         if(self.is_root):
