@@ -372,6 +372,7 @@ if ('max_ent' in conf_file):
         for bw in me_conf.bw_dga:
             io.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice._k_grid, me_conf, comm, bw, logger=logger,
                                            name='siwk_dga')
+        logger.log_cpu_time(task=' MaxEnt Siwk ')
 #%%
 if ('max_ent' in conf_file):
     comm.barrier()
@@ -382,7 +383,7 @@ if ('max_ent' in conf_file):
         for bw in me_conf.bw_dga:
             io.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice._k_grid, me_conf, comm, bw, logger=logger,
                                            name='Giwk_dga')
-
+        logger.log_cpu_time(task=' MaxEnt Giwk ')
 
 # End program:
 logger.log_event('Completed DGA run!')

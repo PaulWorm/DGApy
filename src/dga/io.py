@@ -223,6 +223,7 @@ def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_con
 
         np.save(me_conf.output_path_nl_s + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), sigma_cont,
                 allow_pickle=True)
+    return None
         # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, _k_grid=_k_grid,
         #                             output_path=me_conf.output_path_nl_s,
         #                             name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
@@ -255,7 +256,7 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
         plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=green_cont, k_grid=k_grid,
                                     output_path=me_conf.output_path_nl_g,
                                     name='gwk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
-
+    return None
 # def load_and_construct_pairing_vertex(dga_conf:config.DgaConfig = None, comm=None):
 #
 #     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',
