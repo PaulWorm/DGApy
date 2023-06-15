@@ -348,7 +348,6 @@ if (dga_config.do_poly_fitting):
 # --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
 # %%
 # Broadcast bw_opt_dga
-comm.Barrier()
 if ('max_ent' in conf_file):
     max_ent_dir = output_dir + '/MaxEnt/'
     if (comm.rank == 0 and not os.path.exists(max_ent_dir)): os.mkdir(max_ent_dir)
@@ -360,11 +359,16 @@ if ('max_ent' in conf_file):
         io.max_ent_loc_bw_range(g_loc_dmft,me_conf, name='dmft')
 
         g_loc_dga  = giwk_dga.g_loc
-        me_conf.bw_dga.append(io.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga'))
+        bw_opt_dga = io.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga')
+
         logger.log_cpu_time(task=' MaxEnt local ')
-#%%
-if ('max_ent' in conf_file):
-    comm.barrier()
+    else:
+        bw_opt_dga = None
+
+    bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
+    me_conf.bw_dga.append(bw_opt_dga)
+
+
     if me_conf.cont_s_nl:
         me_conf.output_path_nl_s = output_dir + '/MaxEntSiwk/'
         if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_s)): os.mkdir(me_conf.output_path_nl_s)
@@ -373,9 +377,7 @@ if ('max_ent' in conf_file):
             io.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice._k_grid, me_conf, comm, bw, logger=logger,
                                            name='siwk_dga')
         logger.log_cpu_time(task=' MaxEnt Siwk ')
-#%%
-if ('max_ent' in conf_file):
-    comm.barrier()
+
     if me_conf.cont_g_nl:
         me_conf.output_path_nl_g = output_dir + '/MaxEntGiwk/'
         if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
