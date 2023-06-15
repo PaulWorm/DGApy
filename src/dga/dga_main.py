@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ------------------------------------------------ COMMENTS ------------------------------------------------------------
 # This code performs a DGA calculation starting from DMFT quantities as io.
 # For the original paper look at: PHYSICAL REVIEW B 75, 045118 (2007)
@@ -250,19 +251,25 @@ if(comm.rank == 0):
                         pdir=dga_config.output_path, name='dc_kernel')
 
 kernel_dc = kernel_dc[mpi_dist_fbz.my_slice, ...]
+print(f'Rank {comm.rank} is doing {mpi_dist_fbz.my_slice}')
 siwk_dga = fp.schwinger_dyson_full_q(vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc,
                                      giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'], my_full_q_list, g2_magn.wn,
                                      np.prod(dga_config.lattice._q_grid.nk), 0, logger)
 
 logger.log_cpu_time(task=' Non-local SDE done. ')
 
-# %%
-hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
-siwk_dga += mf.cut_v(dmft_input['siw'], dga_config.box_sizes.niv_core) - mf.cut_v(siw_sde_full, dga_config.box_sizes.niv_core)
+# siw_dga = dga_config.lattice._q_grid.k_mean(siwk_dga,type='fbz-mesh')
 
+# plotting.sigma_loc_checks([siw_dga],
+#                           ['DGA-loc',], dmft_input['beta'],
+#                           output_dir, verbose=False, do_plot=True, name=f'dga_loc_rank_{comm.rank}',
+#                           xmax=dga_config.box_sizes.niv_core)
+# %%
 # Collect from the different cores:
 siwk_dga = mpi_dist_fbz.allreduce(siwk_dga)
 
+siwk_dga += mf.cut_v(dmft_input['siw'], dga_config.box_sizes.niv_core) - mf.cut_v(siw_sde_full, dga_config.box_sizes.niv_core)
+hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 siwk_dga += hartree
 # %%
 
@@ -380,3 +387,4 @@ if ('max_ent' in conf_file):
 # End program:
 logger.log_event('Completed DGA run!')
 comm.Barrier()
+mpi.Finalize()
