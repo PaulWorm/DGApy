@@ -98,7 +98,8 @@ class LocalFourPoint():
         self.beta = beta
         if (wn is None):
             self.is_full_w = True
-            assert np.size(matrix.shape[0]) % 2 == 1, 'wn is not bosonic. Probably w is not the 0th dimension of the input matrix.'
+            assert np.size(
+                matrix.shape[0]) % 2 == 1, 'wn is not bosonic. Probably w is not the 0th dimension of the input matrix.'
         else:
             self._wn = wn
             self.is_full_w = False
@@ -229,19 +230,21 @@ def gchir_from_gamob2_wn(gammar, gchi0):
 
 
 def get_urange(obj: LocalFourPoint, val, niv_urange):
-    return LocalFourPoint(channel=obj.channel, beta=obj.beta, wn=obj.wn,  matrix=mf.v_vp_urange(obj.mat, val, niv_urange))
+    return LocalFourPoint(channel=obj.channel, beta=obj.beta, wn=obj.wn, matrix=mf.v_vp_urange(obj.mat, val, niv_urange))
 
 
-def Fob2_from_gamob2_urange(gammar: LocalFourPoint,gchi0,u):
+def Fob2_from_gamob2_urange(gammar: LocalFourPoint, gchi0, u):
     ''' F = Gamma [1 - Gamma X_0]^(-1)'''
     u_r = get_ur(u, channel=gammar.channel)
     niv_core = gammar.niv
-    niv_full = np.shape(gchi0)[-1]//2
+    niv_full = np.shape(gchi0)[-1] // 2
     niv_urange = niv_full - niv_core
-    gamma_urange = get_urange(gammar, u_r/gammar.beta**2, niv_urange)
-    eye = np.eye(niv_full*2)
-    Fob2 = np.array([gamma_urange.mat[iwn] @ np.linalg.inv(eye + gamma_urange.mat[iwn]*gchi0[iwn][:,None]) for iwn in gammar.wn_lin])
+    gamma_urange = get_urange(gammar, u_r / gammar.beta ** 2, niv_urange)
+    eye = np.eye(niv_full * 2)
+    Fob2 = np.array(
+        [gamma_urange.mat[iwn] @ np.linalg.inv(eye + gamma_urange.mat[iwn] * gchi0[iwn][:, None]) for iwn in gammar.wn_lin])
     return LocalFourPoint(channel=gammar.channel, beta=gammar.beta, wn=gammar.wn, matrix=Fob2)
+
 
 # def vrg_from_gam(gam: LocalFourPoint = None, chi0_inv: LocalBubble = None, u=None):
 #     u_r = get_ur(u, channel=gam.channel)
@@ -318,15 +321,16 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalB
         return vrg_core, chir_core
 
 
-def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell = 0, niv_asympt=None):
+def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell=0,
+                                               niv_asympt=None):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
     '''
-    if(niv_asympt is None): niv_asympt = 2*niv_shell
+    if (niv_asympt is None): niv_asympt = 2 * niv_shell
     niv_core = gamma_r.niv
     # Create necessary bubbles
-    niv_full = niv_core+niv_shell
+    niv_full = niv_core + niv_shell
     chi0_core = gchi0_gen.get_chi0(niv_core)
     chi0_urange = gchi0_gen.get_chi0(niv_full)
     chi0_shell = gchi0_gen.get_chi0_shell(niv_full, niv_asympt)
@@ -338,8 +342,9 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
     chi_aux_core = gchi_aux.contract_legs()
 
     # Compute the physical susceptibility:
-    chi_urange = chi_phys_urange(chi_aux_core, chi0_core, chi0_urange, u, gamma_r.channel).real # take real part to avoid numerical noise
-    chi_asympt = chi_phys_asympt(chi_urange, chi0_urange, chi0_asympt).real # take real part to avoid numerical noise
+    chi_urange = chi_phys_urange(chi_aux_core, chi0_core, chi0_urange, u,
+                                 gamma_r.channel).real  # take real part to avoid numerical noise
+    chi_asympt = chi_phys_asympt(chi_urange, chi0_urange, chi0_asympt).real  # take real part to avoid numerical noise
 
     # Compute the fermion-boson vertex:
     vrg = vrg_from_gchi_aux(gchi_aux, gchi0_core, chi_urange, chi_asympt, u)
@@ -348,23 +353,25 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
 
     return vrg, chi_asympt
 
-def get_F_dc_asympt(vrg: LocalThreePoint, gchi_aux, chi_phys, gchi0,  u):
+
+def get_F_dc_asympt(vrg: LocalThreePoint, gchi_aux, chi_phys, gchi0, u):
     ''' Has an additional beta**2 compared to Motoharus paper due to different definitions of Chi0. '''
     u_r = get_ur(u, vrg.channel)
-    eye = np.eye(vrg.niv*2)
-    mat = np.array([vrg.beta**2* 1. / gchi0[i][:,None] * (eye - gchi_aux.mat[i] * 1/gchi0[i][None,:])
-                    + u_r * (1-u_r *chi_phys[i]) * vrg.mat[i][:,None] * vrg.mat[i][None,:] for i in vrg.wn_lin])
-    return LocalFourPoint(channel=vrg.channel,matrix=mat,beta=vrg.beta,wn=vrg.wn)
+    eye = np.eye(vrg.niv * 2)
+    mat = np.array([vrg.beta ** 2 * 1. / gchi0[i][:, None] * (eye - gchi_aux.mat[i] * 1 / gchi0[i][None, :])
+                    + u_r * (1 - u_r * chi_phys[i]) * vrg.mat[i][:, None] * vrg.mat[i][None, :] for i in vrg.wn_lin])
+    return LocalFourPoint(channel=vrg.channel, matrix=mat, beta=vrg.beta, wn=vrg.wn)
 
-def get_vrg_and_chir_tilde_from_chir_uasympt(chir: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell = 0, niv_asympt=None):
+
+def get_vrg_and_chir_tilde_from_chir_uasympt(chir: LocalFourPoint, gchi0_gen: bub.LocalBubble, u, niv_shell=0, niv_asympt=None):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
     '''
-    if(niv_asympt is None): niv_asympt = 2*niv_shell
+    if (niv_asympt is None): niv_asympt = 2 * niv_shell
     niv_core = chir.niv
     # Create necessary bubbles
-    niv_full = niv_core+niv_shell
+    niv_full = niv_core + niv_shell
     chi0_core = gchi0_gen.get_chi0(niv_core)
     chi0_urange = gchi0_gen.get_chi0(niv_full)
     chi0_shell = gchi0_gen.get_chi0_shell(niv_full, niv_asympt)
@@ -383,6 +390,7 @@ def get_vrg_and_chir_tilde_from_chir_uasympt(chir: LocalFourPoint, gchi0_gen: bu
     vrg = vrg_from_gchi_aux(gchi_aux, gchi0_core, chi_urange, chi_asympt, u)
 
     return vrg, chi_asympt
+
 
 #
 #
@@ -424,10 +432,11 @@ def gchi_aux_core(gchir: LocalFourPoint, u):
     mat = np.array([np.linalg.inv((np.linalg.inv(gchir.mat[i]) - u_r / gchir.beta ** 2)) for i in gchir.wn_lin])
     return LocalFourPoint(matrix=mat, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
 
+
 # def gchi_aux_asympt(gchi_aux,):
-    # u_r_mat = np.ones_like(gchir.mat[0]) * u_r
-    # chir = gchir.contract_legs()
-    # mat = np.array([mat[i] + mat[i] @ u_r_mat @ mat[i]/(1 - u_r * chir[i]) for i in gchir.wn_lin])
+# u_r_mat = np.ones_like(gchir.mat[0]) * u_r
+# chir = gchir.contract_legs()
+# mat = np.array([mat[i] + mat[i] @ u_r_mat @ mat[i]/(1 - u_r * chir[i]) for i in gchir.wn_lin])
 
 
 def gchi_aux_core_from_gammar(gammar: LocalFourPoint, gchi0_core, u):
@@ -439,7 +448,8 @@ def gchi_aux_core_from_gammar(gammar: LocalFourPoint, gchi0_core, u):
 def gchi_aux_asympt(gchi_aux: LocalFourPoint, chi_urange, chi_asympt, u):
     u_r = get_ur(u, gchi_aux.channel)
     u_mat = np.ones_like(gchi_aux.mat) * u
-    mat = gchi_aux.mat + gchi_aux.mat @ u_mat @ gchi_aux.mat * (-(1 - u_r * chi_urange) + (1 - u_r * chi_urange) ** 2 / (1 - u_r * chi_asympt))
+    mat = gchi_aux.mat + gchi_aux.mat @ u_mat @ gchi_aux.mat * (
+                -(1 - u_r * chi_urange) + (1 - u_r * chi_urange) ** 2 / (1 - u_r * chi_asympt))
     return LocalFourPoint(matrix=mat, channel=gchi_aux.channel, beta=gchi_aux.beta, wn=gchi_aux.wn)
 
 
@@ -547,7 +557,7 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
 def schwinger_dyson_shell(chir_phys, giw, beta, u, n_shell, n_core, wn, channel):
     u_r = get_ur(u, channel=channel)
     mat_grid = mf.wn_slices_shell(giw, n_shell=n_shell, n_core=n_core, wn=wn)
-    sigma_F = u / 2 * 1 / beta * np.sum((u* chir_phys[:, None]) * mat_grid, axis=0)
+    sigma_F = u / 2 * 1 / beta * np.sum((u * chir_phys[:, None]) * mat_grid, axis=0)
     return sigma_F
 
 
@@ -558,11 +568,13 @@ def schwinger_dyson_full(vrg_dens: LocalThreePoint, vrg_magn: LocalThreePoint, c
     hartree = twop.get_smom0(u, n)
     return hartree + siw_dens + siw_magn
 
+
 def schwinger_dyson_core_urange(vrg: LocalThreePoint, chi_phys, giw, u, niv_shell):
     siw_core = schwinger_dyson_vrg(vrg, chi_phys, giw, u)
-    if(niv_shell==0): return siw_core
+    if (niv_shell == 0):
+        return siw_core
     else:
-        siw_shell = schwinger_dyson_shell(chi_phys, giw, vrg.beta, u, niv_shell, vrg.niv, vrg.wn,vrg.channel)
+        siw_shell = schwinger_dyson_shell(chi_phys, giw, vrg.beta, u, niv_shell, vrg.niv, vrg.wn, vrg.channel)
         return mf.concatenate_core_asmypt(siw_core, siw_shell)
 
 
@@ -823,7 +835,8 @@ if __name__ == '__main__':
     # print(f'Numeric sum core: {1 / (2 * beta) * np.sum((chi_dens_core_centered + chi_magn_core_centered)).real}')
     print(f'Numeric sum tilde: {1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print(f'Numeric sum shell: {1 / (beta) * np.sum(chi_asmypt).real}')
-    print(f'Numeric sum full: {1 / (2 * beta) * np.sum(chi_asmypt).real + 1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
+    print(
+        f'Numeric sum full: {1 / (2 * beta) * np.sum(chi_asmypt).real + 1 / (2 * beta) * np.sum((chi_dens_tilde + chi_magn_tilde)).real}')
     print('--------------')
 
     plt.loglog(wn, (chi_dens_tilde + chi_magn_tilde).real, '-o', color='firebrick')
@@ -844,7 +857,8 @@ if __name__ == '__main__':
                color='cornflowerblue', ms=4,
                markeredgecolor='k', alpha=0.8)
     # ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_sde_m, n_plot, n_start).real, 'o', color='indigo',ms=3,markeredgecolor='k',alpha=0.8)
-    ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).real, 'h', color='firebrick', ms=3,
+    ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).real, 'h', color='firebrick',
+               ms=3,
                markeredgecolor='firebrick', alpha=0.8)
     # ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde_m, n_plot, n_start).real, 'p', color='seagreen', ms=1,markeredgecolor='k',alpha=0.8)
     # ax[0].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_F, n_plot, n_start).real, 'h', color='firebrick', ms=4)
@@ -854,7 +868,8 @@ if __name__ == '__main__':
                color='cornflowerblue', ms=4,
                markeredgecolor='k', alpha=0.8)
     # ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_sde_m, n_plot, n_start).imag, 'o', color='indigo',ms=3,markeredgecolor='k',alpha=0.8)
-    ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h', color='firebrick', ms=3,
+    ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h', color='firebrick',
+               ms=3,
                markeredgecolor='firebrick', alpha=0.8)
     # ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_tilde_m, n_plot, n_start).imag, 'p', color='seagreen', ms=1,markeredgecolor='k',alpha=0.8)
     # ax[1].plot(mf.cut_v_1d_pos(vn, n_plot, n_start), mf.cut_v_1d_pos(siw_F, n_plot, n_start).imag, 'h', color='firebrick', ms=4)
@@ -867,10 +882,13 @@ if __name__ == '__main__':
     n_plot = 150
     fig, ax = plt.subplots(1, 1, figsize=(7, 3.5), dpi=500)
     ax = np.atleast_1d(ax)
-    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(dmft_input_1['siw'], n_plot, n_start).imag, '-p', color='cornflowerblue')
-    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h', color='firebrick', ms=3,
+    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(dmft_input_1['siw'], n_plot, n_start).imag, '-p',
+                   color='cornflowerblue')
+    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(siw_tilde, n_plot, n_start).imag, 'h',
+                   color='firebrick', ms=3,
                    markeredgecolor='firebrick', alpha=0.8)
-    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start), -mf.cut_v_1d_pos(1 / mf.v(beta, n_shell_giw) * tp.get_smom1(u, n), n_plot, n_start), '-',
+    ax[0].semilogy(mf.cut_v_1d_pos(vn, n_plot, n_start),
+                   -mf.cut_v_1d_pos(1 / mf.v(beta, n_shell_giw) * tp.get_smom1(u, n), n_plot, n_start), '-',
                    color='k')
     plt.tight_layout()
     plt.show()
