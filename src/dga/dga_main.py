@@ -390,7 +390,7 @@ if ('max_ent' in conf_file):
         bw_opt_dga = None
 
     bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
-    me_conf.bw_dga.append(bw_opt_dga)
+    # me_conf.bw_dga.append(bw_opt_dga)
 
 
     if me_conf.cont_s_nl:
@@ -417,3 +417,4 @@ if ('max_ent' in conf_file):
 logger.log_event('Completed DGA run!')
 comm.Barrier()
 mpi.Finalize()
+sys.exit('Exit after completion!')

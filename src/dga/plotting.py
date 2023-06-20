@@ -392,12 +392,13 @@ def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None,
     plt.close()
 
 
-def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid=None, lw=1, verbose=False):
+def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid: bz.KGrid=None, lw=1,
+                     verbose=False):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+    siwk_re_fs = np.squeeze(siwk_re_fs)
+    siwk_im_fs = np.squeeze(siwk_im_fs)
+    siwk_Z = np.squeeze(siwk_Z)
 
-    siwk_re_fs = np.squeeze(bz.shift_mat_by_pi(mat=siwk_re_fs, nk=k_grid.nk))
-    siwk_im_fs = np.squeeze(bz.shift_mat_by_pi(mat=siwk_im_fs, nk=k_grid.nk))
-    siwk_Z = np.squeeze(bz.shift_mat_by_pi(mat=siwk_Z, nk=k_grid.nk))
     norm = MidpointNormalize(midpoint=0, vmin=siwk_re_fs.min(), vmax=siwk_re_fs.max())
     im = ax[0].imshow(siwk_re_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[0], im=im)
