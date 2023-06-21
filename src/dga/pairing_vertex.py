@@ -3,12 +3,8 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
-import w2dyn_aux_dga
 import numpy as np
-import TwoPoint_old as tp
-import four_point as fp
 import matsubara_frequencies as mf
-import sys,os
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------

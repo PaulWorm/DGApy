@@ -123,7 +123,7 @@ gc.collect()
 logger.log_cpu_time(task=' Data loading completed. ')
 logger.log_memory_usage()
 
-# ------------------------------------------- Extract the irreducible Vertex --------------------------------------------------------
+# ------------------------------------------- Extract the irreducible Vertex -----------------------------------------------------
 # Create Bubble generator:
 bubble_gen = bub.LocalBubble(wn=dga_config.box_sizes.wn, giw=giwk_dmft)
 gchi0_core = bubble_gen.get_gchi0(dga_config.box_sizes.niv_core)

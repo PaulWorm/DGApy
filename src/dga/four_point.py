@@ -203,7 +203,7 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
 def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, gamma_magn: lfp.LocalFourPoint,
                                                F_dc,vrg_magn_loc, chi_magn_loc,
                                                bubble_gen: bub.LocalBubble, u, my_q_list,
-                                               niv_shell=0, logger=None):
+                                               niv_shell=0, logger=None, do_pairing_vertex=False):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
@@ -238,6 +238,9 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, g
     chi_lad_dens = chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
 
     vrg_q_dens = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_dens, u, gamma_dens.channel)
+
+    # if(do_pairing_vertex):
+
 
     # Magnetic channel:
     gchiq_aux = get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core, u)
