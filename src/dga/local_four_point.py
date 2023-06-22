@@ -333,7 +333,8 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
     niv_full = niv_core + niv_shell
     chi0_core = gchi0_gen.get_chi0(niv_core)
     chi0_urange = gchi0_gen.get_chi0(niv_full)
-    chi0_shell = gchi0_gen.get_chi0_shell(niv_full, niv_asympt)
+    # chi0_shell = gchi0_gen.get_chi0_shell(niv_full, niv_asympt)
+    chi0_shell = gchi0_gen.get_asymptotic_correction(niv_full)
     chi0_asympt = chi0_urange + chi0_shell
     gchi0_core = gchi0_gen.get_gchi0(niv_core)
 

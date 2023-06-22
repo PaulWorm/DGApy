@@ -88,7 +88,7 @@ class BoxSizes(ConfigBase):
 
     @property
     def niv_asympt(self):
-        return self.niv_core + self.niw_core * 2
+        return self.niv_full + self.niw_core * 2
 
     @property
     def niv_pp(self):
