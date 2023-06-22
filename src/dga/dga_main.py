@@ -417,4 +417,7 @@ if ('max_ent' in conf_file):
 logger.log_event('Completed DGA run!')
 comm.Barrier()
 mpi.Finalize()
+local_vars = list(locals().items())
+for var, obj in local_vars:
+    print(var, sys.getsizeof(obj) * 1e-9)
 sys.exit('Exit after completion!')

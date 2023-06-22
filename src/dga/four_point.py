@@ -73,7 +73,14 @@ def get_kernel(vrg, chi_phys, u, channel):
 
 def get_kernel_dc(F, gchi0_core, u, channel):
     u_r = get_ur(u, channel)
-    return u_r * np.sum(gchi0_core[:, :, None, :] * F[None, ...], axis=-1)  # 1/beta is contained in the SDE
+    nq = np.shape(gchi0_core)[0]
+    niw = np.shape(gchi0_core)[1]
+    niv = np.shape(gchi0_core)[-1]
+    kernel = np.zeros((nq, niw, niv), dtype=complex)
+    for iq in range(nq):
+        for iw in range(niw):
+            kernel[iq, iw, :] = u_r * np.sum(gchi0_core[iq, iw, None, :] * F[None, iw, ...], axis=-1)
+    return kernel # 1/beta is contained in the SDE
 
 
 def schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot):
@@ -201,7 +208,7 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
 
 
 def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, gamma_magn: lfp.LocalFourPoint,
-                                               F_dc,vrg_magn_loc, chi_magn_loc,
+                                               F_dc, vrg_magn_loc, chi_magn_loc,
                                                bubble_gen: bub.LocalBubble, u, my_q_list,
                                                niv_shell=0, logger=None, do_pairing_vertex=False):
     '''
@@ -215,21 +222,19 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, g
     # Build the different non-local Bubbles:
     gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
     chi0_q_urange = 1 / beta ** 2 * np.sum(gchi0_q_urange, axis=-1)
-    gchi0_q_core = mf.cut_v(gchi0_q_urange,niv_cut=niv_core,axes=-1)
+    gchi0_q_core = mf.cut_v(gchi0_q_urange, niv_cut=niv_core, axes=-1)
     chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
-    chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list)
-    chi0q_shell_dc = bubble_gen.get_asymptotic_correction_q(niv_full,my_q_list)
+    chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
+    chi0q_shell_dc = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
     if (logger is not None): logger.log_cpu_time(task=' Bubbles constructed. ')
 
     # double-counting kernel:
-    if(logger is not None):
-        if(logger.is_root):
-            F_dc.plot(pdir=logger.out_dir + '/',name='F_dc')
+    if (logger is not None):
+        if (logger.is_root):
+            F_dc.plot(pdir=logger.out_dir + '/', name='F_dc')
 
     kernel_dc = mf.cut_v(get_kernel_dc(F_dc.mat, gchi0_q_urange, u, 'magn'), niv_core, axes=(-1,))
     if (logger is not None): logger.log_cpu_time(task=' DC kernel constructed. ')
-
-
 
     # Density channel:
     gchiq_aux = get_gchir_aux_from_gammar_q(gamma_dens, gchi0_q_core, u)
@@ -241,7 +246,6 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, g
 
     # if(do_pairing_vertex):
 
-
     # Magnetic channel:
     gchiq_aux = get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core, u)
     chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
@@ -250,7 +254,8 @@ def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, g
 
     u_r = get_ur(u, gamma_magn.channel)
     # 1/beta**2 since we want F/beta**2
-    kernel_dc += u_r/gamma_magn.beta * (1 - u_r * chi_magn_loc[None,:,None])*vrg_magn_loc.mat[None,:,:]*chi0q_shell_dc[:,:,None]
+    kernel_dc += u_r / gamma_magn.beta * (1 - u_r * chi_magn_loc[None, :, None]) * vrg_magn_loc.mat[None, :, :] * chi0q_shell_dc[
+                                                                                                                  :, :, None]
     vrg_q_magn = vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
 
     return vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc
@@ -280,7 +285,6 @@ def get_sign(channel):
         raise ValueError('Channel not in [dens/magn].')
 
 
-
 def chir_from_g2_wn(g2=None, ggv=None, beta=None, iwn=0):
     if (ggv is not None and iwn == 0):
         chir = beta * (g2 - 2. * ggv)
@@ -288,10 +292,11 @@ def chir_from_g2_wn(g2=None, ggv=None, beta=None, iwn=0):
         chir = beta * g2
     return chir
 
+
 def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
     full = u / (beta * beta) + np.diag(1. / gchi0_urange)
     inv_full = np.linalg.inv(full)
-    inv_core = mf.cut_v(inv_full, niv_core,axes=(-2,-1))
+    inv_core = mf.cut_v(inv_full, niv_core, axes=(-2, -1))
     core = np.linalg.inv(inv_core)
     chigr_inv = np.linalg.inv(gchir)
     return -(core - chigr_inv - u / (beta * beta))
@@ -301,7 +306,6 @@ def local_gchi_aux_from_gammar_wn(gammar=None, gchi0=None, beta=1.0, u=1.0):
     gchi0_inv = np.diag(1. / gchi0)
     chi_aux_inv = gchi0_inv + gammar - u / (beta * beta)
     return np.linalg.inv(chi_aux_inv)
-
 
 
 def local_vertex_inverse_bse_wn(gamma=None, chi0=None, u_r=None, beta=None):
@@ -317,6 +321,7 @@ def local_vertex_inverse_bse(gamma=None, chi0=None, u=None):
     u_r = get_ur(u=u, channel=gamma.channel)
     return np.array(
         [local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.wn_lin])
+
 
 def get_ggv(giw=None, niv_ggv=-1):
     niv = giw.shape[0] // 2

@@ -1,15 +1,15 @@
 # Set Boxsizes:
 box_sizes:
-  niw_core: 30      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
-  niv_core: 30      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
-  niv_shell: 200    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
+  niw_core: 50      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
+  niv_core: 50      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
+  niv_shell: 500    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
 
 # Specify the lattice: [mandatory]
 lattice:
   symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
   type: "t_tp_tpp" # Specify type of lattice
   tb_params: [1, -0.2, 0.1] # tight-binding parameters. Alternative to load an Hr file will follow later.
-  nk: [12, 12, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+  nk: [8, 8, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
 
 # Sepcify DGA settings and details:
 dga:
