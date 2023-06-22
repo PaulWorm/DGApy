@@ -110,6 +110,30 @@ class MpiDistributor():
         self.comm.Allgatherv(rank_result,[tot_result, self.sizes * other_dims])
         return tot_result
 
+    def gather(self, rank_result=None, root=0):
+        ''' Gather numpy array from ranks. '''
+        tot_shape = (self.ntasks,) + rank_result.shape[1:]
+        tot_result = np.empty(tot_shape, rank_result.dtype)
+        other_dims = np.prod(rank_result.shape[1:])
+        self.comm.Gatherv(rank_result, [tot_result, self.sizes * other_dims], root=root)
+        return tot_result
+
+    def scatter(self, full_data=None, root=0):
+        ''' Scatter full_data among ranks using the first dimension. '''
+        if(full_data is not None):
+            rest_shape = np.shape(full_data)[1:]
+        else:
+            rest_shape = None
+        rest_shape = self.comm.bcast(rest_shape,root)
+        rank_shape = (self.my_size,) + rest_shape
+        rank_data = np.empty(rank_shape, dtype=complex)
+        self.comm.Scatterv(full_data,rank_data,root=root)
+        return rank_data
+
+    def bcast(self,data,root=0):
+        ''' Broadcast data to all ranks. '''
+        return self.comm.bcast(data,root=root)
+
     def allreduce(self, rank_result = None):
         tot_result = np.zeros(np.shape(rank_result), dtype=rank_result.dtype)
         self.comm.Allreduce(rank_result, tot_result)

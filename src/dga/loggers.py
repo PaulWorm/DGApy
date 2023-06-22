@@ -6,6 +6,7 @@ import os
 import time
 import datetime
 import psutil
+import resource
 # ----------------------------------------------- CLASSES --------------------------------------------------------------
 
 class real_time():
@@ -78,11 +79,16 @@ class MpiLogger():
     def log_memory_usage(self):
         if(self.is_root):
             f = open(self.logfile,'a')
-            process = psutil.Process(os.getpid())
-            mem = process.memory_full_info().uss/(1024.0**3)
-            message = f'RAM Used (GB): {mem}'
+            mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
+            message = f'Estimated RAM used by root (GB): {mem}'
             f.write(self.local_time() + ' : ' + message + '\n')
             f.close()
+        # elif(self.comm.size > 1 and self.comm.rank == 1):
+        #     f = open(self.logfile,'a')
+        #     mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
+        #     message = f'Estimated RAM used by other ranks (GB): {mem}'
+        #     f.write(self.local_time() + ' : ' + message + '\n')
+        #     f.close()
         else:
             pass
 

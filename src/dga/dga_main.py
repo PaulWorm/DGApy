@@ -52,16 +52,16 @@ dga_config = config.DgaConfig(conf_file)
 # %%
 # --------------------------------------------------- LOAD THE INPUT -------------------------------------------------------------
 dmft_input = io.load_1p_data(dga_config.input_type, dga_config.input_path, dga_config.fname_1p, dga_config.fname_2p)
-g2_dens, g2_magn = io.load_g2(dga_config.box_sizes,dmft_input)
+g2_dens, g2_magn = io.load_g2(dga_config.box_sizes, dmft_input)
 
 # ------------------------------------------- DEFINE THE OUTPUT DIRECTORY --------------------------------------------------------
 # Define output directory:
 output_dir = dga_config.input_path + '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type,
-                                                                                                 dga_config.lattice.nk_tot,
-                                                                                                 dga_config.lattice.nq_tot,
-                                                                                                 dga_config.box_sizes.niw_core,
-                                                                                                 dga_config.box_sizes.niv_core,
-                                                                                                 dga_config.box_sizes.niv_shell)
+                                                                                                  dga_config.lattice.nk_tot,
+                                                                                                  dga_config.lattice.nq_tot,
+                                                                                                  dga_config.box_sizes.niw_core,
+                                                                                                  dga_config.box_sizes.niv_core,
+                                                                                                  dga_config.box_sizes.niv_shell)
 # %%
 hr = dga_config.lattice.set_hr()
 
@@ -76,7 +76,7 @@ logger.log_message(f'Running on {comm.size} threads.')
 logger.log_memory_usage()
 logger.log_event(message=' Config Init and folder set up done!')
 # Save the full config to yaml file:
-if(comm.rank == 0):
+if (comm.rank == 0):
     with open(dga_config.output_path + "/config.yaml", "w+") as file:
         yaml = YAML()
         yaml.dump(dga_config.as_dict(), file)
@@ -86,8 +86,7 @@ if(comm.rank == 0):
         yaml.dump(conf_file, file)
         file.close()
 
-
-if (comm.rank == 0): plotting.default_g2_plots(g2_dens,g2_magn,output_dir)
+if (comm.rank == 0): plotting.default_g2_plots(g2_dens, g2_magn, output_dir)
 
 # Build Green's function and susceptibility:
 ek = hamk.ek_3d(dga_config.lattice._k_grid.grid, hr)
@@ -99,7 +98,8 @@ if (dga_config.do_poly_fitting):
     poly_fit_dir = output_dir + '/PolyFits/'
     if (comm.rank == 0): os.mkdir(poly_fit_dir)
     if comm.rank == 0:
-        io.poly_fit(giwk_dmft.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice._k_grid, dga_config.n_fit, dga_config.o_fit,
+        io.poly_fit(giwk_dmft.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice._k_grid, dga_config.n_fit,
+                    dga_config.o_fit,
                     name='Giwk_dmft_poly_cont_',
                     output_path=poly_fit_dir)
 
@@ -107,12 +107,12 @@ if (dga_config.do_poly_fitting):
 if ('max_ent' in conf_file):
     max_ent_dir = output_dir + '/MaxEnt/'
     if (comm.rank == 0 and not os.path.exists(max_ent_dir)): os.mkdir(max_ent_dir)
-    me_conf = config.MaxEntConfig(t=hr[0,0],beta=dmft_input['beta'],config_dict=conf_file['max_ent'],
+    me_conf = config.MaxEntConfig(t=hr[0, 0], beta=dmft_input['beta'], config_dict=conf_file['max_ent'],
                                   output_path_loc=max_ent_dir)
 
     if comm.rank == 0 and me_conf.cont_g_loc:
         g_loc_dmft = giwk_dmft.g_loc
-        io.max_ent_loc_bw_range(g_loc_dmft,me_conf, name='dmft')
+        io.max_ent_loc_bw_range(g_loc_dmft, me_conf, name='dmft')
 
 gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
 gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
@@ -135,7 +135,7 @@ gc.collect()
 logger.log_cpu_time(task=' Gamma-loc finished. ')
 logger.log_memory_usage()
 if (comm.rank == 0):
-    plotting.default_gamma_plots(gamma_dens,gamma_magn,output_dir,dga_config.box_sizes,dmft_input['beta'])
+    plotting.default_gamma_plots(gamma_dens, gamma_magn, output_dir, dga_config.box_sizes, dmft_input['beta'])
     np.save(output_dir + '/gamma_dens.npy', gamma_dens.mat)
     np.save(output_dir + '/gamma_magn.npy', gamma_magn.mat)
 
@@ -160,7 +160,6 @@ siw_sde_full = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, 
                                         dmft_input['u'],
                                         dmft_input['n'],
                                         niv_shell=dga_config.box_sizes.niv_shell)
-
 
 # Create checks of the self-energy:
 if (comm.rank == 0):
@@ -198,12 +197,13 @@ logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 logger.log_memory_usage()
 # logger.log_message(f'Mem consumption of vgr_q_dens: {dga.util.mem(vrg_q_dens)}')
 # %% Collect the results from the different cores:
-chi_lad_dens = mpi_distributor.allgather(rank_result=chi_lad_dens)
-chi_lad_magn = mpi_distributor.allgather(rank_result=chi_lad_magn)
+chi_lad_dens = mpi_distributor.gather(rank_result=chi_lad_dens, root=0)
+chi_lad_magn = mpi_distributor.gather(rank_result=chi_lad_magn, root=0)
 
 # Build the full Brillouin zone, which is needed for the lambda-correction:
-chi_lad_dens = dga_config.lattice._q_grid.map_irrk2fbz(chi_lad_dens)
-chi_lad_magn = dga_config.lattice._q_grid.map_irrk2fbz(chi_lad_magn)
+if (comm.rank == 0):
+    chi_lad_dens = dga_config.lattice._q_grid.map_irrk2fbz(chi_lad_dens)
+    chi_lad_magn = dga_config.lattice._q_grid.map_irrk2fbz(chi_lad_magn)
 # %%
 
 if (comm.rank == 0):
@@ -220,9 +220,10 @@ if (comm.rank == 0):
 
 # %% Lambda-corrected susceptibility:
 
-chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn = lc.lambda_correction(chi_lad_dens, chi_lad_magn, dmft_input['beta'],
-                                                                            chi_dens, chi_magn,
-                                                                            type=dga_config.lambda_corr)
+if (comm.rank == 0):
+    chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn = lc.lambda_correction(chi_lad_dens, chi_lad_magn, dmft_input['beta'],
+                                                                                chi_dens, chi_magn,
+                                                                                type=dga_config.lambda_corr)
 
 # %%
 if (comm.rank == 0):
@@ -250,41 +251,45 @@ if (comm.rank == 0): io.fit_and_plot_oz(output_dir, dga_config.lattice._q_grid)
 
 # %% Non-local Schwinger-Dyson equation:
 # collect vrg vertices:
-vrg_q_dens = mpi_distributor.allgather(rank_result=vrg_q_dens)
-vrg_q_magn = mpi_distributor.allgather(rank_result=vrg_q_magn)
+vrg_q_dens = mpi_distributor.gather(rank_result=vrg_q_dens)
+vrg_q_magn = mpi_distributor.gather(rank_result=vrg_q_magn)
 
-vrg_q_dens = dga_config.lattice._q_grid.map_irrk2fbz(vrg_q_dens, shape='list')
-vrg_q_magn = dga_config.lattice._q_grid.map_irrk2fbz(vrg_q_magn, shape='list')
+if(comm.rank == 0):
+    vrg_q_dens = dga_config.lattice._q_grid.map_irrk2fbz(vrg_q_dens, shape='list')
+    vrg_q_magn = dga_config.lattice._q_grid.map_irrk2fbz(vrg_q_magn, shape='list')
 
 # %%
 # Distribute the full fbz q-points to the different cores:
 full_q_list = np.array([dga_config.lattice._q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
 q_dupl = np.ones((np.shape(full_q_list)[0]))
 
-# Map object to core q-list:
-chi_lad_dens = dga_config.lattice._q_grid.map_fbz_mesh2list(chi_lad_dens)
-chi_lad_magn = dga_config.lattice._q_grid.map_fbz_mesh2list(chi_lad_magn)
-
 # Create new mpi-distributor for the full fbz:
-mpi_dist_fbz = mpi_aux.MpiDistributor(ntasks=dga_config.lattice._q_grid.nk_tot, comm=comm, output_path=output_dir + '/', name='FBZ')
+mpi_dist_fbz = mpi_aux.MpiDistributor(ntasks=dga_config.lattice._q_grid.nk_tot, comm=comm, output_path=output_dir + '/',
+                                      name='FBZ')
 my_full_q_list = full_q_list[mpi_dist_fbz.my_slice]
-chi_lad_dens = chi_lad_dens[mpi_dist_fbz.my_slice, ...]
-chi_lad_magn = chi_lad_magn[mpi_dist_fbz.my_slice, ...]
 
-vrg_q_dens = vrg_q_dens[mpi_dist_fbz.my_slice, ...]
-vrg_q_magn = vrg_q_magn[mpi_dist_fbz.my_slice, ...]
-
-# %%
-kernel_dc = mpi_distributor.allgather(kernel_dc)
-kernel_dc = dga_config.lattice._q_grid.map_irrk2fbz(kernel_dc, 'list')
 if(comm.rank == 0):
+    # Map object to core q-list:
+    chi_lad_dens = dga_config.lattice._q_grid.map_fbz_mesh2list(chi_lad_dens)
+    chi_lad_magn = dga_config.lattice._q_grid.map_fbz_mesh2list(chi_lad_magn)
+
+chi_lad_dens = mpi_dist_fbz.scatter(chi_lad_dens)
+chi_lad_magn = mpi_dist_fbz.scatter(chi_lad_magn)
+
+vrg_q_dens = mpi_dist_fbz.scatter(vrg_q_dens)
+vrg_q_magn = mpi_dist_fbz.scatter(vrg_q_magn)
+
+
+#%%
+kernel_dc = mpi_distributor.gather(kernel_dc)
+if(comm.rank == 0):
+    kernel_dc = dga_config.lattice._q_grid.map_irrk2fbz(kernel_dc, 'list')
     kernel_dc_mesh = dga_config.lattice._q_grid.map_fbz_list2mesh(kernel_dc)
-    plotting.plot_kx_ky(kernel_dc_mesh[:,:,0,dga_config.box_sizes.niw_core,dga_config.box_sizes.niv_core],
-                        dga_config.lattice._q_grid.kx,dga_config.lattice._q_grid.ky,
+    plotting.plot_kx_ky(kernel_dc_mesh[:, :, 0, dga_config.box_sizes.niw_core, dga_config.box_sizes.niv_core],
+                        dga_config.lattice._q_grid.kx, dga_config.lattice._q_grid.ky,
                         pdir=dga_config.output_path, name='dc_kernel')
 
-kernel_dc = kernel_dc[mpi_dist_fbz.my_slice, ...]
-print(f'Rank {comm.rank} is doing {mpi_dist_fbz.my_slice}')
+kernel_dc = mpi_dist_fbz.scatter(kernel_dc)
 siwk_dga = fp.schwinger_dyson_full_q(vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc,
                                      giwk_dmft.g_full(), dmft_input['beta'], dmft_input['u'], my_full_q_list,
                                      dga_config.box_sizes.wn,
@@ -310,7 +315,6 @@ siwk_shell = np.ones(dga_config.lattice.nk)[:, :, :, None] * \
              mf.inv_cut_v(siwk_shell, niv_core=dga_config.box_sizes.niv_core, niv_shell=dga_config.box_sizes.niv_shell,
                           axes=-1)[0, 0, 0, :][None, None, None, :]
 siwk_dga = mf.concatenate_core_asmypt(siwk_dga, siwk_shell)
-
 
 if (comm.rank == 0):
     siwk_dga_shift = twop.SelfEnergy(siwk_dga, dmft_input['beta']).get_siw(dga_config.box_sizes.niv_full, pi_shift=True)
@@ -338,7 +342,8 @@ sigma_dga = twop.SelfEnergy(siwk_dga, dmft_input['beta'])
 giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full)
 
 if (comm.rank == 0):
-    giwk_shift = giwk_dga.g_full(pi_shift=False)[..., 0, giwk_dga.niv_full][:dga_config.lattice.nk[0] // 2, :dga_config.lattice.nk[1] // 2]
+    giwk_shift = giwk_dga.g_full(pi_shift=False)[..., 0, giwk_dga.niv_full][:dga_config.lattice.nk[0] // 2,
+                 :dga_config.lattice.nk[1] // 2]
     fs_ind = bz.find_zeros(giwk_shift)
     n_fs = np.shape(fs_ind)[0]
     fs_ind = fs_ind[:n_fs // 2]
@@ -351,12 +356,14 @@ if (comm.rank == 0):
     np.savetxt(output_dir + '/mu.txt', [[giwk_dga.mu, dmft_input['mu_dmft']]], header='mu_dga, mu_dmft', fmt='%1.6f')
 
     # Plots along Fermi-Luttinger surface:
-    plotting.plot_along_ind(sigma_dga.get_siw(dga_config.box_sizes.niv_full), fs_ind, pdir=output_dir, niv_plot_min=0, niv_plot=20, name='Sigma_{dga}')
+    plotting.plot_along_ind(sigma_dga.get_siw(dga_config.box_sizes.niv_full), fs_ind, pdir=output_dir, niv_plot_min=0,
+                            niv_plot=20, name='Sigma_{dga}')
 
 logger.log_cpu_time(task=' Giwk build and plotted. ')
 logger.log_memory_usage()
 mpi_distributor.delete_file()
 mpi_dist_fbz.delete_file()
+logger.log_memory_usage()
 # --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
 
 # %%
@@ -368,11 +375,10 @@ if (dga_config.do_poly_fitting):
                                    dga_config.o_fit, name='Siwk_poly_cont_', output_path=poly_fit_dir)
 
     if comm.rank == 0:
-        io.poly_fit(giwk_dga.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice._k_grid, dga_config.n_fit, dga_config.o_fit,
+        io.poly_fit(giwk_dga.g_full(pi_shift=True), dmft_input['beta'], dga_config.lattice._k_grid, dga_config.n_fit,
+                    dga_config.o_fit,
                     name='Giwk_dga_poly_cont_',
                     output_path=poly_fit_dir)
-
-
 
     logger.log_cpu_time(task=' Poly-fits ')
 
@@ -381,8 +387,8 @@ if (dga_config.do_poly_fitting):
 # Broadcast bw_opt_dga
 if ('max_ent' in conf_file):
     if comm.rank == 0 and me_conf.cont_g_loc:
-        g_loc_dga  = giwk_dga.g_loc
-        bw_opt_dga = io.max_ent_loc_bw_range(g_loc_dga,me_conf, name='dga')
+        g_loc_dga = giwk_dga.g_loc
+        bw_opt_dga = io.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga')
 
         logger.log_cpu_time(task=' MaxEnt local ')
         logger.log_memory_usage()
@@ -391,7 +397,6 @@ if ('max_ent' in conf_file):
 
     bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
     # me_conf.bw_dga.append(bw_opt_dga)
-
 
     if me_conf.cont_s_nl:
         me_conf.output_path_nl_s = output_dir + '/MaxEntSiwk/'
@@ -417,7 +422,4 @@ if ('max_ent' in conf_file):
 logger.log_event('Completed DGA run!')
 comm.Barrier()
 mpi.Finalize()
-local_vars = list(locals().items())
-for var, obj in local_vars:
-    print(var, sys.getsizeof(obj) * 1e-9)
 sys.exit('Exit after completion!')
