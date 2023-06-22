@@ -12,7 +12,7 @@ sys.path.append('../src/')
 sys.path.append(os.environ['HOME'] + "/Programs/dga/LambdaDga/src")
 import BrillouinZone as bz
 import EliashbergEquation as eq
-import TwoPoint as twop
+import TwoPoint_old as twop
 
 import matplotlib.pyplot as plt
 

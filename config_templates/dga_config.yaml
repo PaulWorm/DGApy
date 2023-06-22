@@ -1,0 +1,50 @@
+# Set Boxsizes:
+box_sizes:
+  niw_core: 30      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
+  niv_core: 30      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
+  niv_shell: 200    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
+
+# Specify the lattice: [mandatory]
+lattice:
+  symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
+  type: "t_tp_tpp" # Specify type of lattice
+  tb_params: [1, -0.2, 0.1] # tight-binding parameters. Alternative to load an Hr file will follow later.
+  nk: [16, 16, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+
+# Sepcify DGA settings and details:
+dga:
+  lambda_corr: "spch" # Type of lambda correction, i.e. which channels are renormalized. Available: ['spch']
+  gui: False # Specify whether a gui exists. Relevant for plotting.
+
+
+# Specify dmft input:
+dmft_input:
+  type: "w2dyn"     # Input format; available: w2dyn, EDFermion
+  input_path: "../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/"        # Location of the files; default: "./"
+  fname_1p: '1p-data.hdf5' # Name of the one-particle DMFT calculation; default: 1p-data.hdf5
+  fname_2p: 'g4iw_sym.hdf5' # Name of the two-particle DMFT calculation; default: g4iw_sym.hdf5
+
+# Specify poly-fitting parameters: [optional]
+poly_fitting:
+  n_fit: 4          # Number of Matsubara frequencies used for fit; default: 4
+  o_fit: 3          # Polynomial order used for the fit; default: 3
+
+# MaxEnt parameters: [optional]
+# Uses the ana_cont package of Josef Kaufmann (https://doi.org/10.1016/j.cpc.2022.108519)
+
+max_ent:
+  cont_g_loc: True   # Perform the continuation of the local Green's function; default: True 
+  cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
+  cont_g_nl: True   # Perform the continuation of the non-local Green's function; default: False
+  nwr: 501           # Number of mesh points on the real frequency axis; default: 501
+  wmax: 15           # Maximum frequency in the mesh
+  use_preblur: True  # default: True
+  alpha_det_method: 'chi2kink' # default: chi2kink
+  optimizer: 'newton' # default: newton
+  mesh_type: 'tan'   # Frequency mesh on the real axis; default: tan; Available: [lin, tan, lorentzian, hyperbolic]
+  err: 1e-3          # estimated error of the calculation.
+  n_fit: 60          # Number of frequencies used for the analytic continuation; default: beta*3+10
+  bw_fit_position: 10 # Fit position for estimating the optimal blur width; default: 10
+
+
+

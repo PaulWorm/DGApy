@@ -1,0 +1,25 @@
+# Set Boxsizes:
+box_sizes:
+  niw_core: 30      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
+  niv_core: 30      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
+  niv_shell: 200    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
+  nk: [16, 16, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+
+
+# Specify dmft input:
+dmft_input:
+  type: "w2dyn"     # Input format; available: w2dyn, EDFermion
+  path: "./"        # Location of the files; default: "./"
+
+# Specify poly-fitting parameters:
+poly_fitting:
+  n_fit: 4          # Number of Matsubara frequencies used for fit; default: 4
+  o_fit: 3          # Polynomial order used for the fit; default: 3
+
+# MaxEnt parameters:
+
+max_ent:
+  cont_g_loc: True   # Perform the continuation of the local Green's function; default: True
+  cont_s_nl: True    # Perform the continuation of the non-local self-energy; default: True
+
+
