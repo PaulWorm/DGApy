@@ -422,4 +422,3 @@ if ('max_ent' in conf_file):
 logger.log_event('Completed DGA run!')
 comm.Barrier()
 mpi.Finalize()
-sys.exit('Exit after completion!')

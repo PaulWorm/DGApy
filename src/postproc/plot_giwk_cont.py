@@ -14,36 +14,28 @@ from matplotlib import colors
 # Load data:
 base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.85' \
        '/LambdaDga_lc_spch_Nk19600_Nq19600_wcore30_vcore30_vshell500_2/'
-max_ent_dir = base_path + 'MaxEntSiwk/'
+max_ent_dir = base_path + 'MaxEntGiwk/'
+max_ent_dir_s = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
-save_fig = True 
-
-siwk_cont_file = 'swk_siwk_dga_cont_fbz_bw0.01.npy'
-
-swk = np.load(max_ent_dir+siwk_cont_file,allow_pickle=True)
-cut_off = 0.04
-swk[np.abs(swk.imag) < cut_off] = swk[np.abs(swk.imag) < cut_off].real - 1j * cut_off
+save_fig = True
 fname_conf = 'raw_config_file.yaml'
 conf_file = YAML().load(open(base_path + fname_conf))
 
 dga_config = config.DgaConfig(conf_file)
 me_config = config.MaxEntConfig(1,12.5,conf_file)
 
-# Build the Green's function on the Real-frequency axis:
+giwk_cont_file = 'gwk_Giwk_dga_cont_fbz_bw0.01.npy'
+siwk_cont_file = 'swk_siwk_dga_cont_fbz_bw0.01.npy'
+
+gwk = np.load(max_ent_dir+giwk_cont_file,allow_pickle=True)
+swk = np.load(max_ent_dir_s+siwk_cont_file,allow_pickle=True)
 mu0 = np.loadtxt(base_path+'mu.txt')[0]
 n_target = 0.85
 hr = dga_config.lattice.set_hr()
 ek = hamk.ek_3d(dga_config.lattice._k_grid.grid,hr)
 ek_shift = dga_config.lattice._k_grid.shift_mat_by_pi(ek)
-mu = rtp.adjust_mu(mu0,n_target,swk,me_config.mesh,ek)
 mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)
 
-
-gwk = rtp.get_giwk(mu,swk,me_config.mesh,ek)
-gwk0 = rtp.get_giwk(mu,swk*0,me_config.mesh,ek)
-
-np.save(pdir+'gwk_cont.npy',gwk,allow_pickle=True)
-np.savetxt(pdir+'mu_dga.txt',[mu,mu_lda],header='mu_dga mu_lda')
 gwk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(gwk)
 swk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(swk)
 #%%
@@ -94,7 +86,7 @@ dpi = 500
 alpha = 0.8
 ms = 4
 vmax = 1
-lw = 1
+lw =
 
 # Figure 1:
 fig = plt.figure(facecolor=bgc, figsize=(14.6 * cm2in, 7 * cm2in), dpi=dpi)
