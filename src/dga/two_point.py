@@ -54,6 +54,7 @@ def sigma_const(beta, delta, nk, v):
     return SelfEnergy(sigma, beta, pos=False)
 
 
+
 class SelfEnergy():
     ''' class to handle self-energies'''
 
@@ -149,7 +150,18 @@ class SelfEnergy():
             return mf.fermionic_full_nu_range(asympt)
 
 
-# -------------------------------------------- SELF ENERGY ----------------------------------------------------------
+def create_dga_siwk_with_dmft_as_asympt(siwk_dga,siwk_dmft: SelfEnergy, niv_shell):
+    nk = siwk_dga.shape[:3]
+    niv_core = siwk_dga.shape[-1]//2
+    niv_full = niv_core + niv_shell
+    siwk_shell = siwk_dmft.get_siw(niv_full)
+    siwk_shell = np.ones(nk)[:, :, :, None] * \
+                 mf.inv_cut_v(siwk_shell, niv_core=niv_core, niv_shell=niv_shell,axes=-1)[0, 0, 0, :][None, None, None, :]
+    siwk_dga = mf.concatenate_core_asmypt(siwk_dga, siwk_shell)
+    return SelfEnergy(siwk_dga, siwk_dmft.beta)
+
+
+# -------------------------------------------- GREENSFUNCTION ----------------------------------------------------------
 def get_gloc(iv=None, hk=None, siwk=None, mu_trial=None):
     """
     Calculate local Green's function by momentum integration.

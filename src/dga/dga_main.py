@@ -27,6 +27,7 @@ import dga.two_point as twop
 import dga.bubble as bub
 import dga.hk as hamk
 import dga.mpi_aux as mpi_aux
+import dga.pairing_vertex as pv
 import dga.util
 
 import dga.plot_specs
@@ -49,6 +50,11 @@ conf_file = comm.bcast(conf_file, root=0)
 lambda_correction_type = conf_file['dga']['lambda_corr']
 
 dga_config = config.DgaConfig(conf_file)
+
+if ('pairing' in conf_file):
+    pairing_config = config.EliashbergConfig(conf_file['pairing'])
+else:
+    pairing_config = None
 # %%
 # --------------------------------------------------- LOAD THE INPUT -------------------------------------------------------------
 dmft_input = io.load_1p_data(dga_config.input_type, dga_config.input_path, dga_config.fname_1p, dga_config.fname_2p)
@@ -181,21 +187,110 @@ mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice._q_grid.nk_ir
 my_q_list = dga_config.lattice._q_grid.irrk_mesh_ind.T[mpi_distributor.my_slice]
 # %%
 F_dc = lfp.Fob2_from_gamob2_urange(gamma_magn, gchi0_urange, dmft_input['u'])
-vrg_q_dens, vrg_q_magn, chi_lad_dens, chi_lad_magn, kernel_dc = fp.get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens,
-                                                                                                              gamma_magn,
-                                                                                                              F_dc,
-                                                                                                              vrg_magn,
-                                                                                                              chi_magn,
-                                                                                                              bubble_gen,
-                                                                                                              dmft_input['u'],
-                                                                                                              my_q_list,
-                                                                                                              niv_shell=dga_config.box_sizes.niv_shell,
-                                                                                                              logger=logger)
-del gamma_magn, gamma_dens, F_dc, vrg_magn, vrg_dens
+# #
+#     Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
+#     Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
+# #
+niv_full = dga_config.box_sizes.niv_full
+beta = dmft_input['beta']
+u = dmft_input['u']
+niv_core = dga_config.box_sizes.niv_core
+# Build the different non-local Bubbles:
+gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
+chi0_q_urange = 1 / beta ** 2 * np.sum(gchi0_q_urange, axis=-1)
+gchi0_q_core = mf.cut_v(gchi0_q_urange, niv_cut=niv_core, axes=-1)
+chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
+chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
+chi0q_shell_dc = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
+if (logger is not None): logger.log_cpu_time(task=' Bubbles constructed. ')
+
+# double-counting kernel:
+if (logger is not None):
+    if (logger.is_root):
+        F_dc.plot(pdir=logger.out_dir + '/', name='F_dc')
+
+kernel_dc = mf.cut_v(fp.get_kernel_dc(F_dc.mat, gchi0_q_urange, u, 'magn'), niv_core, axes=(-1,))
+if (logger is not None): logger.log_cpu_time(task=' DC kernel constructed. ')
+
+# Density channel:
+gchiq_aux = fp.get_gchir_aux_from_gammar_q(gamma_dens, gchi0_q_core, u)
+chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
+chi_lad_urange = fp.chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, gamma_dens.channel)
+chi_lad_dens = fp.chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
+
+vrg_q_dens = fp.vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_dens, u, gamma_dens.channel)
+
+if('pairing' in conf_file):
+    niv_pp = dga_config.box_sizes.niv_pp
+    omega = pv.get_omega_condition(niv_pp=niv_pp)
+    channel = 'dens'
+    mpi_distributor.open_file()
+    for i,iq in enumerate(mpi_distributor.my_tasks):
+        for j,iw in enumerate(dga_config.box_sizes.wn):
+            if np.abs(iw) < 2 * niv_pp:
+                condition = omega == iw
+
+                f1_slice, f2_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchiq_aux[i,j],
+                                                                              vrg=vrg_q_dens[i,j],
+                                                                              gchi0=gchi0_q_core[i,j],
+                                                                              beta=beta,
+                                                                              u_r=fp.get_ur(u,channel))
+                group = '/irrq{:03d}wn{:04d}/'.format(iq,iw)
+
+                mpi_distributor.file[group + f'f1_{channel}/'] = pv.get_pp_slice_4pt(mat=f1_slice, condition=condition,
+                                                                     niv_pp=niv_pp)
+                mpi_distributor.file[group + f'f2_{channel}/'] = pv.get_pp_slice_4pt(mat=f2_slice, condition=condition,
+                                                                     niv_pp=niv_pp)
+
+                mpi_distributor.file[group + 'condition/'] = condition
+    mpi_distributor.close_file()
+
+
+
+# Magnetic channel:
+gchiq_aux = fp.get_gchir_aux_from_gammar_q(gamma_magn, gchi0_q_core, u)
+chiq_aux = 1 / beta ** 2 * np.sum(gchiq_aux, axis=(-1, -2))
+chi_lad_urange = fp.chi_phys_from_chi_aux_q(chiq_aux, chi0_q_urange, chi0_q_core, u, gamma_magn.channel)
+chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange + chi0q_shell)
+
+u_r = fp.get_ur(u, gamma_magn.channel)
+# 1/beta**2 since we want F/beta**2
+kernel_dc += u_r / gamma_magn.beta * (1 - u_r * chi_magn[None, :, None]) * vrg_magn.mat[None, :, :] * chi0q_shell_dc[
+                                                                                                              :, :, None]
+vrg_q_magn = fp.vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
+
+if('pairing' in conf_file):
+    niv_pp = dga_config.box_sizes.niv_pp
+    omega = pv.get_omega_condition(niv_pp=niv_pp)
+    channel = 'magn'
+    mpi_distributor.open_file()
+    for i,iq in enumerate(mpi_distributor.my_tasks):
+        for j,iw in enumerate(dga_config.box_sizes.wn):
+            if np.abs(iw) < 2 * niv_pp:
+                condition = omega == iw
+
+                f1_slice, f2_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchiq_aux[i,j],
+                                                                              vrg=vrg_q_magn[i,j],
+                                                                              gchi0=gchi0_q_core[i,j],
+                                                                              beta=beta,
+                                                                              u_r=fp.get_ur(u,channel))
+                group = '/irrq{:03d}wn{:04d}/'.format(iq,iw)
+
+                mpi_distributor.file[group + f'f1_{channel}/'] = pv.get_pp_slice_4pt(mat=f1_slice, condition=condition,
+                                                                     niv_pp=niv_pp)
+                mpi_distributor.file[group + f'f2_{channel}/'] = pv.get_pp_slice_4pt(mat=f2_slice, condition=condition,
+                                                                     niv_pp=niv_pp)
+
+    mpi_distributor.close_file()
+
+
+del gamma_magn, gamma_dens, F_dc, vrg_magn, vrg_dens, gchiq_aux, chiq_aux
 gc.collect()
 logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 logger.log_memory_usage()
-# logger.log_message(f'Mem consumption of vgr_q_dens: {dga.util.mem(vrg_q_dens)}')
+
+
+
 # %% Collect the results from the different cores:
 chi_lad_dens = mpi_distributor.gather(rank_result=chi_lad_dens, root=0)
 chi_lad_magn = mpi_distributor.gather(rank_result=chi_lad_magn, root=0)
@@ -246,6 +341,41 @@ del chi_dens, chi_magn
 gc.collect()
 logger.log_cpu_time(task=' Lambda-correction done. ')
 logger.log_memory_usage()
+
+
+#%% Build the pairing vertex
+comm.Barrier()
+if(comm.rank == 0):
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_config.output_path, name='Q',
+                                                                                mpi_size=comm.size,
+                                                                                nq=dga_config.lattice._q_grid.nk_irr,
+                                                                                niv_pp=dga_config.box_sizes.niv_pp)
+    chi_magn_lambda_pp = pv.reshape_chi(chi_lad_magn,dga_config.box_sizes.niv_pp)
+    f1_magn = dga_config.lattice._q_grid.map_irrk2fbz(f1_magn,shape='mesh')
+    f2_magn = dga_config.lattice._q_grid.map_irrk2fbz(f2_magn,shape='mesh')
+    f_magn = f1_magn + (1 + dmft_input['u'] * chi_magn_lambda_pp) * f2_magn
+
+    chi_dens_lambda_pp = pv.reshape_chi(chi_lad_dens,dga_config.box_sizes.niv_pp)
+    f1_dens = dga_config.lattice._q_grid.map_irrk2fbz(f1_dens,shape='mesh')
+    f2_dens = dga_config.lattice._q_grid.map_irrk2fbz(f2_dens,shape='mesh')
+    f_dens = f1_dens + (1 - dmft_input['u'] * chi_dens_lambda_pp) * f2_dens
+
+    # Build singlet and triplet vertex:
+    f_sing = -1.5 * f_magn + 0.5 * f_dens
+    f_trip = -0.5 * f_magn - 0.5 * f_dens
+
+
+    f_sing_loc = dga_config.lattice._q_grid.k_mean(f_sing,'fbz-mesh')
+    f_trip_loc = dga_config.lattice._q_grid.k_mean(f_trip,'fbz-mesh')
+
+    lfp.plot_fourpoint_nu_nup(f_sing_loc,mf.vn(dga_config.box_sizes.niv_pp),pdir=dga_config.output_path,name='F_sing_pp')
+    lfp.plot_fourpoint_nu_nup(f_trip_loc,mf.vn(dga_config.box_sizes.niv_pp),pdir=dga_config.output_path,name='F_trip_pp')
+
+    np.save(output_dir + '/F_sing_pp.npy', f_sing)
+    np.save(output_dir + '/F_trip_pp.npy', f_trip)
+
+
+logger.log_cpu_time(task=' Pairing vertex saved to file. ')
 # %% Perform Ornstein-zernicke fitting of the susceptibility:
 if (comm.rank == 0): io.fit_and_plot_oz(output_dir, dga_config.lattice._q_grid)
 
@@ -309,15 +439,10 @@ siwk_dga += mf.cut_v(dmft_input['siw'], dga_config.box_sizes.niv_core) - mf.cut_
 hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 siwk_dga += hartree
 # %%
-
-siwk_shell = siwk_dmft.get_siw(dga_config.box_sizes.niv_full)
-siwk_shell = np.ones(dga_config.lattice.nk)[:, :, :, None] * \
-             mf.inv_cut_v(siwk_shell, niv_core=dga_config.box_sizes.niv_core, niv_shell=dga_config.box_sizes.niv_shell,
-                          axes=-1)[0, 0, 0, :][None, None, None, :]
-siwk_dga = mf.concatenate_core_asmypt(siwk_dga, siwk_shell)
-
+# Build the DGA Self-energy with Sigma_DMFT as asymptotic
+sigma_dga = twop.create_dga_siwk_with_dmft_as_asympt(siwk_dga,siwk_dmft, dga_config.box_sizes.niv_shell)
 if (comm.rank == 0):
-    siwk_dga_shift = twop.SelfEnergy(siwk_dga, dmft_input['beta']).get_siw(dga_config.box_sizes.niv_full, pi_shift=True)
+    siwk_dga_shift = sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=True)
     kx_shift = np.linspace(-np.pi, np.pi, dga_config.lattice.nk[0], endpoint=False)
     ky_shift = np.linspace(-np.pi, np.pi, dga_config.lattice.nk[1], endpoint=False)
 
@@ -332,13 +457,12 @@ if (comm.rank == 0):
                               ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
                               output_dir, verbose=False, do_plot=True, name='dga_loc_core', xmax=dga_config.box_sizes.niv_core)
 
-    np.save(output_dir + '/siwk_dga.npy', siwk_dga)
+    np.save(output_dir + '/siwk_dga.npy', sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=False))
 
 logger.log_cpu_time(task=' Siwk collected and plotted. ')
 logger.log_memory_usage()
 
 # %% Build the DGA Green's function:
-sigma_dga = twop.SelfEnergy(siwk_dga, dmft_input['beta'])
 giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full)
 
 if (comm.rank == 0):

@@ -55,6 +55,10 @@ class MpiDistributor():
         return self._comm.Get_rank()
 
     @property
+    def my_tasks(self):
+        return np.arange(0,self.ntasks)[self.my_slice]
+
+    @property
     def mpi_size(self):
         return self._comm.Get_size()
 

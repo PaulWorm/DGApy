@@ -279,13 +279,15 @@ class EliashbergConfig(ConfigBase):
         Contains the configuration parameters and flags for the Eliashberg routine.
     '''
 
-    def __init__(self, n_eig=2, k_sym='d-wave'):
+    def __init__(self, config_dict):
         self.gap0_sing = None  # Initial guess for the singlet gap function
         self.gap0_trip = None  # Initial guess for the triplet gap function
-        self.n_eig = n_eig  # Number of eigenvalues to be computed
-        self.k_sym = k_sym  # k-symmetry of the gap function
+        self.n_eig = 2  # Number of eigenvalues to be computed
+        self.k_sym = 'd-wave'  # k-symmetry of the gap function
         self.sym_sing = True  # Symmetrize the singlet pairing vertex
         self.sym_trip = True  # symmetrize the triplet pairing vertex
+
+        if(config_dict is not None): self.update_dict(**config_dict)
 
     @property
     def k_sym(self):
@@ -360,6 +362,8 @@ class DgaConfig(ConfigBase):
             if(not conf_file['dga']['gui']):
                 matplotlib.use('Agg') # non-gui backend. Particularly usefull for use on cluster.
 
+    def save_mat(self,mat,name):
+        np.save(self.output_path + '/' + name,mat)
 
     def build_box_sizes(self, conf_file):
         self.box_sizes = BoxSizes()
@@ -372,6 +376,7 @@ class DgaConfig(ConfigBase):
             self.lattice = LatticeConfig(conf_file['lattice'])
         else:
             raise ValueError('Lattice must be contained in the config file.')
+
 
 
 if __name__ == '__main__':

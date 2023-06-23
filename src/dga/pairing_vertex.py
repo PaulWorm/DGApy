@@ -4,7 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
-import matsubara_frequencies as mf
+import dga.matsubara_frequencies as mf
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
@@ -19,8 +19,8 @@ def ladder_vertex_from_chi_aux(gchi_aux=None, vrg=None, chir=None, gchi0=None, b
     return f
 
 def ladder_vertex_from_chi_aux_components(gchi_aux=None, vrg=None, gchi0=None, beta=None, u_r=None):
-    f1 = beta ** 2 * 1. / gchi0[...,:,None] * (np.eye(gchi0.shape[-1]) - gchi_aux * 1. / gchi0[...,None,:])
-    f2 =  u_r * beta * vrg[...,:,None] * beta * vrg[...,None,:]
+    f1 = beta**2*1. / gchi0[...,:,None] * (np.eye(gchi0.shape[-1]) - gchi_aux * 1. / gchi0[...,None,:])
+    f2 =  u_r * vrg[...,:,None] * vrg[...,None,:]
     return f1, f2
 
 def ph_to_pp_notation(mat_ph=None,wn=0):

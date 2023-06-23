@@ -76,6 +76,21 @@ def cut_iv_fp(mat=None, niv_cut=10):
     return mat[..., niv - niv_cut:niv + niv_cut, niv - niv_cut:niv + niv_cut]
 
 
+def cut_iv_with_iw_shift_1d(mat,niv_cut=-1,iwn=0):
+    ''' Cut the fermionic frequencies centric around iwn '''
+    niv = np.size(mat) // 2
+    if(niv_cut == -1):
+         niv_cut = niv - np.abs(iwn)
+    return mat[niv-niv_cut-iwn:niv+niv_cut-iwn]
+
+def cut_iv_with_iw_shift(mat,niv_cut=-1,iwn=0,axes=(-1,)):
+    ''' Cut the fermionic frequencies centric around iwn along axes '''
+    mat_cut = mat
+    for ax in axes:
+        mat_cut = np.apply_along_axis(cut_iv_with_iw_shift_1d, axis=ax, arr=mat_cut, niv_cut=niv_cut, iwn=iwn)
+    return mat_cut
+
+
 def cut_v_1d(arr=None, niv_cut=0):
     assert np.size(np.shape(arr)) == 1, 'Array is not 1D.'
     niv = arr.shape[0] // 2

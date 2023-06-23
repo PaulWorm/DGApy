@@ -46,5 +46,8 @@ max_ent:
   n_fit: 60          # Number of frequencies used for the analytic continuation; default: beta*3+10
   bw_fit_position: 10 # Fit position for estimating the optimal blur width; default: 10
 
+# Parameters for the Eliashberg calculations concerning superconductivity. [optional]
+pairing:
+
 
 

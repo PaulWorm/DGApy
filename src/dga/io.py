@@ -106,7 +106,7 @@ def uniquify(path=None):
         path = filename + "_" + str(counter) + extension
         counter += 1
 
-    return path
+    return path + '/'
 
 
 def spin_fermion_contributions_output(dga_conf=None, sigma_dga_contributions=None):
@@ -258,44 +258,44 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
         #                             output_path=me_conf.output_path_nl_g,
         #                             name='gwk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
     return None
-# def load_and_construct_pairing_vertex(dga_conf:config.DgaConfig = None, comm=None):
-#
-#     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',
-#                                                                                 mpi_size=comm.size, nq=dga_conf._q_grid.nk_irr,
-#                                                                                 niv_pp=dga_conf.box.niv_pp)
-#
-#     chi_lambda = np.load(dga_conf.nam.output_path + 'chi_lambda.npy', allow_pickle=True).item()
-#
-#     # Create f_magn:
-#     f1_magn = dga_conf._q_grid.irrk2fbz(mat=f1_magn)
-#     f2_magn = dga_conf._q_grid.irrk2fbz(mat=f2_magn)
-#     chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['magn'].mat, niv_pp=dga_conf.box.niv_pp)
-#     f_magn = f1_magn + (1 + dga_conf.sys.u * chi_magn_lambda_pp) * f2_magn
-#     del f1_magn, f2_magn, chi_magn_lambda_pp
-#     gc.collect()
-#     plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_magn_loc')
-#
-#     # Create f_dens:
-#     f1_dens = dga_conf._q_grid.irrk2fbz(mat=f1_dens)
-#     f2_dens = dga_conf._q_grid.irrk2fbz(mat=f2_dens)
-#     chi_dens_lambda_pp = pv.reshape_chi(chi=chi_lambda['dens'].mat, niv_pp=dga_conf.box.niv_pp)
-#     f_dens = f1_dens + (1 - dga_conf.sys.u * chi_dens_lambda_pp) * f2_dens
-#     del f1_dens, f2_dens, chi_dens_lambda_pp, chi_lambda
-#     gc.collect()
-#     plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_dens_loc')
-#
-#     # Create f_sing and f_trip:
-#     f_sing = -1.5 * f_magn + 0.5 * f_dens
-#     f_trip = -0.5 * f_magn - 0.5 * f_dens
-#     plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_sing_loc')
-#     plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_trip_loc')
-#
-#     pairing_vertices = {
-#         'f_sing': f_sing,
-#         'f_trip': f_trip
-#     }
-#
-#     np.save(dga_conf.nam.output_path_el + 'pairing_vertices.npy', pairing_vertices, allow_pickle=True)
+def load_and_construct_pairing_vertex(dga_conf:config.DgaConfig = None, comm=None):
+    import dga.pairing_vertex as pv
+    f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',
+                                                                                mpi_size=comm.size, nq=dga_conf._q_grid.nk_irr,
+                                                                                niv_pp=dga_conf.box.niv_pp)
+
+    chi_lambda = np.load(dga_conf.nam.output_path + 'chi_lambda.npy', allow_pickle=True).item()
+
+    # Create f_magn:
+    f1_magn = dga_conf._q_grid.irrk2fbz(mat=f1_magn)
+    f2_magn = dga_conf._q_grid.irrk2fbz(mat=f2_magn)
+    chi_magn_lambda_pp = pv.reshape_chi(chi=chi_lambda['magn'].mat, niv_pp=dga_conf.box.niv_pp)
+    f_magn = f1_magn + (1 + dga_conf.sys.u * chi_magn_lambda_pp) * f2_magn
+    del f1_magn, f2_magn, chi_magn_lambda_pp
+    gc.collect()
+    plotting.plot_vertex_vvp(vertex=f_magn.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_magn_loc')
+
+    # Create f_dens:
+    f1_dens = dga_conf._q_grid.irrk2fbz(mat=f1_dens)
+    f2_dens = dga_conf._q_grid.irrk2fbz(mat=f2_dens)
+    chi_dens_lambda_pp = pv.reshape_chi(chi=chi_lambda['dens'].mat, niv_pp=dga_conf.box.niv_pp)
+    f_dens = f1_dens + (1 - dga_conf.sys.u * chi_dens_lambda_pp) * f2_dens
+    del f1_dens, f2_dens, chi_dens_lambda_pp, chi_lambda
+    gc.collect()
+    plotting.plot_vertex_vvp(vertex=f_dens.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_dens_loc')
+
+    # Create f_sing and f_trip:
+    f_sing = -1.5 * f_magn + 0.5 * f_dens
+    f_trip = -0.5 * f_magn - 0.5 * f_dens
+    plotting.plot_vertex_vvp(vertex=f_sing.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_sing_loc')
+    plotting.plot_vertex_vvp(vertex=f_trip.mean(axis=(0, 1, 2)).real, pdir=dga_conf.nam.output_path_el, name='f_trip_loc')
+
+    pairing_vertices = {
+        'f_sing': f_sing,
+        'f_trip': f_trip
+    }
+
+    np.save(dga_conf.nam.output_path_el + 'pairing_vertices.npy', pairing_vertices, allow_pickle=True)
 #
 #
 # def perform_eliashberg_routine(dga_conf:config.DgaConfig = None, sigma=None, el_conf:config.EliashbergConfig = None):

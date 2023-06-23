@@ -17,17 +17,17 @@ import dga.brillouin_zone as bz
 # ----------------------------------------------- REFACTOR CODE ---------------------------------------------------------
 
 def schwinger_dyson_vrg_q(vrg, chir_phys, giwk, beta, u, channel, q_list, q_point_duplicity, wn, nqtot):
-    ''' '''
+    ''' Solve the Schwinger Dyson equation'''
     u_r = get_ur(u, channel=channel)
     niv_vrg = np.shape(vrg)[-1] // 2
     sigma_F = np.zeros([*np.shape(giwk)[:3], 2 * niv_vrg], dtype=complex)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
-        mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv_vrg, wn=wn)
-        sigma_F += 1 / nqtot * u_r / 2 * 1 / beta * np.sum((1 - (1 - u_r * chir_phys[i, :, None, None, None, None]) *
-                                                            vrg[i, :, None, None, None, :]) * mat_grid, axis=0) * \
-                   q_point_duplicity[i]
-    return sigma_F
+        for j,iwn in enumerate(wn):
+            gkpw_wn_shift = mf.cut_iv_with_iw_shift(gkpq,niv_vrg,iwn)
+            sigma_F +=  (1 - (1 - u_r * chir_phys[i, j, None, None, None, None]) *
+                       vrg[i, j, None, None, None, :]) * gkpw_wn_shift * q_point_duplicity[i]
+    return 1 / nqtot * u_r / 2 * 1 / beta *sigma_F
 
 
 def schwinger_dyson_q_shell(chir_phys, giwk, beta, u, n_shell, n_core, wn, q_list, nqtot):
@@ -89,8 +89,9 @@ def schwinger_dyson_kernel_q(kernel, giwk, beta, q_list, wn, nqtot):
     giwk = mf.cut_v(giwk, niv_cut=niv + np.max(np.abs(wn)), axes=-1)
     for i, q in enumerate(q_list):
         gkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
-        mat_grid = mf.wn_slices_gen(gkpq, n_cut=niv, wn=wn)
-        sigma_F += np.sum(kernel[i, :, None, None, None, :] * mat_grid, axis=0)
+        for j, iwn in enumerate(wn):
+            gkpq_iwn_shift = mf.cut_iv_with_iw_shift(gkpq,niv,iwn)
+            sigma_F += kernel[i, j, None, None, None, :] * gkpq_iwn_shift
     return 1 / nqtot * 1 / beta * sigma_F
 
 
