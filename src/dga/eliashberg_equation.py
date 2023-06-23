@@ -220,5 +220,15 @@ def linear_eliashberg(gamma=None, gk=None, eps=10 ** -6, max_count=10000, norm=1
     return powiter.lam_s,powiter.lam_s, powiter.lam, powiter.gap
 
 
+def symmetrize_gamma(gamma,channel):
+    ''' Symmetrize Gamma. '''
+    if(channel == 'sing'):
+        gamma_sym = 0.5 * (gamma + np.flip(gamma, axis=(-1)))
+    elif(channel == 'trip'):
+        gamma_sym = 0.5 * (gamma - np.flip(gamma, axis=(-1)))
+    else:
+        raise ValueError('Channel must be sing or trip')
+    return gamma_sym
+
 if __name__ == '__main__':
     pass

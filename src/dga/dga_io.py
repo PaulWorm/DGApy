@@ -93,20 +93,7 @@ def load_g2(box_sizes: config.BoxSizes, dmft_input):
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
-def uniquify(path=None):
-    '''
 
-    path: path to be checked for uniqueness
-    return: updated unique path
-    '''
-    filename, extension = os.path.splitext(path)
-    counter = 1
-
-    while os.path.exists(path):
-        path = filename + "_" + str(counter) + extension
-        counter += 1
-
-    return path + '/'
 
 
 def spin_fermion_contributions_output(dga_conf=None, sigma_dga_contributions=None):

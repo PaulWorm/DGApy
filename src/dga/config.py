@@ -12,15 +12,16 @@ import argparse
 from typing import List, Tuple
 import dga.hr as hamr
 import matplotlib
+import dga.util as util
 
 
 # ----------------------------------------------- ARGUMENT PARSER ------------------------------------------------------
 
-def create_dga_argparser():
+def create_dga_argparser(name='dga_config.yaml',path=os.getcwd()+'/'):
     ''' Set up an argument parser for the DGA code. '''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', nargs='?', default='dga_config.yaml', type=str, help=' Config file name. ')
-    parser.add_argument('--path', nargs='?', default=os.getcwd()+'/', type=str, help=' Path to the config file. ')
+    parser.add_argument('--config', nargs='?', default=name, type=str, help=' Config file name. ')
+    parser.add_argument('--path', nargs='?', default=path, type=str, help=' Path to the config file. ')
     return parser
 
 
@@ -64,6 +65,33 @@ class ConfigBase():
             self.set_from_obj(obj)
         return None
 
+class OutputConfig(ConfigBase):
+    '''
+        Builds ontop of the ConfigBase class and adds a method for automatic generation of output folders
+    '''
+
+    def __init__(self):
+        self.output_path = None
+
+    def set_output_path(self,base_name,comm=None):
+        ''' comm is for mpi applications '''
+        self.output_path = util.uniquify(base_name)
+
+        if (not os.path.exists(self.output_path)):
+            if(comm is not None):
+                if(comm.rank == 0): os.mkdir(self.output_path)
+            else:
+                os.mkdir(self.output_path)
+
+    def save_data(self,mat,name):
+        np.save(self.output_path + '/' + name + '.npy',mat,allow_pickle=True)
+
+    def load_data(self, name):
+        try:
+            data = np.load(self.output_path + '/' + name + '.npy',allow_pickle=True).item()
+        except:
+            data = np.load(self.output_path + '/' + name + '.npy',allow_pickle=True)
+        return data
 
 class BoxSizes(ConfigBase):
     '''
@@ -205,12 +233,13 @@ class SystemParamter(ConfigBase):
         self.mu_dmft = None  # DMFT chemical potential
 
 
-class MaxEntConfig(ConfigBase):
+class MaxEntConfig(OutputConfig):
     '''
         Settings for the analytical continuation.
     '''
 
     def __init__(self, t, beta, config_dict, output_path_loc = './', output_path_nl_s = './', output_path_nl_g = './'):
+        super().__init__()
         self.cut = 0.04  # Relevant for the lorentzian mesh
         self.t = t  # Unit of energy. Everything is scaled by this. We use t for this here.
         self.nwr = 501  # Number of frequencies on the real axis
@@ -274,19 +303,19 @@ class MaxEntConfig(ConfigBase):
         text_file.close()
 
 
-class EliashbergConfig(ConfigBase):
+class EliashbergConfig(OutputConfig):
     '''
         Contains the configuration parameters and flags for the Eliashberg routine.
     '''
 
-    def __init__(self, config_dict):
+    def __init__(self, config_dict=None):
+        super().__init__()
         self.gap0_sing = None  # Initial guess for the singlet gap function
         self.gap0_trip = None  # Initial guess for the triplet gap function
         self.n_eig = 2  # Number of eigenvalues to be computed
         self.k_sym = 'd-wave'  # k-symmetry of the gap function
         self.sym_sing = True  # Symmetrize the singlet pairing vertex
         self.sym_trip = True  # symmetrize the triplet pairing vertex
-
         if(config_dict is not None): self.update_dict(**config_dict)
 
     @property
@@ -323,7 +352,7 @@ class EliashbergConfig(ConfigBase):
         }
 
 
-class DgaConfig(ConfigBase):
+class DgaConfig(OutputConfig):
     '''
         Contains the configuration parameters and flags for a DGA run.
     '''
@@ -334,6 +363,7 @@ class DgaConfig(ConfigBase):
     do_poly_fitting: bool = False
 
     def __init__(self, conf_file):
+        super().__init__()
         # Create config file:
         self.build_box_sizes(conf_file)
         self.build_lattice_conf(conf_file)
@@ -362,8 +392,6 @@ class DgaConfig(ConfigBase):
             if(not conf_file['dga']['gui']):
                 matplotlib.use('Agg') # non-gui backend. Particularly usefull for use on cluster.
 
-    def save_mat(self,mat,name):
-        np.save(self.output_path + '/' + name,mat)
 
     def build_box_sizes(self, conf_file):
         self.box_sizes = BoxSizes()
