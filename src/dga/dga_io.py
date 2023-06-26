@@ -81,6 +81,13 @@ def load_g2(box_sizes: config.BoxSizes, dmft_input):
     if (box_sizes.niw_core == -1):
         box_sizes.niw_core = len(g2_dens.wn) // 2
 
+    if (box_sizes.niv_core > g2_dens.niv):
+        raise ValueError(f'niv_core ({box_sizes.niv_core}) cannot be larger than the available frequencies in g2 ({g2_dens.niv})')
+
+    if (box_sizes.niw_core > len(g2_dens.wn) // 2):
+        raise ValueError(
+            f'niv_core ({box_sizes.niw_core}) cannot be larger than the available frequencies in g2 ({len(g2_dens.wn) // 2})')
+
     # Cut frequency ranges:
     g2_dens.cut_iv(box_sizes.niv_core)
     g2_dens.cut_iw(box_sizes.niw_core)
@@ -92,8 +99,6 @@ def load_g2(box_sizes: config.BoxSizes, dmft_input):
 
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
-
-
 
 
 def spin_fermion_contributions_output(dga_conf=None, sigma_dga_contributions=None):
@@ -195,7 +200,7 @@ def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_con
 
     if (logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
     if (comm.rank == 0):
-        sigma_cont = k_grid.map_irrk2fbz(sigma_cont) + hartree # re-add the hartree term
+        sigma_cont = k_grid.map_irrk2fbz(sigma_cont) + hartree  # re-add the hartree term
 
         plotting.plot_cont_fs(output_path=me_conf.output_path_nl_s,
                               name='swk_fermi_surface_' + name + '_cont_w0-bw{}'.format(bw),
@@ -212,9 +217,9 @@ def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_con
         np.save(me_conf.output_path_nl_s + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), sigma_cont,
                 allow_pickle=True)
     return None
-        # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, _k_grid=_k_grid,
-        #                             output_path=me_conf.output_path_nl_s,
-        #                             name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
+    # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, _k_grid=_k_grid,
+    #                             output_path=me_conf.output_path_nl_s,
+    #                             name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
 
 
 def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me_conf: config.MaxEntConfig, comm, bw, logger=None,
@@ -245,7 +250,9 @@ def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me
         #                             output_path=me_conf.output_path_nl_g,
         #                             name='gwk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
     return None
-def load_and_construct_pairing_vertex(dga_conf:config.DgaConfig = None, comm=None):
+
+
+def load_and_construct_pairing_vertex(dga_conf: config.DgaConfig = None, comm=None):
     import dga.pairing_vertex as pv
     f1_magn, f2_magn, f1_dens, f2_dens = pv.load_pairing_vertex_from_rank_files(output_path=dga_conf.nam.output_path, name='Qiw',
                                                                                 mpi_size=comm.size, nq=dga_conf._q_grid.nk_irr,
