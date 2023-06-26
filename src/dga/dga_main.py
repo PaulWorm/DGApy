@@ -590,7 +590,7 @@ if(comm.rank == 0 and 'pairing' in conf_file):
         plotting.plot_gap_function(delta=powiter_sing.gap[i].real, pdir=pairing_config.output_path, name='trip_{}'.format(i),
                                    kgrid=dga_config.lattice._q_grid,do_shift=True)
 
-    logger.log_message('Eliashberg completed!')
+    logger.log_event('Eliashberg completed!')
 
 # End program:
 logger.log_event('Completed DGA run!')
