@@ -1,9 +1,9 @@
 import numpy as np
-import w2dyn_aux_dga
-import Hr as hamr
+import dga.w2dyn_aux_dga as w2dyn_aux_dga
+import dga.hr as hamr
 import h5py
-import MatsubaraFrequencies as mf
-import LocalFourPoint as lfp
+import dga.matsubara_frequencies as mf
+import dga.local_four_point as lfp
 
 # class InputDataFromDMFT():
 #     ''' Simple container that contains necessary input data.'''
@@ -64,7 +64,7 @@ def get_data_set_2(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
     file = '1p-data.hdf5'
     g2_file = 'g4iw_sym.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(0.25, -0.25*0.25, 0.12*0.25)# Motoharus data
+    hr = hamr.one_band_2d_t_tp_tpp(1, -0.25, 0.12)# Motoharus data
     return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,hr=hr)
 
 def get_data_set_3(load_g2=False):
@@ -91,3 +91,15 @@ def get_data_set_6(load_g2=False):
     file = 'EDFermion_1p-data.hdf5'
     hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr)
+
+def get_data_set_7(load_g2=False):
+    path = '../test/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
+    file = '1p-data.hdf5'
+    hr = hamr.one_band_2d_t_tp_tpp(1, -0.0, 0.0)
+    return load_w2dyn_data_set(path,file,load_g2=load_g2,hr=hr)
+
+def get_data_set_8(load_g2=False):
+    path = '../test/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.85/'
+    file = '1p-data.hdf5'
+    hr = hamr.one_band_2d_t_tp_tpp(0.25, -0.0625, 0.03)
+    return load_w2dyn_data_set(path,file,load_g2=load_g2,hr=hr)

@@ -28,22 +28,29 @@ def get_sum_chiupup(n):
     return n / 2 * (1 - n / 2)
 
 
-def fit_smom(iv=None, siwk=None, only_positive=True):
-    """Read or calculate self-energy moments"""
-    niv = siwk.shape[-1] // 2
-    if (not only_positive):
-        siwk = siwk[..., niv:]
+def fit_smom(iv=None, siwk=None):
+    '''
+        Estimate the moments of the self-energy.
+        iv: fermionic matsubara frequency
+        siwk: self-energy [nkx,nky,nkz,niv] WARNING: Only positive part should be supplied
+        pos: flag whether full range (false) or only positive (true) is supplied.
+    '''
+    niv = siwk.shape[-1]
 
     n_freq_fit = int(0.2 * niv)
     if n_freq_fit < 4:
         n_freq_fit = 4
+
     s_loc = np.mean(siwk, axis=(0, 1, 2))  # moments should not depend on momentum
 
     iwfit = iv[niv - n_freq_fit:]
     fitdata = s_loc[niv - n_freq_fit:]
+
+    print(fitdata.real)
+    print(n_freq_fit)
+    print(fitdata.real.shape)
     mom0 = np.mean(fitdata.real)
-    mom1 = np.mean(
-        fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
+    mom1 = np.mean(fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
 
     return mom0, mom1
 
@@ -60,7 +67,7 @@ class SelfEnergy():
 
     niv_core_min = 20
 
-    def __init__(self, sigma, beta, pos=False, smom0=None, smom1=None, err=5e-4):
+    def __init__(self, sigma, beta, pos=False, smom0=None, smom1=None, err=1e-4):
         '''
 
         :param sigma:
@@ -72,15 +79,17 @@ class SelfEnergy():
         '''
         assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
 
-        # Generate negative Matsubara frequencies if not provided:
+        # Cut negative Matsubara frequencies if not provided:
         if (not pos):
             niv = sigma.shape[-1] // 2
             sigma = sigma[..., niv:]
 
         self.sigma = sigma
         self.beta = beta
-        iv_plus = mf.iv_plus(beta, self.niv)
-        fit_mom0, fit_mom1 = fit_smom(iv_plus, sigma)  # Currently moment fitting is local. Non-local parts should decay quickly
+        iv_fit = mf.iv_plus(beta, self.niv)
+        fit_mom0, fit_mom1 = fit_smom(iv_fit, sigma)  # Currently moment fitting is local. Non-local parts
+        # should decay
+        # quickly
         # enough to be negligible.
 
         self.err = err
@@ -128,13 +137,13 @@ class SelfEnergy():
     def get_siw(self, niv=-1, pi_shift=False):
         if (niv == -1):
             niv = self.niv
-        if (niv <= self.niv):
+        if (niv <= self.niv_core):
             sigma = mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
             # niv_asympt = niv - self.niv
-            iv_asympt = mf.iv_plus(self.beta, n=niv, n_min=self.niv)
+            iv_asympt = mf.iv_plus(self.beta, n=niv, n_min=self.niv_core)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
-            sigma_asympt = np.concatenate((self.sigma[..., :self.niv], asympt), axis=-1)
+            sigma_asympt = np.concatenate((self.sigma[..., :self.niv_core], asympt), axis=-1)
             sigma = mf.fermionic_full_nu_range(sigma_asympt)
 
         return sigma if not pi_shift else bz.shift_mat_by_pi(sigma)
