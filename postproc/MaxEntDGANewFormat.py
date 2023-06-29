@@ -61,7 +61,7 @@ path = base + f'LambdaDga_lc_sp_Nk19600_Nq19600_core{ncore}_invbse{ncore}_vurang
 sigma = np.load(path + 'sigma.npy',allow_pickle=True)
 dga_conf = np.load(path + 'config.npy', allow_pickle=True).item()
 beta = dga_conf.sys.beta
-k_grid = dga_conf._k_grid
+k_grid = dga_conf.k_grid
 hr = dga_conf.sys.hr
 g_fac = tp.GreensFunctionGenerator(beta=beta,kgrid=k_grid,hr=hr,sigma=sigma)
 n = dga_conf.sys.n

@@ -84,8 +84,8 @@ gchi_dens = fp.chir_from_g2(g2_dens,giw_dmft)
 gchi_magn = fp.chir_from_g2(g2_magn,giw_dmft)
 
 # Extract gamma:
-chi0_urange = fp.LocalBubble(giw=giw_dmft, beta=beta, niv=niv_urange, wn=wn_core)
-chi0_core = fp.LocalBubble(giw=giw_dmft, beta=beta, niv=niv_invbse, wn=wn_core)
+chi0_urange = fp.BubbleGenerator(giw=giw_dmft, beta=beta, niv=niv_urange, wn=wn_core)
+chi0_core = fp.BubbleGenerator(giw=giw_dmft, beta=beta, niv=niv_invbse, wn=wn_core)
 
 gamma_dens =  gammar_from_gchir(gchir=gchi_dens, gchi0=chi0_core)
 gamma_magn = gammar_from_gchir(gchir=gchi_magn, gchi0=chi0_core)

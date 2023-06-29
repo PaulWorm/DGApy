@@ -19,8 +19,8 @@ niv = niw
 wn = mf.wn(niw)
 iwn = wn[niw]
 
-gchi0 = fp.LocalBubble(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum')
-gchi0_inv = fp.LocalBubble(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum', is_inv=True)
+gchi0 = fp.BubbleGenerator(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum')
+gchi0_inv = fp.BubbleGenerator(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum', is_inv=True)
 
 unity = gchi0.mat * gchi0_inv.mat
 
@@ -40,7 +40,7 @@ g2_magn = fp.LocalFourPoint(matrix=g2iw_file.read_g2(channel='magn', niv=niv, ni
 gchi_dens = fp.chir_from_g2(g2_dens, giw)
 gchi_magn = fp.chir_from_g2(g2_magn, giw)
 
-gchi0_inv = fp.LocalBubble(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum', is_inv=True)
+gchi0_inv = fp.BubbleGenerator(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum', is_inv=True)
 F_magn = fp.Fob2_from_chir(gchi_magn, gchi0_inv)
 F_dens = fp.Fob2_from_chir(gchi_dens, gchi0_inv)
 
@@ -66,7 +66,7 @@ plt.show()
 totdens = giw_file.get_totdens()
 u = giw_file.get_udd()
 siw_dmft = giw_file.get_siw()[0, 0, :]
-gchi0 = fp.LocalBubble(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum')
+gchi0 = fp.BubbleGenerator(beta=beta, wn=wn, giw=giw, niv=niv, chi0_method='sum')
 F_updo = fp.LocalFourPoint(matrix=0.5 * (F_dens.mat - F_magn.mat), beta=F_dens.beta, wn=F_dens.wn, channel='updo')
 siw = fp.schwinger_dyson_F(F=F_updo, chi0=gchi0, giw=giw, u=u, totdens=totdens)
 siw_dens = fp.schwinger_dyson_F(F=F_dens, chi0=gchi0, giw=giw, u=u, totdens=totdens)

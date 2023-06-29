@@ -34,7 +34,7 @@ g2_magn = fp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=wn_core
                             beta=beta, wn=wn_core)
 gchi_magn = fp.chir_from_g2(g2=g2_magn, giw=giw_dmft)
 
-chi0_inv = fp.LocalBubble(wn=wn_core, giw=giw_dmft, niv=g2_dens.niv, is_inv=True, do_chi0=False, do_shell=False)
+chi0_inv = fp.BubbleGenerator(wn=wn_core, giw=giw_dmft, niv=g2_dens.niv, is_inv=True, do_chi0=False, do_shell=False)
 f_dens = fp.Fob2_from_chir(chir=gchi_dens, chi0_inv=chi0_inv)
 f_magn = fp.Fob2_from_chir(chir=gchi_magn, chi0_inv=chi0_inv)
 

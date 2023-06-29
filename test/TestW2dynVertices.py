@@ -86,7 +86,7 @@ gchi_magn.plot(0,pdir=path,name='Gchi_magn_wn0')
 
 
 
-gchi0_gen = bub.LocalBubble(wn=wn,giw=green)
+gchi0_gen = bub.BubbleGenerator(wn=wn, giw=green)
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
 # chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
@@ -126,7 +126,7 @@ niv_shell = 500
 vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
 vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, gchi0_gen, u, niv_core=niv_core, niv_shell=niv_shell)
 
-gchi0_gen2 = bub.LocalBubble(wn_chi,green,freq_notation='center')
+gchi0_gen2 = bub.BubbleGenerator(wn_chi, green, freq_notation='center')
 chi0_core = gchi0_gen2.get_chi0(niv_shell)
 chi0_shell = gchi0_gen2.get_asymptotic_correction(niv_shell)
 chi0_shell = gchi0_gen2.get_chi0_shell(niv_shell,2*niv_shell)

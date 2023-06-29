@@ -210,7 +210,7 @@ def vrg_q_tilde(lam_tilde, chir_q_tilde, u, channel):
 
 def get_vrg_and_chir_lad_from_gammar_uasympt_q(gamma_dens: lfp.LocalFourPoint, gamma_magn: lfp.LocalFourPoint,
                                                F_dc, vrg_magn_loc, chi_magn_loc,
-                                               bubble_gen: bub.LocalBubble, u, my_q_list,
+                                               bubble_gen: bub.BubbleGenerator, u, my_q_list,
                                                niv_shell=0, logger=None, do_pairing_vertex=False):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in

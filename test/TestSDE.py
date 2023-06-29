@@ -38,7 +38,7 @@ g2_dens.cut_iv(niv_cut=niv)
 
 chi_magn = fp.chir_from_g2(g2=g2_magn, giw=giw_obj)
 chi_dens = fp.chir_from_g2(g2=g2_dens, giw=giw_obj)
-gchi0_inv = fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv,is_inv=True,do_shell=False)
+gchi0_inv = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, is_inv=True, do_shell=False)
 F_magn = fp.Fob2_from_chir(chi_magn,gchi0_inv)
 F_dens = fp.Fob2_from_chir(chi_magn,gchi0_inv)
 F_upup = fp.LocalFourPoint(matrix=0.5*(F_dens.mat + F_magn.mat), channel='upup', beta=F_magn.beta, wn=F_magn.wn)
@@ -67,7 +67,7 @@ siw_w_asympt = []
 siw_magn_range = []
 wn_2 = mf.wn(200)
 for n in niv_array:
-    gchi0.append(fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
+    gchi0.append(fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
 
     # Magn:
     # lam_magn.append(fp.lam_from_chir_FisUr(chi_magn, gchi0[-1], u=u))

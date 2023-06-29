@@ -32,12 +32,12 @@ swk = np.load(max_ent_dir_s+siwk_cont_file,allow_pickle=True)
 mu0 = np.loadtxt(base_path+'mu.txt')[0]
 n_target = 0.90
 hr = dga_config.lattice.set_hr()
-ek = hamk.ek_3d(dga_config.lattice._k_grid.grid,hr)
-ek_shift = dga_config.lattice._k_grid.shift_mat_by_pi(ek)
+ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, hr)
+ek_shift = dga_config.lattice.k_grid.shift_mat_by_pi(ek)
 mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)
 
-gwk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(gwk)
-swk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(swk)
+gwk_shift = dga_config.lattice.k_grid.shift_mat_by_pi(gwk)
+swk_shift = dga_config.lattice.k_grid.shift_mat_by_pi(swk)
 #%%
 nk = dga_config.lattice.nk
 nw0 = np.argmin(np.abs(me_config.mesh))

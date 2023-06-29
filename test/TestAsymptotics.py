@@ -76,7 +76,7 @@ for i, a in enumerate(asympt):
 plt.show()
 
 #%%
-gchi0 = fp.LocalBubble(wn=wn,giw=giw_obj,niv=100)
+gchi0 = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=100)
 plt.figure(dpi=300)
 plt.plot(wn,chi0_conv_check[1],'-o', color='cornflowerblue', markeredgecolor='k', alpha=0.7)
 plt.plot(wn,gchi0.chi0,'-o', color='firebrick', markeredgecolor='k', alpha=0.7)
@@ -93,8 +93,8 @@ plt.show()
 
 #%%
 
-gchi0_2 = fp.LocalBubble(wn=wn,giw=giw_obj,niv=100)
-gchi0_3 = fp.LocalBubble(wn=wn,giw=giw_obj,niv=500)
+gchi0_2 = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=100)
+gchi0_3 = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=500)
 
 plt.figure()
 plt.plot(wn,gchi0_2.chi0_tilde,'-o', color='cornflowerblue', markeredgecolor='k', alpha=0.7)
@@ -106,8 +106,8 @@ plt.show()
 
 #%%
 
-gchi0 = fp.LocalBubble(wn=wn,giw=giw_obj,niv=100)
-gchi0_inv = fp.LocalBubble(wn=wn,giw=giw_obj,niv=100,is_inv=True)
+gchi0 = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=100)
+gchi0_inv = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=100, is_inv=True)
 
 print(1./gchi0.mat - gchi0_inv.mat)
 

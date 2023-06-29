@@ -13,16 +13,44 @@ from typing import List, Tuple
 import dga.hr as hamr
 import matplotlib
 import dga.util as util
-
+import mpi4py.MPI as mpi
+from ruamel.yaml import YAML
 
 # ----------------------------------------------- ARGUMENT PARSER ------------------------------------------------------
 
-def create_dga_argparser(name='dga_config.yaml',path=os.getcwd()+'/'):
+DGA_OUPUT_PATH = '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'
+
+
+def create_dga_argparser(name='dga_config.yaml', path=os.getcwd() + '/'):
     ''' Set up an argument parser for the DGA code. '''
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', nargs='?', default=name, type=str, help=' Config file name. ')
     parser.add_argument('--path', nargs='?', default=path, type=str, help=' Path to the config file. ')
     return parser
+
+
+def parse_config_file(comm: mpi.Comm):
+    '''
+        Parse config file and return the dga_config
+    '''
+    parser = create_dga_argparser()
+    if (comm.rank == 0):
+        args = parser.parse_args()
+        assert hasattr(args, 'config'), 'Config file location must be provided.'
+        conf_file = YAML().load(open(args.path + args.config))
+    else:
+        conf_file = None
+
+    conf_file = comm.bcast(conf_file, root=0)
+    dga_config = DgaConfig(conf_file,comm=comm)
+
+    return dga_config, conf_file
+
+def save_config_file(conf_file,output_path):
+    with open(output_path + "/dga_config.yaml", "w+") as file:
+        yaml = YAML()
+        yaml.dump(conf_file, file)
+        file.close()
 
 
 # ----------------------------------------------- CLASSES --------------------------------------------------------------
@@ -34,13 +62,13 @@ class ConfigBase():
     def update_dict(self, **kwargs):
         self.__dict__.update(kwargs)
 
-    def set_from_obj(self,obj):
+    def set_from_obj(self, obj):
         for key in self.__dict__.keys():
             if hasattr(obj, key):
-                setattr(self,key,obj.__dict__[key])
+                setattr(self, key, obj.__dict__[key])
         return None
 
-    def as_dict(self,obj=None):
+    def as_dict(self, obj=None):
         if obj is None:
             obj = self
         if not hasattr(obj, "__dict__"):
@@ -58,12 +86,13 @@ class ConfigBase():
             result[key] = element
         return result
 
-    def set(self,obj):
-        if(type(obj) == dict):
+    def set(self, obj):
+        if (type(obj) == dict):
             self.update_dict(**obj)
         else:
             self.set_from_obj(obj)
         return None
+
 
 class OutputConfig(ConfigBase):
     '''
@@ -73,25 +102,26 @@ class OutputConfig(ConfigBase):
     def __init__(self):
         self.output_path = None
 
-    def set_output_path(self,base_name,comm=None):
+    def set_output_path(self, base_name, comm=None):
         ''' comm is for mpi applications '''
         self.output_path = util.uniquify(base_name)
 
         if (not os.path.exists(self.output_path)):
-            if(comm is not None):
-                if(comm.rank == 0): os.mkdir(self.output_path)
+            if (comm is not None):
+                if (comm.rank == 0): os.mkdir(self.output_path)
             else:
                 os.mkdir(self.output_path)
 
-    def save_data(self,mat,name):
-        np.save(self.output_path + '/' + name + '.npy',mat,allow_pickle=True)
+    def save_data(self, mat, name):
+        np.save(self.output_path + '/' + name + '.npy', mat, allow_pickle=True)
 
     def load_data(self, name):
         try:
-            data = np.load(self.output_path + '/' + name + '.npy',allow_pickle=True).item()
+            data = np.load(self.output_path + '/' + name + '.npy', allow_pickle=True).item()
         except:
-            data = np.load(self.output_path + '/' + name + '.npy',allow_pickle=True)
+            data = np.load(self.output_path + '/' + name + '.npy', allow_pickle=True)
         return data
+
 
 class BoxSizes(ConfigBase):
     '''
@@ -103,8 +133,8 @@ class BoxSizes(ConfigBase):
         self.niv_core: int = -1  # Number of fermionic Matsubaras for Gamma
         self.niv_shell: int = 0  # Number of fermionic Matsubaras for Gamma = U
 
-        if(config_dict is not None):
-            self.update_dict(**config_dict) # forwards parameters from config
+        if (config_dict is not None):
+            self.update_dict(**config_dict)  # forwards parameters from config
 
     @property
     def niv_full(self):
@@ -127,20 +157,21 @@ class BoxSizes(ConfigBase):
     def wn(self):
         return mf.wn(self.niw_core)
 
+
 class LatticeConfig(ConfigBase):
     '''
         Contains the information about the Lattice and Brillouin zone
     '''
 
     def __init__(self, config_dict):
-        self.nk: Tuple[int,int,int] = (16,16,1)  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
-        self.nq: Tuple[int,int,int] = (16,16,1)  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
-        self.symmetries = []                   # Lattice symmetries. Either string or tuple of strings
-        self.tb_params = None                  # Tight binding parameter. Loading Hr will maybe be implemented later.
+        self.nk: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
+        self.nq: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
+        self.symmetries = []  # Lattice symmetries. Either string or tuple of strings
+        self.tb_params = None  # Tight binding parameter. Loading Hr will maybe be implemented later.
         self.type = None
 
-        self.update_dict(**config_dict) # forwards parameters from config
-        if('nq' not in config_dict):
+        self.update_dict(**config_dict)  # forwards parameters from config
+        if ('nq' not in config_dict):
             print('Notification: nq not set in config. Setting nq = nk')
             self.nq = self.nk
 
@@ -150,17 +181,18 @@ class LatticeConfig(ConfigBase):
         self.nk = tuple(self.nk)
         self.nq = tuple(self.nq)
 
-        self._k_grid = bz.KGrid(self.nk, self.symmetries)
-        self._q_grid = bz.KGrid(self.nq, self.symmetries)
+        self.k_grid = bz.KGrid(self.nk, self.symmetries)
+        self.q_grid = bz.KGrid(self.nq, self.symmetries)
 
+        if (self.tb_params is None):
+            raise ValueError('tb_params cannot be none. Tight-binding parameters must be supplied.')
 
-        if(self.tb_params is None):
-            raise ValueError('tb_params connot be none. Tight-bindign parameters must be supplied.')
-
+        # Build the real-space Hamiltonian
+        self.hr = self.set_hr()
 
     def check_symmetries(self):
         ''' Set symmetries if known: '''
-        if(self.symmetries == "two_dimensional_square"):
+        if (self.symmetries == "two_dimensional_square"):
             self.symmetries = bz.two_dimensional_square_symmetries()
 
     @property
@@ -173,11 +205,11 @@ class LatticeConfig(ConfigBase):
 
     def set_hr(self):
         ''' Return the tight-binding hamiltonian.'''
-        if(self.tb_params is not None):
-            if(self.type == 't_tp_tpp'):
+        if (self.tb_params is not None):
+            if (self.type == 't_tp_tpp'):
                 return hamr.one_band_2d_t_tp_tpp(*self.tb_params)
         else:
-            raise  NotImplementedError('Currently only t_tp_tpp tight-binding model implemented.')
+            raise NotImplementedError('Currently only t_tp_tpp tight-binding model implemented.')
 
 
 class Names(ConfigBase):
@@ -238,7 +270,7 @@ class MaxEntConfig(OutputConfig):
         Settings for the analytical continuation.
     '''
 
-    def __init__(self, t, beta, config_dict, output_path_loc = './', output_path_nl_s = './', output_path_nl_g = './'):
+    def __init__(self, t, beta, config_dict, output_path_loc='./', output_path_nl_s='./', output_path_nl_g='./'):
         super().__init__()
         self.cut = 0.04  # Relevant for the lorentzian mesh
         self.t = t  # Unit of energy. Everything is scaled by this. We use t for this here.
@@ -250,9 +282,9 @@ class MaxEntConfig(OutputConfig):
         self.alpha_det_method = 'chi2kink'  # alpha determination method
         self.optimizer = 'newton'  # alpha determination method
         self.mesh_type = 'tan'  # mesh type
-        self.n_fit = int(beta*3 + 10) # Number of frequencies used for the analytic continuation
+        self.n_fit = int(beta * 3 + 10)  # Number of frequencies used for the analytic continuation
         self.bw_fit_position = 10  # Fit position for estimating the optimal blur width
-        self.bw_dga = [0.1,] # Blur width for DGA continuation
+        self.bw_dga = [0.1, ]  # Blur width for DGA continuation
 
         # Flags what continuation to perform:
         self.cont_g_loc = True
@@ -261,7 +293,7 @@ class MaxEntConfig(OutputConfig):
         self.output_path_loc = output_path_loc
         self.output_path_nl_s = output_path_nl_s
         self.output_path_nl_g = output_path_nl_g
-        self.bw_range_loc = np.array([0.001,0.01,0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1])
+        self.bw_range_loc = np.array([0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1])
 
         self.update_dict(**config_dict)
 
@@ -310,13 +342,15 @@ class EliashbergConfig(OutputConfig):
 
     def __init__(self, config_dict=None):
         super().__init__()
+        self.do_pairing_vertex = False  # Flag whether to compute the pairing vertex
+        self.do_eliash = False  # Flag whether to perform the eliashberg routine afterwards
         self.gap0_sing = None  # Initial guess for the singlet gap function
         self.gap0_trip = None  # Initial guess for the triplet gap function
         self.n_eig = 2  # Number of eigenvalues to be computed
         self.k_sym = 'd-wave'  # k-symmetry of the gap function
         self.sym_sing = True  # Symmetrize the singlet pairing vertex
         self.sym_trip = True  # symmetrize the triplet pairing vertex
-        if(config_dict is not None): self.update_dict(**config_dict)
+        if (config_dict is not None): self.update_dict(**config_dict)
 
     @property
     def k_sym(self):
@@ -359,20 +393,23 @@ class DgaConfig(OutputConfig):
 
     box_sizes: BoxSizes = None
     lattice: LatticeConfig = None
+    eliash: EliashbergConfig = None
     output_path: str = None
     do_poly_fitting: bool = False
+    poly_fit_dir: str = None
 
-    def __init__(self, conf_file):
+    def __init__(self, conf_file, comm: mpi.Comm = None):
         super().__init__()
         # Create config file:
         self.build_box_sizes(conf_file)
         self.build_lattice_conf(conf_file)
+        self.build_eliash_conf(conf_file, comm)
 
         # Optional configs, only set if contained in config file:
         # Polyfitting:
         self.n_fit = 4
         self.o_fit = 3
-        if('poly_fitting' in conf_file):
+        if ('poly_fitting' in conf_file):
             self.do_poly_fitting = True
             self.update_dict(**conf_file['poly_fitting'])
 
@@ -388,9 +425,10 @@ class DgaConfig(OutputConfig):
         self.lambda_corr = 'spch'
         self.update_dict(**conf_file['dga'])
 
-        if('gui' in conf_file['dga']):
-            if(not conf_file['dga']['gui']):
-                matplotlib.use('Agg') # non-gui backend. Particularly usefull for use on cluster.
+        if ('gui' in conf_file['dga']):
+            if (not conf_file['dga']['gui']):
+                matplotlib.use('Agg')  # non-gui backend. Particularly usefull for use on cluster.
+
 
 
     def build_box_sizes(self, conf_file):
@@ -404,6 +442,33 @@ class DgaConfig(OutputConfig):
             self.lattice = LatticeConfig(conf_file['lattice'])
         else:
             raise ValueError('Lattice must be contained in the config file.')
+
+    def build_eliash_conf(self, conf_file, comm=None):
+        self.eliash = EliashbergConfig()
+        if ('pairing' in conf_file):
+            self.eliash.update_dict(**conf_file['pairing'])
+            self.eliash.set_output_path(self.output_path + 'Eliashberg/', comm)
+
+    def create_dga_ouput_folder(self, comm=None):
+        ''' Create the name of the dga output directory and create it '''
+        base_name = self.input_path + DGA_OUPUT_PATH.format(self.lambda_corr, self.lattice.nk_tot,
+                                                            self.lattice.nq_tot, self.box_sizes.niw_core,
+                                                            self.box_sizes.niv_core, self.box_sizes.niv_shell)
+        self.set_output_path(base_name, comm=comm)
+
+    def create_poly_fit_folder(self,comm=None):
+        ''' Create the output folder for the polynomial fits. '''
+        if(self.do_poly_fitting):
+            self.poly_fit_dir = self.output_path + '/PolyFits/'
+            self.poly_fit_dir = util.uniquify(self.poly_fit_dir)
+
+            # Create the folder
+            if (not os.path.exists(self.poly_fit_dir)):
+                if (comm is not None):
+                    if (comm.rank == 0): os.mkdir(self.poly_fit_dir)
+                else:
+                    os.mkdir(self.poly_fit_dir)
+
 
 
 

@@ -92,13 +92,13 @@ siwk = dga_config.load_data('siwk_dga')
 siwk = twop.create_dga_siwk_with_dmft_as_asympt(siwk,siwk_dmft,dga_config.box_sizes.niv_shell)
 
 hr = dga_config.lattice.set_hr()
-ek = hamk.ek_3d(dga_config.lattice._k_grid.grid, hr)
+ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, hr)
 g_generator = twop.GreensFunction(siwk,ek,n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_pp)
 
 gk_dga = mf.cut_v(g_generator.core,niv_cut=dga_config.box_sizes.niv_pp,axes=(-1,))
 nq = dga_config.lattice.nq_tot
 norm = np.prod(nq) * dmft_input['beta']
-q_grid = dga_config.lattice._q_grid
+q_grid = dga_config.lattice.q_grid
 
 gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=gap0_sing['k'], v_type=gap0_sing['v'],
                          k_grid=q_grid.grid)

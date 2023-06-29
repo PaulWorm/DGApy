@@ -19,7 +19,7 @@ def test_bubble_convergence(siw,ek,beta,u,n,count=1):
 
     niw = 400
     wn = mf.wn(niw)
-    bubble_gen = bub.LocalBubble(wn=wn,giw=giwk)
+    bubble_gen = bub.BubbleGenerator(wn=wn, giw=giwk)
     niv_sum = [100,200,400,800,1600,2500]#,6000,8000]#,6400]
     chi0_list = [bubble_gen.get_chi0(niv) for niv in niv_sum]
     chi0_asympt = bubble_gen.get_chi0_shell(100,400)

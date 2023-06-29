@@ -78,7 +78,7 @@ def vec_get_chi0_sum(giw, beta, niv, wn, freq_notation='minus'):
     return np.array([get_chi0_sum(giw, beta, niv, iwn=iwn, freq_notation=freq_notation) for iwn in wn])
 
 
-class LocalBubble():
+class BubbleGenerator():
     ''' Computes the (local) Bubble suszeptibility \chi_0 = - beta GG
         Uses a Greens-function object which has knowledge about the moments of the self-energy and the
         kinetic Hamiltonian.
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
     q_list = q_grid.irrk_mesh_ind
     wn = mf.wn(niw_chi0)
-    bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
+    bubble_gen = BubbleGenerator(wn=wn, giw=giwk, freq_notation='minus')
     import time
 
     start_time = time.time()
@@ -351,8 +351,8 @@ if __name__ == '__main__':
 #     bubble_gen = LocalBubble(wn=wn, giw=giwk, freq_notation='minus')
 #     niv_core = 10
 #     niv_shell = 2*niv_core
-#     _q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
-#     q_list = _q_grid.irrk_mesh_ind
+#     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
+#     q_list = q_grid.irrk_mesh_ind
 #     niv_giw = np.shape(giwk.full)[-1] // 2
 #     iws, iws2 = get_freq_shift(0, 'minus')
 #     giwkpq = bz.shift_mat_by_ind(giwk.full, ind=[-iq for iq in q_list.T[0]])
@@ -361,8 +361,8 @@ if __name__ == '__main__':
 #     chi0_q = bubble_gen.get_chi0_q_list(niv_core, q_list.T)
 #     chi0_q_shell = bubble_gen.get_chi0q_shell(chi0_q,niv_core, niw_chi0, q_list.T)
 #     # %%
-#     chi0_q_fbz = _q_grid.map_irrk2fbz(chi0_q)
-#     chi0_q_fbz_asympt = _q_grid.map_irrk2fbz(chi0_q_shell)
+#     chi0_q_fbz = q_grid.map_irrk2fbz(chi0_q)
+#     chi0_q_fbz_asympt = q_grid.map_irrk2fbz(chi0_q_shell)
 #     #%%
 #     chi0_loc = np.mean(chi0_q_fbz, axis=(0,1,2))
 #     chi0_loc_asympt = np.mean(chi0_q_fbz_asympt, axis=(0,1,2))
@@ -388,11 +388,11 @@ if __name__ == '__main__':
 #     # %%
 #
 #     asympt_sum_q = bubble_gen.get_asympt_sum_q(niv_shell+niv_core, q_list.T)
-#     asympt_sum_q = np.mean(_q_grid.map_irrk2fbz(asympt_sum_q),axis=(0,1,2))
+#     asympt_sum_q = np.mean(q_grid.map_irrk2fbz(asympt_sum_q),axis=(0,1,2))
 #     asympt_loc = bubble_gen.get_asympt_sum(niv_shell+niv_core)
 #
 #     asympt_exact_q = bubble_gen.get_exact_asymptotics_q(q_list.T)
-#     asympt_exact_q = np.mean(_q_grid.map_irrk2fbz(asympt_exact_q),axis=(0,1,2))
+#     asympt_exact_q = np.mean(q_grid.map_irrk2fbz(asympt_exact_q),axis=(0,1,2))
 #     asympt_exact_loc = bubble_gen.get_exact_asymptotics()
 #
 #     plt.figure()

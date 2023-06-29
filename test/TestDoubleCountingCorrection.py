@@ -48,7 +48,7 @@ gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
 gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
 
 # Create Bubble generator:
-bubble_gen = bub.LocalBubble(wn=g2_dens.wn, giw=giwk_dmft)
+bubble_gen = bub.BubbleGenerator(wn=g2_dens.wn, giw=giwk_dmft)
 gchi0_core = bubble_gen.get_gchi0(niv_core)
 gchi0_urange = bubble_gen.get_gchi0(niv_full)
 gamma_dens = lfp.gammar_from_gchir(gchi_dens, gchi0_urange, dmft_input['u'])

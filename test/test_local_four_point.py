@@ -151,7 +151,7 @@ def test_chi_asymptotic(siw_dmft,g2_dens : lfp.LocalFourPoint,g2_magn : lfp.Loca
     wn = g2_dens.wn
     gchi_dens = lfp.gchir_from_g2(g2_dens, g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, g_loc)
-    chi0_gen = bub.LocalBubble(wn, giwk)
+    chi0_gen = bub.BubbleGenerator(wn, giwk)
 
     # niv_core = np.arange(10, niw)[::10][::-1]
 
@@ -282,7 +282,7 @@ def test_vertex_frequency_convention(ddict, ek, count=1):
     g2_magn = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='magn', iw=wn), beta=beta, wn=wn, channel='magn')
     gchi_dens = lfp.gchir_from_g2(g2_dens, g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, g_loc)
-    chi0_gen = bub.LocalBubble(wn, giwk)
+    chi0_gen = bub.BubbleGenerator(wn, giwk)
     gchi0_core = chi0_gen.get_gchi0(niv=gchi_dens.niv)
     F_dens = lfp.Fob2_from_chir(gchi_dens, gchi0_core)
     F_magn = lfp.Fob2_from_chir(gchi_magn, gchi0_core)

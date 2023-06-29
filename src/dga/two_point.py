@@ -46,9 +46,6 @@ def fit_smom(iv=None, siwk=None):
     iwfit = iv[niv - n_freq_fit:]
     fitdata = s_loc[niv - n_freq_fit:]
 
-    print(fitdata.real)
-    print(n_freq_fit)
-    print(fitdata.real.shape)
     mom0 = np.mean(fitdata.real)
     mom1 = np.mean(fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
 

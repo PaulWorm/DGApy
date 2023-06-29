@@ -48,6 +48,7 @@ max_ent:
 
 # Parameters for the Eliashberg calculations concerning superconductivity. [optional]
 pairing: # For the pairing part nk == nq is required.
-
+  do_pairing_vertex: False # Construct the pairing vertex; default: False
+  do_eliash: False  # Perform the elishberg equation.; default: False
 
 

@@ -24,7 +24,7 @@ if __name__ == '__main__':
     dmft1p = np.load(input_path+'dmft1p.npy', allow_pickle=True).item()
     gamma = np.load(input_path+'gamma_dmft.npy', allow_pickle=True).item()
     import FourPoint as fp
-    chi0 = fp.LocalBubble(giw=dmft1p['gloc'],beta=config.sys.beta,niv_sum=config.box.niv_core,iw=(0,))
+    chi0 = fp.BubbleGenerator(giw=dmft1p['gloc'], beta=config.sys.beta, niv_sum=config.box.niv_core, iw=(0,))
     niv_core = config.box.niv_core
     chi0.set_gchi0()
     u = config.sys.u
