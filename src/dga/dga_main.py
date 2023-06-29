@@ -84,8 +84,8 @@ if comm.rank == 0 and dga_config.do_poly_fitting:
 
 # --------------------------------------------- LOCAL PART --------------------------------------------------------
 gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full = hlr.local_sde_from_g2(g2_dens,g2_magn,giwk_dmft,
-                                                                                              dga_config,logger,dmft_input,comm)
-
+                                                                                              dga_config,dmft_input,comm,
+                                                                                                     logger=logger)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # --------------------------------------------- NON-LOCAL PART --------------------------------------------------------
@@ -109,6 +109,7 @@ niv_full = dga_config.box_sizes.niv_full
 beta = dmft_input['beta']
 u = dmft_input['u']
 niv_core = dga_config.box_sizes.niv_core
+
 # Build the different non-local Bubbles:
 gchi0_q_urange = bubble_gen.get_gchi0_q_list(niv_full, my_q_list)
 chi0_q_urange = 1 / beta ** 2 * np.sum(gchi0_q_urange, axis=-1)
@@ -134,7 +135,7 @@ chi_lad_dens = fp.chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange
 
 vrg_q_dens = fp.vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_dens, u, gamma_dens.channel)
 
-if ('pairing' in conf_file):
+if (dga_config.eliash.do_pairing_vertex):
     niv_pp = dga_config.box_sizes.niv_pp
     omega = pv.get_omega_condition(niv_pp=niv_pp)
     channel = 'dens'

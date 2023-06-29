@@ -28,6 +28,7 @@ def load_w2dyn_data_set(path,file,hr,g2_file=None,load_g2=False):
     ddict['giw'] = dmft_file.get_giw()[0,0,:]
     ddict['hr'] = hr
     if(load_g2):
+        g2_file = w2dyn_aux_dga.g4iw_file(fname=path+g2_file)
         ddict['niw'] = g2_file.get_niw(channel='dens')
         ddict['wn'] = mf.wn(ddict['niw'])
         ddict['g2_dens'] = lfp.LocalFourPoint(matrix=g2_file.read_g2_iw(channel='dens', iw=ddict['wn']), beta=ddict['beta'], wn=ddict['wn'], channel='dens')
@@ -103,3 +104,10 @@ def get_data_set_8(load_g2=False):
     file = '1p-data.hdf5'
     hr = hamr.one_band_2d_t_tp_tpp(0.25, -0.0625, 0.03)
     return load_w2dyn_data_set(path,file,load_g2=load_g2,hr=hr)
+
+def get_data_set_9(load_g2=False):
+    path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+    file = '1p-data.hdf5'
+    g2_file = 'g4iw_sym.hdf5'
+    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,hr=hr)

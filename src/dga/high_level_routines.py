@@ -15,16 +15,15 @@ import dga.bubble as bub
 # ======================================================================================================================
 
 def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, giwk_dmft: twop.GreensFunction, dga_config,
-                      logger,
-                      dmft_input, comm):
+                      dmft_input, comm,logger=None, write_output=True):
     '''
         Perform the local Schwinger-Dyson equation starting with g2 as input
     '''
     gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
 
-    logger.log_cpu_time(task=' Data loading completed. ')
-    logger.log_memory_usage()
+    if(logger is not None): logger.log_cpu_time(task=' Data loading completed. ')
+    if(logger is not None): logger.log_memory_usage()
 
     # ------------------------------------------- Extract the irreducible Vertex -----------------------------------------------------
     # Create Bubble generator:
@@ -35,14 +34,14 @@ def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, 
     del gchi_magn, gchi_dens
     gc.collect()
 
-    logger.log_cpu_time(task=' Gamma-loc finished. ')
-    logger.log_memory_usage()
-    if (comm.rank == 0):
+    if(logger is not None): logger.log_cpu_time(task=' Gamma-loc finished. ')
+    if(logger is not None): logger.log_memory_usage()
+    if (comm.rank == 0 and write_output):
         plotting.default_gamma_plots(gamma_dens, gamma_magn, dga_config.output_path, dga_config.box_sizes, dmft_input['beta'])
         dga_config.save_data(gamma_dens.mat, 'gamma_dens')
         dga_config.save_data(gamma_magn.mat, 'gamma_magn')
 
-    logger.log_cpu_time(task=' Gamma-loc plotting finished. ')
+    if(logger is not None): logger.log_cpu_time(task=' Gamma-loc plotting finished. ')
 
     # ----------------------------------- Compute the Susceptibility and Threeleg Vertex --------------------------------------------------------
     vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, bubble_gen, dmft_input['u'],
@@ -51,12 +50,12 @@ def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, 
                                                                         niv_shell=dga_config.box_sizes.niv_shell)
 
     # Create checks of the susceptibility:
-    if (comm.rank == 0): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, dga_config.output_path,
+    if (comm.rank == 0 and write_output): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, dga_config.output_path,
                                              verbose=False,
                                              do_plot=True, name='loc')
 
-    logger.log_cpu_time(task=' Vrg and Chi-phys loc done. ')
-    logger.log_memory_usage()
+    if(logger is not None): logger.log_cpu_time(task=' Vrg and Chi-phys loc done. ')
+    if(logger is not None): logger.log_memory_usage()
     # --------------------------------------- Local Schwinger-Dyson equation --------------------------------------------------------
 
     # Perform the local SDE for box-size checks:
@@ -66,7 +65,7 @@ def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, 
                                             niv_shell=dga_config.box_sizes.niv_shell)
 
     # Create checks of the self-energy:
-    if (comm.rank == 0):
+    if (comm.rank == 0 and write_output):
         plotting.sigma_loc_checks([siw_sde_full, dmft_input['siw']], ['SDE', 'Input'], dmft_input['beta'], dga_config.output_path,
                                   verbose=False,
                                   do_plot=True, xmax=dga_config.box_sizes.niv_full)
@@ -74,7 +73,7 @@ def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, 
         dga_config.save_data(chi_dens, 'chi_dens_loc')
         dga_config.save_data(chi_magn, 'chi_magn_loc')
 
-    logger.log_cpu_time(task=' Local SDE finished. ')
-    logger.log_memory_usage()
+    if(logger is not None): logger.log_cpu_time(task=' Local SDE finished. ')
+    if(logger is not None): logger.log_memory_usage()
 
     return gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full

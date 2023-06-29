@@ -335,7 +335,6 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
     niv_full = niv_core + niv_shell
     chi0_core = gchi0_gen.get_chi0(niv_core)
     chi0_urange = gchi0_gen.get_chi0(niv_full)
-    # chi0_shell = gchi0_gen.get_chi0_shell(niv_full, niv_asympt)
     chi0_shell = gchi0_gen.get_asymptotic_correction(niv_full)
     chi0_asympt = chi0_urange + chi0_shell
     gchi0_core = gchi0_gen.get_gchi0(niv_core)
@@ -352,7 +351,6 @@ def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_ge
     # Compute the fermion-boson vertex:
     vrg = vrg_from_gchi_aux(gchi_aux, gchi0_core, chi_urange, chi_asympt, u)
 
-    # F_dc = get_F_dc_asympt(vrg, gchi_aux, chi_asympt, gchi0_core, u)
 
     return vrg, chi_asympt
 
@@ -410,12 +408,23 @@ def gammar_from_gchir(gchir: LocalFourPoint, gchi0_urange, u):
 
 
 def gammar_from_gchir_wn(gchir=None, gchi0_urange=None, niv_core=None, beta=1.0, u=1.0):
-    full = u / (beta * beta) + np.diag(1. / gchi0_urange)
-    inv_full = np.linalg.inv(full)
-    inv_core = mf.cut_v(inv_full, niv_core, axes=(-2, -1))
-    core = np.linalg.inv(inv_core)
+    '''
+        See Motoharu et al. (DOI 10.1088/2515-7639/ac7e6d) (Eq. A.4 to A.8)
+        Gamma  = X^(-1) - X_tilde^(-1) + U
+        X_tilde^(-1) = X_0^(-1) + U
+    '''
+
+    # Create chi_tilde in the shell region:
+    chi_tilde_shell_inv = u / (beta * beta) + np.diag(1. / gchi0_urange)
+    chi_tilde_shell = np.linalg.inv(chi_tilde_shell_inv)
+
+    # Cut frequencies to get chi_tilde in the core region:
+    inv_core = mf.cut_v(chi_tilde_shell, niv_core, axes=(-2, -1))
+    chi_tilde_core = np.linalg.inv(inv_core)
+
+    # Generate chi^(-1)
     chigr_inv = np.linalg.inv(gchir)
-    return -(core - chigr_inv - u / (beta * beta))
+    return (chigr_inv - chi_tilde_core + u / (beta * beta))
 
 
 def chi_phys_urange(chir_aux, chi0_core, chi0_urange, u, channel):

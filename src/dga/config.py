@@ -419,15 +419,20 @@ class DgaConfig(OutputConfig):
         self.fname_1p = '1p-data.hdf5'
         self.fname_2p = 'g4iw_sym.hdf5'
 
-        self.update_dict(**conf_file['dmft_input'])
+        if('dmft_input' in conf_file):
+            self.update_dict(**conf_file['dmft_input'])
 
         # Set dga routine specifications:
         self.lambda_corr = 'spch'
-        self.update_dict(**conf_file['dga'])
-
-        if ('gui' in conf_file['dga']):
-            if (not conf_file['dga']['gui']):
-                matplotlib.use('Agg')  # non-gui backend. Particularly usefull for use on cluster.
+        if('dga' in conf_file):
+            self.update_dict(**conf_file['dga'])
+            if('gui' not in conf_file['dga']):
+                matplotlib.use('Agg')
+            else:
+                pass # Setting a non-Agg backend does not work on my machine. Why is unclear, but this should do the trick.
+                # matplotlib.use(conf_file['dga']['gui'])
+        else:
+            matplotlib.use('Agg')  # non-gui backend. Particularly usefull for use on cluster.
 
 
 
@@ -470,6 +475,25 @@ class DgaConfig(OutputConfig):
                     os.mkdir(self.poly_fit_dir)
 
 
+def get_default_config_dict():
+
+    conf_dict = {
+        'box_sizes': {
+            'niv_core': -1,
+            'niw_core': -1,
+            'niv_shell': 0,
+        },
+        'lattice': {
+            'symmetries': 'two_dimensional_square',
+            'type': 't_tp_tpp',
+            'tb_params': [1.0, -0.2, 0.1],
+            'nk': [24,24,1]
+        },
+        'dga': {
+            'gui': 'TkAgg'
+        }
+    }
+    return conf_dict
 
 
 if __name__ == '__main__':
