@@ -323,13 +323,11 @@ def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.Bubble
         return vrg_core, chir_core
 
 
-def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_gen: bub.BubbleGenerator, u, niv_shell=0,
-                                               niv_asympt=None):
+def get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_r: LocalFourPoint, gchi0_gen: bub.BubbleGenerator, u, niv_shell=0):
     '''
         Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
         Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
     '''
-    if (niv_asympt is None): niv_asympt = 2 * niv_shell
     niv_core = gamma_r.niv
     # Create necessary bubbles
     niv_full = niv_core + niv_shell
@@ -445,12 +443,6 @@ def gchi_aux_core(gchir: LocalFourPoint, u):
     return LocalFourPoint(matrix=mat, channel=gchir.channel, beta=gchir.beta, wn=gchir.wn)
 
 
-# def gchi_aux_asympt(gchi_aux,):
-# u_r_mat = np.ones_like(gchir.mat[0]) * u_r
-# chir = gchir.contract_legs()
-# mat = np.array([mat[i] + mat[i] @ u_r_mat @ mat[i]/(1 - u_r * chir[i]) for i in gchir.wn_lin])
-
-
 def gchi_aux_core_from_gammar(gammar: LocalFourPoint, gchi0_core, u):
     u_r = get_ur(u, gammar.channel)
     mat = np.array([np.linalg.inv(np.diag(1. / gchi0_core[i]) + gammar.mat[i] - u_r / gammar.beta ** 2) for i in gammar.wn_lin])
@@ -484,78 +476,6 @@ def vrg_from_gchi_aux(gchir_aux: LocalFourPoint, gchi0_core, chir_urange, chir_a
     vrg = np.array([1 / gchi0_core[iwn] * np.sum(gchir_aux.mat[iwn], axis=-1)
                     * (1 - u_r * chir_urange[iwn]) / (1 - u_r * chir_asympt[iwn]) for iwn in gchir_aux.wn_lin])
     return LocalThreePoint(channel=gchir_aux.channel, matrix=vrg, beta=gchir_aux.beta, wn=gchir_aux.wn)
-
-
-# def local_gchi_aux_from_gammar(gammar: LocalFourPoint = None, gchi0_core: bub.LocalBubble = None, u=None):
-#     u_r = get_ur(u=u, channel=gammar.channel)
-#     gchi_aux = np.array([local_gchi_aux_from_gammar_wn(gammar=gammar.mat[wn], gchi0=gchi0_core.gchi0[wn],
-#                                                        beta=gammar.beta, u=u_r) for wn in gammar.wn_lin])
-#     return LocalFourPoint(matrix=gchi_aux, channel=gammar.channel, beta=gammar.beta, wn=gammar.wn)
-
-
-# # ==================================================================================================================
-
-#
-#
-# # ==================================================================================================================
-#
-#
-# # ==================================================================================================================
-# def local_fermi_bose_from_chi_aux(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None):
-#     vrg = 1. / gchi0.gchi0 * 1. / gchi0.beta * np.sum(gchi_aux.mat, axis=-1)
-#     return LocalThreePoint(matrix=vrg, channel=gchi_aux.channel, beta=gchi_aux.beta, wn=gchi_aux.wn)
-#
-#
-# def local_fermi_bose_urange(vrg: LocalThreePoint = None, niv_urange=-1):
-#     if (niv_urange == -1):
-#         niv_urange = vrg.niv
-#     vrg_urange = 1. / vrg.beta * np.ones((vrg.niw, 2 * niv_urange), dtype=complex)
-#     vrg_urange[:, niv_urange - vrg.niv:niv_urange + vrg.niv] = vrg.mat
-#     return LocalThreePoint(matrix=vrg_urange, channel=vrg.channel, beta=vrg.beta, wn=vrg.wn)
-#
-#
-# def local_fermi_bose_asympt(vrg: LocalThreePoint = None, chi_urange: LocalSusceptibility = None, u=None, niv_core=None):
-#     u_r = get_ur(u=u, channel=vrg.channel)
-#     # vrg_asympt = vrg.mat #* (1 - u_r * chi_urange.mat_asympt[:, None]) / (1 - u_r * chi_urange.mat[:, None])
-#     # vrg_asympt[:, vrg.niv - niv_core:vrg.niv + niv_core] *= (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
-#     vrg_asympt = vrg.mat * (1 - u_r * chi_urange.mat[:, None]) / (1 - u_r * chi_urange.mat_asympt[:, None])
-#     return LocalThreePoint(matrix=vrg_asympt, channel=vrg.channel, beta=vrg.beta, iw=vrg.wn)
-#
-#
-# def local_fermi_bose_from_chi_aux_urange(gchi_aux: LocalFourPoint = None, gchi0: LocalBubble = None, niv_urange=-1):
-#     vrg = local_fermi_bose_from_chi_aux(gchi_aux=gchi_aux, gchi0=gchi0)
-#     vrg = local_fermi_bose_urange(vrg=vrg, niv_urange=niv_urange)
-#     return vrg
-#
-#
-# # ======================================================================================================================
-#
-# # ======================================================================================================================
-#
-# def local_vertex_urange(gchi_aux: LocalFourPoint = None, gchi0_urange=None, gchi0_core=None, vrg: LocalThreePoint = None,
-#                         chi=None, u=None):
-#     u_r = get_ur(u=u, channel=vrg.channel)
-#     niv_urange = np.shape(gchi0_urange)[-1] // 2
-#     niv_core = np.shape(gchi_aux.mat)[-1] // 2
-#     F_urange = u_r * (1 - u_r * chi[:, None, None]) * vrg.mat[:, :, None] * vrg.mat[:, None, :]
-#     unity = np.eye(np.shape(gchi0_core)[-1], dtype=complex)
-#     F_urange[:, niv_urange - niv_core:niv_urange + niv_core, niv_urange - niv_core:niv_urange + niv_core] += 1. / gchi0_core[:, :, None] * (
-#             unity - gchi_aux.mat * 1. / gchi0_core[:, None, :])
-#     return F_urange
-#
-#
-# def local_vertex_inverse_bse_wn(gamma=None, chi0=None, u_r=None, beta=None):
-#     niv = np.shape(gamma)[-1] // 2
-#     niv_u = np.shape(chi0)[-1] // 2
-#     gamma_u = u_r * np.ones((2 * niv_u, 2 * niv_u), dtype=complex) * 1. / beta ** 2
-#     gamma_u[niv_u - niv:niv_u + niv, niv_u - niv:niv_u + niv] = gamma  # gamma contains internally 1/beta^2
-#     return np.matmul(gamma_u, np.linalg.inv(np.eye(2 * niv_u, dtype=complex) + gamma_u * chi0[:, None]))
-#     # return np.linalg.inv(np.linalg.inv(gamma_u))- np.diag(chi0))
-#
-#
-# def local_vertex_inverse_bse(gamma=None, chi0=None, u=None):
-#     u_r = get_ur(u=u, channel=gamma.channel)
-#     return np.array([local_vertex_inverse_bse_wn(gamma=gamma.mat[wn], chi0=chi0.gchi0[wn], u_r=u_r, beta=gamma.beta) for wn in gamma.wn_lin])
 
 
 def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):

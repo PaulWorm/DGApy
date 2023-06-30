@@ -138,7 +138,7 @@ class BoxSizes(ConfigBase):
 
     @property
     def niv_full(self):
-        return self.niv_shell + self.niw_core
+        return self.niv_shell + self.niv_core
 
     @property
     def vn_full(self):
