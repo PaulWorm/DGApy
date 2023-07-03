@@ -50,6 +50,7 @@ g2_dens, g2_magn = dga_io.load_g2(dga_config.box_sizes, dmft_input)
 # ------------------------------------------- DEFINE THE OUTPUT DIRECTORY --------------------------------------------------------
 comm.barrier()
 dga_config.create_dga_ouput_folder(comm=comm)
+dga_config.eliash.set_output_path(dga_config.output_path + 'Eliashberg/', comm)
 comm.barrier()
 
 # Create the DGA logger:

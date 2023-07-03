@@ -452,7 +452,7 @@ class DgaConfig(OutputConfig):
         self.eliash = EliashbergConfig()
         if ('pairing' in conf_file):
             self.eliash.update_dict(**conf_file['pairing'])
-            self.eliash.set_output_path(self.output_path + 'Eliashberg/', comm)
+
 
     def create_dga_ouput_folder(self, comm=None):
         ''' Create the name of the dga output directory and create it '''
