@@ -18,7 +18,8 @@ from ruamel.yaml import YAML
 
 # ----------------------------------------------- ARGUMENT PARSER ------------------------------------------------------
 
-DGA_OUPUT_PATH = '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'
+# DGA_OUPUT_PATH = '/LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'
+DGA_OUPUT_PATH = '/LDGA_{}_Nk{}_Nq{}_wc{}_vc{}_vs{}'
 
 
 def create_dga_argparser(name='dga_config.yaml', path=os.getcwd() + '/'):
