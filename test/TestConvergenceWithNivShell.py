@@ -68,7 +68,8 @@ comm = mpi.COMM_WORLD
 # Load dataset:
 
 
-input_path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+# input_path = './2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+input_path = './2DSquare_U8_tp-0.2_tpp0.1_beta50_n0.90/'
 input_type = 'w2dyn'
 fname_1p = '1p-data.hdf5'
 fname_2p = 'g4iw_sym.hdf5'
@@ -80,7 +81,7 @@ dmft_input = dga_io.load_1p_data(input_type, input_path, fname_1p, fname_2p)
 # niv_shell_range = np.array([0,10,30,60,120,240,480])
 niv_shell_range = np.array([0, 10, 30, 60, 120, 240])
 
-niv_core_1 = 20
+niv_core_1 = 30
 niw_core_1 = 2
 siw_sde_1, gamma_dens_1, gamma_magn_1, chi_dens_1, chi_magn_1, vrg_dens_range_1, vrg_magn_range_1 = \
     get_convergence_with_niv_shell(input_path, input_type, fname_1p,
@@ -96,14 +97,14 @@ siw_sde_2, gamma_dens_2, gamma_magn_2, chi_dens_2, chi_magn_2, vrg_dens_range_2,
                                                                                                niv_core_2,
                                                                                                niw_core_2)
 
-niv_core_3 = 60
+niv_core_3 = 50
 niw_core_3 = 2
 siw_sde_3, gamma_dens_3, gamma_magn_3, chi_dens_3, chi_magn_3, vrg_dens_range_3, vrg_magn_range_3 = \
     get_convergence_with_niv_shell(input_path, input_type, fname_1p,
                                                                                                fname_2p, niv_shell_range,
                                                                                                niv_core_3,
                                                                                                niw_core_3)
-niv_core_4 = 80
+niv_core_4 = 60
 niw_core_4 = 2
 siw_sde_4, gamma_dens_4, gamma_magn_4, chi_dens_4, chi_magn_4, vrg_dens_range_4, vrg_magn_range_4 = \
     get_convergence_with_niv_shell(input_path, input_type, fname_1p,

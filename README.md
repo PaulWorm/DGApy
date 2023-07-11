@@ -20,6 +20,9 @@ And finally the original [paper](https://journals.aps.org/prb/abstract/10.1103/P
 
 If you have any questions feel free to reach out to me via [e-mail](mailto:pworm42@gmail.com).
 
+## Notes on usage: 
+niw_core should NOT be larger than niv_core. Otherwise, finite size artifacts show up in the bare bubble contribution.  
+
 ## Roadmap
 ToDo
 
