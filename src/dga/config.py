@@ -4,6 +4,8 @@
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import os
+import warnings
+
 import numpy as np
 import dga.matsubara_frequencies as mf
 import dga.brillouin_zone as bz
@@ -61,6 +63,11 @@ class ConfigBase():
     '''
 
     def update_dict(self, **kwargs):
+        # for key,value in kwargs:
+        #     if(key in self.__dict__):
+        #         self.__dict__[key] = value
+        #     else:
+        #         warnings.warn(f'Unknown key {key} in config ')
         self.__dict__.update(kwargs)
 
     def set_from_obj(self, obj):

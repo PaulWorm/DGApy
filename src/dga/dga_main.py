@@ -398,7 +398,7 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(giwk_dga.g_full(pi_shift=True)[..., 0, giwk_dga.niv_full], kx_shift, ky_shift,
                         pdir=dga_config.output_path, name='Giwk_dga_kz0', scatter=fs_points)
 
-    dga_config.save_data(giwk_dga.g_full(), 'giwk_dga.npy')
+    dga_config.save_data(giwk_dga.g_full(), 'giwk_dga')
     np.savetxt(dga_config.output_path + '/mu.txt', [[giwk_dga.mu, dmft_input['mu_dmft']]], header='mu_dga, mu_dmft', fmt='%1.6f')
 
     # Plots along Fermi-Luttinger surface:
@@ -428,52 +428,10 @@ if (dga_config.do_poly_fitting):
 
     logger.log_cpu_time(task=' Poly-fits ')
 
-# --------------------------------------------- ANALYTIC CONTINUATION --------------------------------------------------
-# %%
 
-# Broadcast bw_opt_dga
-if ('max_ent' in conf_file):
-    max_ent_dir = dga_config.output_path + '/MaxEnt/'
-    if (comm.rank == 0 and not os.path.exists(max_ent_dir)): os.mkdir(max_ent_dir)
-    me_conf = config.MaxEntConfig(t=dga_config.lattice.hr[0, 0], beta=dmft_input['beta'], config_dict=conf_file['max_ent'],
-                                  output_path_loc=max_ent_dir)
 
-    if comm.rank == 0 and me_conf.cont_g_loc:
-        g_loc_dmft = giwk_dmft.g_loc
-        dga_io.max_ent_loc_bw_range(g_loc_dmft, me_conf, name='dmft')
-# Broadcast bw_opt_dga
-if ('max_ent' in conf_file):
-    if comm.rank == 0 and me_conf.cont_g_loc:
-        g_loc_dga = giwk_dga.g_loc
-        bw_opt_dga = dga_io.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga')
 
-        logger.log_cpu_time(task=' MaxEnt local ')
-        logger.log_memory_usage()
-    else:
-        bw_opt_dga = None
 
-    bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
-    # me_conf.bw_dga.append(bw_opt_dga)
-
-    if me_conf.cont_s_nl:
-        me_conf.output_path_nl_s = dga_config.output_path + '/MaxEntSiwk/'
-        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_s)): os.mkdir(me_conf.output_path_nl_s)
-
-        for bw in me_conf.bw_dga:
-            dga_io.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
-                                               name='siwk_dga')
-        logger.log_cpu_time(task=' MaxEnt Siwk ')
-        logger.log_memory_usage()
-
-    if me_conf.cont_g_nl:
-        me_conf.output_path_nl_g = dga_config.output_path + '/MaxEntGiwk/'
-        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
-
-        for bw in me_conf.bw_dga:
-            dga_io.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
-                                               name='Giwk_dga')
-        logger.log_cpu_time(task=' MaxEnt Giwk ')
-        logger.log_memory_usage()
 
 # %%Perform the Eliashberg Routine:
 if (comm.rank == 0 and 'pairing' in conf_file):
@@ -514,6 +472,12 @@ if (comm.rank == 0 and 'pairing' in conf_file):
                                    kgrid=dga_config.lattice.q_grid, do_shift=True)
 
     logger.log_event('Eliashberg completed!')
+
+# ------------------------------------------------- MAXENT ------------------------------------------------------------
+if('max_ent' in conf_file):
+    import dga.dga_max_ent as dme
+    dme.main(path=dga_config.output_path,comm=comm)
+    logger.log_event('MaxEnt completed')
 
 # End program:
 logger.log_event('Completed DGA run!')

@@ -6,7 +6,7 @@ import dga.matsubara_frequencies as mf
 import matplotlib.pyplot as plt
 
 
-PLOT_PATH = './TestPlots/'
+PLOT_PATH = './TestPlots/TestSelfEnergy/'
 
 def test_mom_fit(siw,beta,u,n,count=1):
     sigma_dmft = tp.SelfEnergy(siw[None,None,None,:],beta,pos=False, err=1e-4)
@@ -58,20 +58,25 @@ def test_mom_fit_3():
     ddict = td.get_data_set_3()
     test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=3)
 
+def test_mom_fit_6():
+    ddict = td.get_data_set_6()
+    test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=6)
+
 def test_mom_fit_7():
     ddict = td.get_data_set_7()
-    test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=3)
+    test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=7)
 
 def test_mom_fit_8():
     ddict = td.get_data_set_8()
-    test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=3)
+    test_mom_fit(ddict['siw'],ddict['beta'],ddict['u'],ddict['n'],count=8)
 
 if __name__ == '__main__':
     # test_mom_fit_1()
     # test_mom_fit_4()
     # test_mom_fit_3()
     # test_mom_fit_7()
-    test_mom_fit_8()
+    # test_mom_fit_8()
+    test_mom_fit_6()
 
 # #%%
 #     import h5py

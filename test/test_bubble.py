@@ -10,12 +10,12 @@ import dga.matsubara_frequencies as mf
 import dga.bubble as bub
 import util_for_testing as ut
 
-PLOT_PATH = './TestPlots/'
+PLOT_PATH = './TestPlots/TestChi0/'
 
 def test_bubble_convergence(siw,ek,beta,u,n,count=1):
-    siwk = tp.SelfEnergy(siw[None,None,None,:],beta,pos=False)#,smom0=tp.get_smom0(u,n),smom1=tp.get_smom1(u,n))
+    siwk = tp.SelfEnergy(siw[None,None,None,:],beta,pos=False,smom0=tp.get_smom0(u,n),smom1=tp.get_smom1(u,n))
     giwk = tp.GreensFunction(siwk,ek,n=n)
-    niv_asympt = 6000
+    niv_asympt = 10000
     giwk.set_g_asympt(niv_asympt)
 
     niw = 400
@@ -99,6 +99,19 @@ def test_bubble_convergence(siw,ek,beta,u,n,count=1):
     plt.savefig(PLOT_PATH + f'BubbleConvergence_w{iwnp}_{count}.png')
     plt.show()
 
+    plt.figure()
+    for i,chi0 in enumerate(chi0_list):
+        plt.plot(1/niv_sum[i],1/beta*np.sum(chi0).real,'o',color = colors[i],label=f'niv = {niv_sum[i]}')
+    plt.plot(0,1/beta*np.sum(chi0_full).real,'o',color = 'k',label=f'niv = asympt')
+    plt.plot(0,1/beta*np.sum(chi0_full2).real,'h',color = 'firebrick',label=f'niv = asympt2',ms=4)
+    plt.hlines((1-n/2)*n/2,0,1/niv_sum[0],ls='--',color = 'k')
+    plt.legend()
+    plt.xlabel('1/niv')
+    plt.ylabel(r'$sum_w \chi^0(i\omega_n)$')
+    plt.tight_layout()
+    plt.savefig(PLOT_PATH + f'BubbleConvergence_sum_w{iwnp}_{count}.png')
+    plt.show()
+
     ut.test_array(chi0_full2[niw+iwnp].real, chi0_full[niw+iwnp].real,count,rtol=1e-2)
     # assert np.isclose(chi0_full2[niw+iwnp].real, chi0_full[niw+iwnp].real)
 
@@ -131,8 +144,24 @@ def test_bubble_convergence_4():
     ek = hamk.ek_3d(k_grid.grid,hr=ddict['hr'])
     test_bubble_convergence(ddict['siw'],ek,ddict['beta'],ddict['u'],ddict['n'],count=4)
 
+def test_bubble_convergence_9():
+    ddict = td.get_data_set_9()
+    nk = (42,42,1)
+    k_grid = bz.KGrid(nk=nk,symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid,hr=ddict['hr'])
+    test_bubble_convergence(ddict['siw'],ek,ddict['beta'],ddict['u'],ddict['n'],count=9)
+
+def test_bubble_convergence_6():
+    ddict = td.get_data_set_6()
+    nk = (42,42,1)
+    k_grid = bz.KGrid(nk=nk,symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid,hr=ddict['hr'])
+    test_bubble_convergence(ddict['siw'],ek,ddict['beta'],ddict['u'],ddict['n'],count=6)
+
 if __name__ == '__main__':
-    test_bubble_convergence_1()
+    # test_bubble_convergence_1()
+    # test_bubble_convergence_9()
+    test_bubble_convergence_6()
     # test_bubble_convergence_2()
     # test_bubble_convergence_4()
     # test_bubble_convergence_3()
