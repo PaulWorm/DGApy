@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import BrillouinZone as bz
+import dga.brillouin_zone as bz
 
 # Load Data from Thomas Schäfer:
 path1 =  '/mnt/d/Research/U2BenchmarkData/BenchmarkSchaefer_beta_15/ladder_spin_only/'

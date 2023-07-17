@@ -521,9 +521,9 @@ def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.BubbleGen
     pass
 
 
-def schwinger_dyson_F(F: LocalFourPoint, chi0, giw, u):
+def schwinger_dyson_F(F: LocalFourPoint, gchi0, giw, u):
     ''' Sigma = 1/beta**3 * U \sum_{qk} F \chi_0 G(k-q)'''
-    sigma_F_q = np.sum(1 / F.beta * u * F.mat * chi0[:, None, :], axis=-1)
+    sigma_F_q = np.sum(1 / F.beta * u * F.mat * gchi0[:, None, :], axis=-1)
     mat_grid = mf.wn_slices(giw, n_cut=F.niv, wn=F.wn)
     sigma_F = np.sum(sigma_F_q * mat_grid, axis=0)
     return sigma_F

@@ -9,7 +9,8 @@ import dga.matsubara_frequencies as mf
 import dga.brillouin_zone as bz
 import dga.hk as hamk
 
-ddict = td.get_data_set_6(True, True)
+# ddict = td.get_data_set_6(True, True)
+ddict = td.get_data_set_9(True, True)
 
 siw = ddict['siw']
 beta = ddict['beta']
@@ -21,11 +22,11 @@ g2_magn = ddict['g2_magn']
 chi_dens_dmft = ddict['chi_dens']
 chi_magn_dmft = ddict['chi_magn']
 
-niv_core = 100
-niw_core = 100
-niv_shell = 400
+niv_core = 30
+niw_core = 30
+niv_shell = 100
 
-nk = (42, 42, 1)
+nk = (24, 24, 1)
 k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
 ek = hamk.ek_3d(k_grid.grid, hr=ddict['hr'])
 
@@ -121,13 +122,6 @@ plt.xlim(-10, 10)
 plt.ylim(0,2)
 plt.show()
 
-
-#%%
-
-plt.figure()
-plt.plot(wn_dmft, chi_dens_dmft.real, '-o', color='tab:orange')
-plt.xlim(-10,10)
-plt.show()
 
 #%%
 print(f'Chi-dens-sum: {1/beta*np.sum(chi_dens_dmft.real)}') # -(1-n/2)*n/2*2+(1-n/2)**2*2
