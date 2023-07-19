@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 # Load data:
-base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.85' \
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90' \
        '/LambdaDga_lc_spch_Nk19600_Nq19600_wcore30_vcore30_vshell500_2/'
 max_ent_dir = base_path + 'MaxEntGiwk/'
 max_ent_dir_s = base_path + 'MaxEntSiwk/'
@@ -30,14 +30,14 @@ siwk_cont_file = 'swk_siwk_dga_cont_fbz_bw0.01.npy'
 gwk = np.load(max_ent_dir+giwk_cont_file,allow_pickle=True)
 swk = np.load(max_ent_dir_s+siwk_cont_file,allow_pickle=True)
 mu0 = np.loadtxt(base_path+'mu.txt')[0]
-n_target = 0.85
+n_target = 0.90
 hr = dga_config.lattice.set_hr()
-ek = hamk.ek_3d(dga_config.lattice._k_grid.grid,hr)
-ek_shift = dga_config.lattice._k_grid.shift_mat_by_pi(ek)
+ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, hr)
+ek_shift = dga_config.lattice.k_grid.shift_mat_by_pi(ek)
 mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)
 
-gwk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(gwk)
-swk_shift = dga_config.lattice._k_grid.shift_mat_by_pi(swk)
+gwk_shift = dga_config.lattice.k_grid.shift_mat_by_pi(gwk)
+swk_shift = dga_config.lattice.k_grid.shift_mat_by_pi(swk)
 #%%
 nk = dga_config.lattice.nk
 nw0 = np.argmin(np.abs(me_config.mesh))
@@ -86,7 +86,7 @@ dpi = 500
 alpha = 0.8
 ms = 4
 vmax = 1
-lw =
+lw = 1
 
 # Figure 1:
 fig = plt.figure(facecolor=bgc, figsize=(14.6 * cm2in, 7 * cm2in), dpi=dpi)

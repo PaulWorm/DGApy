@@ -9,22 +9,22 @@
 import sys, os
 import h5py
 import numpy as np
-import Output as out
+import dga.dga_io as dga_io
 from mpi4py import MPI as mpi
 import numpy as np
-import Input as input
-import LocalFourPoint as lfp
-import FourPoint as fp
-import Hr as hamr
-import Hk as hamk
-import BrillouinZone as bz
-import TwoPoint as twop
-import Bubble as bub
-import Plotting as plotting
-import LambdaCorrection as lc
+import dga.local_four_point as lfp
+import dga.four_point as fp
+import dga.hr as hamr
+import dga.hk as hamk
+import dga.brillouin_zone as bz
+import dga.two_point as twop
+import dga.bubble as bub
+import dga.plotting as plotting
+import dga.lambda_correction as lc
 import matplotlib.pyplot as plt
-import MatsubaraFrequencies as mf
-import PlotSpecs
+import dga.matsubara_frequencies as mf
+import dga.util as util
+import dga.plot_specs
 
 # Define MPI communicator:
 comm = mpi.COMM_WORLD
@@ -32,9 +32,9 @@ comm = mpi.COMM_WORLD
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 
 # Momentum and frequency grids:
-niw_core = 30
-niv_core = 30
-niv_shell = 10 # 2 * niv_core
+niw_core = 100
+niv_core = 100
+niv_shell = 100 # 2 * niv_core
 niv_full = niv_core + niv_shell
 lambda_correction_type = 'spch'  # lambda-correction options not yet implemented
 nk = (16, 16, 1)
@@ -43,21 +43,21 @@ symmetries = bz.two_dimensional_square_symmetries()
 hr = hamr.one_band_2d_t_tp_tpp(1.0, -0.2, 0.1)
 
 # Input and output directories:
-input_type = 'EDFermion'  # 'w2dyn'
+input_type = 'w2dyn'  # 'w2dyn'
 # input_type = 'w2dyn'#'w2dyn'
 input_dir = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
 output_dir = input_dir + 'LambdaDga_lc_{}_Nk{}_Nq{}_wcore{}_vcore{}_vshell{}'.format(lambda_correction_type, np.prod(nk), np.prod(nq),
                                                                                      niw_core, niv_core, niv_shell)
-output_dir = out.uniquify(output_dir)
+output_dir = util.uniquify(output_dir)
 
 # Create output directory:
 comm.barrier()
 if (comm.rank == 0): os.mkdir(output_dir)
 comm.barrier()
 
-# %%
+
 # ------------------------------------------- LOAD THE INPUT --------------------------------------------------------
-dmft_input = input.load_1p_data(input_type, input_dir)
+dmft_input = dga_io.load_1p_data(input_type, input_dir, '1p-data.hdf5', 'g4iw_sym.hdf5')
 
 # cut the two-particle Green's functions:
 g2_dens = lfp.LocalFourPoint(channel='dens', matrix=dmft_input['g4iw_dens'], beta=dmft_input['beta'])
@@ -89,7 +89,7 @@ gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
 
 # Create Bubble generator:
 
-bubble_gen = bub.LocalBubble(wn=g2_dens.wn, giw=giwk_dmft)
+bubble_gen = bub.BubbleGenerator(wn=g2_dens.wn, giw=giwk_dmft)
 
 # --------------------------------------------- LOCAL PART ----------------------------------------------------------
 
@@ -98,6 +98,13 @@ bubble_gen = bub.LocalBubble(wn=g2_dens.wn, giw=giwk_dmft)
 vrg_dens, chi_dens = lfp.get_vrg_and_chir_tilde_from_chir(gchi_dens, bubble_gen, dmft_input['u'], niv_core=niv_core, niv_shell=niv_shell)
 vrg_magn, chi_magn = lfp.get_vrg_and_chir_tilde_from_chir(gchi_magn, bubble_gen, dmft_input['u'], niv_core=niv_core, niv_shell=niv_shell)
 
+
+beta = dmft_input['beta']
+n = dmft_input['n']
+
+print(f'Chi-sum-upup: {1/beta*0.5*np.sum(chi_magn.real+chi_dens.real)}')
+print(f'Chi-sum-upup-anal: {n/2*(1-n/2)}')
+#%%
 # Create checks of the susceptibility:
 if (comm.rank == 0): plotting.chi_checks([chi_dens, ], [chi_magn, ], ['Loc-tilde', ], giwk_dmft, output_dir, verbose=False, do_plot=True, name='loc')
 
@@ -161,8 +168,8 @@ chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2)
 
 # %%
 # if (comm.rank == 0):
-#     chi_lad_dens_loc = np.mean(_q_grid.map_irrk2fbz(chi_lad_dens), axis=(0, 1, 2))
-#     chi_lad_magn_fbz = _q_grid.map_irrk2fbz(chi_lad_magn)
+#     chi_lad_dens_loc = np.mean(q_grid.map_irrk2fbz(chi_lad_dens), axis=(0, 1, 2))
+#     chi_lad_magn_fbz = q_grid.map_irrk2fbz(chi_lad_magn)
 #     chi_lad_magn_loc = np.mean(chi_lad_magn_fbz, axis=(0, 1, 2))
 #     # plotting.chi_checks(chi_lad_dens_loc, chi_lad_magn_loc, giwk_dmft, output_dir, verbose=False, do_plot=True,name='q_core')
 #
@@ -171,7 +178,7 @@ chi_lad_magn = 1 / dmft_input['beta'] ** 2 * np.sum(gchi_lad_magn, axis=(-1, -2)
 #     plt.colorbar()
 #     plt.show()
 #
-#     gchi_lad_dens_fbz = np.mean(_q_grid.map_irrk2fbz(gchi_lad_dens), axis=(0, 1, 2))
+#     gchi_lad_dens_fbz = np.mean(q_grid.map_irrk2fbz(gchi_lad_dens), axis=(0, 1, 2))
 #     plt.figure()
 #     plt.imshow(gchi_lad_dens_fbz[niw_core, ...].real, cmap='RdBu')
 #     plt.colorbar()
@@ -239,8 +246,8 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(chi_lad_magn[..., 0, niw_core], q_grid.kx, q_grid.ky, pdir=output_dir, name='Chi_lam_magn_kz0')
 
 # %% Non-local Schwinger-Dyson equation:
-# chi_lad_dens = _q_grid.map_fbz2irrk(chi_lad_dens)
-# chi_lad_magn = _q_grid.map_fbz2irrk(chi_lad_magn)
+# chi_lad_dens = q_grid.map_fbz2irrk(chi_lad_dens)
+# chi_lad_magn = q_grid.map_fbz2irrk(chi_lad_magn)
 full_q_list = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
 q_dupl = np.ones((np.shape(full_q_list)[0]))
 

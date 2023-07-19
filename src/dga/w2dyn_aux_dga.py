@@ -152,6 +152,25 @@ class w2dyn_file:
     # ==================================================================================================================
 
     # ==================================================================================================================
+    def get_chi(self, dmft_iter='worm-last', atom=1, channel='dens'):
+        chi_upup = self._file[self.atom_group(dmft_iter=dmft_iter, atom=atom) + '/p2iw-worm/00001/value'][()]
+        chi_updown = self._file[self.atom_group(dmft_iter=dmft_iter, atom=atom) + '/p2iw-worm/00002/value'][()]
+        n = self.get_totdens()
+        beta = self.get_beta()
+        if(channel=='dens'):
+            niw = np.size(chi_upup)//2
+            wn = np.arange(-niw,niw+1)
+            chi_dens = chi_upup + chi_updown
+            chi_dens[wn == 0] -= (n/2 - 1)**2 * beta * 2
+            return  chi_dens
+        elif(channel == 'magn'):
+            return chi_upup - chi_updown
+        else:
+            raise ValueError(f'Provided channel ({channel}) is unknown. Channel must be dens/magn.')
+
+    # ==================================================================================================================
+
+    # ==================================================================================================================
     def load_dmft1p_w2dyn(self):
 
         beta = self.get_beta()

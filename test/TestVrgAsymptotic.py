@@ -23,7 +23,7 @@ g2_magn = fp.LocalFourPoint(matrix=g2iw_file.read_g2(channel='magn', niv=niv, ni
 g2_dens = fp.LocalFourPoint(matrix=g2iw_file.read_g2(channel='dens', niv=niv, niw=niw), beta=beta, wn=wn, channel='dens')
 chi_magn = fp.chir_from_g2(g2=g2_magn, giw=giw_obj)
 chi_dens = fp.chir_from_g2(g2=g2_dens, giw=giw_obj)
-gchi0_inv = fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv,is_inv=True,do_shell=False)
+gchi0_inv = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, is_inv=True, do_shell=False)
 F_magn = fp.Fob2_from_chir(chi_magn,gchi0_inv)
 gamma_magn = fp.gamob2_from_chir(chi_magn,gchi0_inv)
 gamma_dens = fp.gamob2_from_chir(chi_dens,gchi0_inv)
@@ -38,7 +38,7 @@ lam_dens = []
 chi_phys_dens = []
 vrg_dens = []
 for n in niv_array:
-    gchi0.append(fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
+    gchi0.append(fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
     lam_magn.append(fp.lam_from_chir(chi_magn, gchi0[-1], u=u))
     chi_phys_magn.append(fp.chi_phys_tilde(chir=chi_magn, gchi0=gchi0[-1], lam=lam_magn[-1], u=u))
     vrg_magn.append(fp.vrg_from_lam(chir=chi_phys_magn[-1],lam=lam_magn[-1],u=u))

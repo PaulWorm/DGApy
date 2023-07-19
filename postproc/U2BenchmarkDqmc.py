@@ -45,7 +45,7 @@ def load_ldga_n_an(path=None):
 def load_ldga_n_an_v2(path=None, sloc= None):
     dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
     config = np.load(path + 'config.npy', allow_pickle=True).item()
-    nk = config._k_grid.nk
+    nk = config.k_grid.nk
     niv_urange = config.box.niv_urange
     sigma_dga = np.load(path + 'sigma_dga.npy', allow_pickle=True).item()
     niv = sloc.size // 2

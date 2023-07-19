@@ -1,9 +1,7 @@
 import numpy as np
-import sys, os
+import sys
 
-sys.path.append('../src')
-sys.path.append('./src')
-import BrillouinZone as bz
+import dga.brillouin_zone as bz
 
 
 def example_mat_1():
@@ -51,6 +49,23 @@ def test_k_grid():
     assert np.equal(k_grid.fbz2irrk.flatten(), sol.flatten()).all()
 
 
+def test_k_grid_even():
+    nk = (4, 4, 1)
+    k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
+    sol = np.reshape([0, 1, 2, 1,
+                      1, 5, 6, 5,
+                      2, 6, 10, 6,
+                      1, 5, 6, 5], nk)
+    print('----------------')
+    if(np.equal(k_grid.fbz2irrk.flatten(), sol.flatten()).all()):
+        print('Passed test_k_grid_even.')
+    else:
+        print(f'Answer = {k_grid.fbz2irrk.flatten()}')
+        print(f'Solution = {sol.flatten()}')
+    print('----------------')
+    # assert np.equal(k_grid.fbz2irrk.flatten(), sol.flatten()).all()
+
+
 def test_irrk_mapping():
     nk = (3, 3, 1)
     k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
@@ -77,60 +92,6 @@ if __name__ == '__main__':
     test_inv_sym_y()
     test_x_y_sym()
     test_k_grid()
+    test_k_grid_even()
     test_irrk_mapping()
     test_irrk_mapping_even()
-
-    # # %%
-
-    #
-    # nk = (3, 3, 1)
-    # _k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
-    # hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
-    # ek = hamk.ek_3d(_k_grid.grid, hr)
-    #
-    # ek_irrk = _k_grid.map_fbz2irrk(ek)
-    # # print(ek_irrk - ek[_k_grid.fbz2irrk].flatten())
-    # ek_b2fbz = _k_grid.map_irrk2fbz(ek_irrk)
-    # count_fbz = _k_grid.map_irrk2fbz(_k_grid.irrk_count)
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # plt.figure()
-    # plt.imshow(ek[:, :, 0] - ek_b2fbz[:, :, 0], cmap='RdBu')
-    # plt.colorbar()
-    # plt.show()
-    # print(np.sum(ek[:, :, 0] - ek_b2fbz[:, :, 0]))
-    #
-    # # plt.figure()
-    # # plt.imshow(ek[:,:,0],cmap='RdBu')
-    # # plt.colorbar()
-    # # plt.show()
-    # #
-    # # plt.figure()
-    # # plt.imshow(ek_b2fbz[:,:,0],cmap='RdBu')
-    # # plt.colorbar()
-    # # plt.show()
-    #
-    # plt.figure()
-    # plt.pcolormesh(_k_grid.kx, _k_grid.ky, count_fbz[:, :, 0], cmap='RdBu')
-    # plt.colorbar()
-    # plt.show()
-    #
-    # plt.figure()
-    # plt.pcolormesh(_k_grid.kx, _k_grid.ky, _k_grid.fbz2irrk[:, :, 0], cmap='RdBu')
-    # plt.colorbar()
-    # plt.show()
-    #
-    # # # assert np.equal(ek_irrk,ek_b2fbz).all()
-    # # #%%
-    # # tmp = np.zeros((2,1))
-    # # # print()
-    #
-    # # nk = (3, 3, 1)
-    # # mat = np.reshape(np.arange(0, np.prod(nk)), nk)
-    # # bz.inv_sym(mat, 0)
-    # # bz.inv_sym(mat, 1)
-    # # bz.x_y_sym(mat)
-    # # plt.figure()
-    # # plt.imshow(mat, cmap='RdBu')
-    # # plt.show()

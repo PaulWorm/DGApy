@@ -183,21 +183,21 @@ elif(result=='chi0'):
     n = config.sys.n
     u = config.sys.u
     niw = config.box.niw_core
-    nk = config._k_grid.nk
-    q_grid = config._q_grid
+    nk = config.k_grid.nk
+    q_grid = config.q_grid
 else:
     chi = chi_data['magn'].mat.real * t_scal
     beta = config.sys.beta
     n = config.sys.n
     u = config.sys.u
     niw = config.box.niw_core
-    nk = config._k_grid.nk
-    q_grid = config._q_grid
+    nk = config.k_grid.nk
+    q_grid = config.q_grid
 
 
 chi = add_lambda(chi,lambda_add)
 iw = mf.w(beta=beta, n=niw)
-#_q_grid = config._q_grid
+#q_grid = config.q_grid
 
 # Cut negative frequencies:
 chi = chi[..., niw:]

@@ -7,7 +7,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import MatsubaraFrequencies as mf
+import dga.matsubara_frequencies as mf
 import h5py
 
 # Parameters:

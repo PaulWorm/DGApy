@@ -302,7 +302,7 @@ def get_lam_tilde(lam_core: LocalThreePoint, chi0_shell, u):
     return LocalThreePoint(channel=lam_core.channel, matrix=lam_tilde, beta=lam_core.beta, wn=lam_core.wn)
 
 
-def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
+def get_vrg_and_chir_tilde_from_chir(gchir: LocalFourPoint, chi0_gen: bub.BubbleGenerator, u, niv_core=-1, niv_shell=0):
     assert niv_core <= gchir.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({gchir.niv}).'
     if (niv_core == -1): niv_core = gchir.niv
     gchi0_core = chi0_gen.get_gchi0(niv_core)
@@ -430,7 +430,7 @@ def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     return sigma_F
 
 
-def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.LocalBubble, u, niv_core=-1, niv_shell=0):
+def schwinger_dyson_vrg_core_from_g2(g2: LocalFourPoint, chi0_gen: bub.BubbleGenerator, u, niv_core=-1, niv_shell=0):
     assert niv_core <= g2.niv, f'niv_core ({niv_core}) has to be smaller or equal to the niv_g2 ({g2.niv}).'
     if (niv_core == -1): niv_core = g2.niv
     g2.cut_iv(niv_core)
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     g2_magn.cut_iv(niv)
     g2_dens_cent = to_centered(g2_dens)
     g2_magn_cent = to_centered(g2_magn)
-    bubble_gen = bub.LocalBubble(wn=g2_magn_cent.wn, giw=giwk,freq_notation='center')
+    bubble_gen = bub.BubbleGenerator(wn=g2_magn_cent.wn, giw=giwk, freq_notation='center')
     wn = mf.wn(np.size(g2_magn_cent.wn) // 2)
     vn_core = mf.vn(g2_magn_cent.niv)
     w_ind = np.size(g2_magn_cent.wn) // 2
@@ -666,7 +666,7 @@ if __name__ == '__main__':
 
     # %%
     wn_asympt = mf.wn_shell(giwk.niv_core,n_core=g2_magn_cent.wn.size//2)
-    bubble_gen_asypt = bub.LocalBubble(wn=wn_asympt, giw=giwk,freq_notation='center')
+    bubble_gen_asypt = bub.BubbleGenerator(wn=wn_asympt, giw=giwk, freq_notation='center')
     chi_asmypt = bubble_gen_asypt.get_chi0(niv=niv_shell)
     chi_asmypt = chi_asmypt + bubble_gen_asypt.get_chi0_shell(niv_shell,niv_shell+niv)
     print('--------------')

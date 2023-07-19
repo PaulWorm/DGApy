@@ -7,9 +7,14 @@ import numpy as np
 # ------------------------------------------------ CLASSES -------------------------------------------------------------
 
 class EliashberPowerIteration():
-    ''' Class to handle the linearized Eliashberg equaiton via the means of power iteration.'''
+    ''' Class to handle the linearized Eliashberg equaiton via the means of power iteration.
+        gamma: [nkx,nky,nkz,2*niv,2*niv] (we only look at omega = 0 pairing)
+        gk: [nkx,nky,nkz,2*niv]
+        gap0: [nkx,nky,nkz,2*niv]
+        shift_mat: compute the largest eigenvalue (lam_s) and subsequently compute eigenvalues of A - I lam_s
+    '''
 
-    def __init__(self, gamma=None,gk=None, gap0=None, norm=None, eps=10 ** -6, max_count = 10000, shift_mat=0, n_eig = 1):
+    def __init__(self, gamma=None,gk=None, gap0=None, norm=None, eps=1e-6, max_count = 10000, shift_mat=0, n_eig = 1):
         self.eps = eps
         self.max_count = max_count
         self.gammax = np.fft.fftn(gamma, axes=(0, 1, 2))
@@ -42,8 +47,8 @@ class EliashberPowerIteration():
         if(self.shift_mat and self.lam_s is None):
             gap_old = self.gap0_s
         else:
-            gap_old = self.gap0
-        lambda_old = 1
+            gap_old = self.gap0 # always initialize with the same starting point
+        lambda_old = 1          # Randomly start with
         converged = False
         count = 0
         while (not converged):
@@ -52,10 +57,12 @@ class EliashberPowerIteration():
             gap_gg = np.fft.ifftn(gap_old * np.abs(self.gk) ** 2, axes=(0, 1, 2))
             gap_new = 1. / self.norm * np.sum(self.gammax * gap_gg[..., None, :], axis=-1)
             gap_new = np.fft.fftn(gap_new, axes=(0, 1, 2))
+            # gep_new = remove_prev_eigenvals(v=gap_new, basis=self.gap, lams=self.lam)
             if (self.lam_s is not None):
                 gap_new = gap_new - gap_old * self.lam_s
             lambda_new = np.sum(np.conj(gap_old) * gap_new) / np.sum(np.conj(gap_old) * gap_old)
             gap_old = gap_new/lambda_new
+
             if (np.abs(lambda_new - lambda_old) < self.eps or count > self.max_count):
                 converged = True
             lambda_old = lambda_new
@@ -77,109 +84,20 @@ def gram_schmidt_eliash(v=None, basis=None, gk=None):
         v_new = v_new - proj_eliash(v=v,u=ui,gk=gk)
     return v_new
 
+def remove_prev_eigenvals(v,basis,lams):
+    v_new = np.copy(v)
+    for i,ui in enumerate(basis):
+        v_new = v_new - lams[i] * ui * np.sum(np.conj(ui)*v)#/np.sum(ui*ui)
+    return v_new
+
 def proj(v=None,u=None):
     '''Projection of v onto u.'''
-    return np.sum(u*v)/np.sum(u*u) * u
+    return  np.sum(np.conj(u)*v)/np.sum(np.conj(u)*u) * u
 
 def proj_eliash(v=None,u=None,gk=None):
     '''Projection of v onto u.'''
-    return np.sum(u*np.abs(gk)**2*v)/np.sum(u*np.abs(gk)**2*u) * u
-
-def phase1(gammax=None, gk=None, eps=10 ** -6, max_count=10000, norm=1.0, gap_0=None):
-    # delta_old = np.random.random_sample(np.shape(gk))
-    # delta_old = np.ones(np.shape(gk))
-    delta_old = gap_0
-    lambda_old = 10.
-    converged = False
-    count = 0
-    while (not converged):
-        delta_tilde = np.fft.ifftn(delta_old * np.abs(gk) ** 2, axes=(0, 1, 2))
-        delta_new = 1. / norm * np.sum(gammax * delta_tilde[..., None, :], axis=-1)
-        delta_new = np.fft.fftn(delta_new, axes=(0, 1, 2))
-        lambda_new = np.sum(np.conj(delta_old) * delta_new) / np.sum((np.conj(delta_old) * delta_old))
-        delta_new = delta_new / np.sqrt(np.sum(delta_new * np.conj(delta_new)))
-        #delta_new = delta_new / lambda_new
-        if (np.abs(lambda_new - lambda_old) < eps or count > max_count):
-            converged = True
-
-        lambda_old = lambda_new
-        delta_old = delta_new
-
-    return lambda_new, np.array(delta_new)
-
-
-def phase2(gammax=None, gk=None, eps=10 ** -6, max_count=10000, norm=1.0, lambda_s=None, gap_0=None):
-    # delta_old = np.random.random_sample(np.shape(gk))
-    # delta_old = np.ones(np.shape(gk))
-
-    lambda_old = 10.
-    converged = False
-    count = 0
-    while (not converged):
-        count += 1
-        delta_old = gap_0
-        Delta_tilde = np.fft.ifftn(delta_old * np.abs(gk) ** 2, axes=(0, 1, 2))
-        delta_new = 1. / (norm) * np.sum(gammax * Delta_tilde[..., None, :], axis=-1)
-        delta_new = np.fft.fftn(delta_new, axes=(0, 1, 2))
-
-        delta_new = delta_new - lambda_s * delta_old
-
-        lambda_new = np.sum(np.conj(delta_old) * delta_new) / np.sum((np.conj(delta_old) * delta_old))
-        delta_new = delta_new/np.sqrt(np.sum(delta_new * np.conj(delta_new)))
-        delta_old = delta_new
-        if (np.abs(lambda_new - lambda_old) < eps or count > max_count):
-            converged = True
-        lambda_old = lambda_new
-        delta_new = delta_old
-
-    return lambda_new, np.array(delta_new)
-
-
-def phase3(gammax=None, gk=None, eps=10 ** -6, max_count=10000, norm=1.0, lambda_s=None, gap_0=None, n=1):
-
-    lambda_ = []
-    gaps = []
-    for i in range(n):
-        delta_old = gap_0
-        lambda_old = 10.
-        converged = False
-        count = 0
-        while (not converged):
-            count += 1
-            Delta_tilde = np.fft.ifftn(delta_old * np.abs(gk) ** 2, axes=(0, 1, 2))
-            delta_new = 1. / (norm) * np.sum(gammax * Delta_tilde[..., None, :], axis=-1)
-            delta_new = np.fft.fftn(delta_new, axes=(0, 1, 2))
-
-            delta_new = delta_new - lambda_s * delta_old
-            lambda_new = np.sum(np.conj(delta_old) * delta_new) / np.sum((np.conj(delta_old) * delta_old))
-
-            delta_new = delta_new/np.sqrt(np.sum(delta_new * np.conj(delta_new)))
-            #delta_new = delta_new/lambda_new
-            delta_old = delta_new
-
-            if (np.abs(lambda_new - lambda_old) < eps or count > max_count):
-                converged = True
-
-            if i > 0:
-                delta_old = project_out_gaps(gap_current=delta_old, gaps=gaps, gk=gk)
-            lambda_old = lambda_new
-
-        print('Eliashberg routine converged after {} iterations'.format(count))
-        lambda_.append(lambda_new)
-        gaps.append(delta_old)
-    return np.array(lambda_), np.array(gaps)
-
-
-def project_out_gaps(gap_current=None, gaps=None, gk=None):
-    n_gaps = len(gaps)
-    gap_new = gap_current
-    for i in range(n_gaps):
-        gap_old = gaps[i]
-        c = np.sum(np.conj(gap_old) * gap_current) / np.sum(
-            np.conj(gap_old) * gap_old)
-        gap_new -= c * gap_old
-    return gap_new
-
+    # return np.sum(u*np.abs(gk)**2*v)/np.sum(u*np.abs(gk)**2*u) * u
+    return np.sum(np.conj(u)*v)/np.sum(np.conj(u)*u) * u
 
 def get_gap_start(shape=None, k_type=None, v_type=None, k_grid=None):
     gap0 = np.zeros(shape, dtype=complex)
@@ -219,6 +137,16 @@ def linear_eliashberg(gamma=None, gk=None, eps=10 ** -6, max_count=10000, norm=1
 
     return powiter.lam_s,powiter.lam_s, powiter.lam, powiter.gap
 
+
+def symmetrize_gamma(gamma,channel):
+    ''' Symmetrize Gamma. '''
+    if(channel == 'sing'):
+        gamma_sym = 0.5 * (gamma + np.flip(gamma, axis=(-1)))
+    elif(channel == 'trip'):
+        gamma_sym = 0.5 * (gamma - np.flip(gamma, axis=(-1)))
+    else:
+        raise ValueError('Channel must be sing or trip')
+    return gamma_sym
 
 if __name__ == '__main__':
     pass

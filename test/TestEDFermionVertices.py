@@ -138,7 +138,7 @@ gchi_dens.plot(0,pdir=path,name='Gchi_dens', niv=30)
 gchi_magn.plot(0,pdir=path,name='Gchi_magn', niv=30)
 
 
-gchi0_gen = bub.LocalBubble(wn=wn_g2, giw=green)
+gchi0_gen = bub.BubbleGenerator(wn=wn_g2, giw=green)
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
 # chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)
@@ -251,7 +251,7 @@ plt.show()
 
 #%% Test non-local part:
 q_list =  q_grid.irrk_mesh_ind.T
-# q_list_full = np.array([_q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
+# q_list_full = np.array([q_grid.kmesh_ind[i].flatten() for i in range(3)]).T
 chi0_q = gchi0_gen.get_chi0_q_list(niv_core,q_list)
 # chi0_q_list_full = gchi0_gen.get_chi0_q_list(niv_core,q_list)
 chi0_q_shell = gchi0_gen.get_chi0q_shell(chi0_q,niv_core,niv_shell,q_list)

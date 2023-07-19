@@ -58,7 +58,7 @@ gchi_magn.plot(10,pdir=path,name='Gchi_magn_wn10_centered')
 
 
 #%%
-gchi0_gen = bub.LocalBubble(wn=wn,giw=green,freq_notation='center')
+gchi0_gen = bub.BubbleGenerator(wn=wn, giw=green, freq_notation='center')
 gchi0_core = gchi0_gen.get_gchi0(niv_core)
 chi0_core = gchi0_gen.get_chi0(niv_core)
 chi0_shell = gchi0_gen.get_asymptotic_correction(niv_core)

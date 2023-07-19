@@ -36,7 +36,7 @@ g2_dens.cut_iv(niv_cut=niv)
 
 chi_magn = fp.chir_from_g2(g2=g2_magn, giw=giw_obj)
 chi_dens = fp.chir_from_g2(g2=g2_dens, giw=giw_obj)
-gchi0_inv = fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv,is_inv=True,do_shell=False)
+gchi0_inv = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, is_inv=True, do_shell=False)
 F_magn = fp.Fob2_from_chir(chi_magn,gchi0_inv)
 gamma_magn = fp.gamob2_from_chir(chi_magn,gchi0_inv)
 niv_array = np.array([niv,100, 200, 500, 1000,20000])
@@ -58,7 +58,7 @@ siw_w_asympt = []
 siw_magn_range = []
 wn_2 = mf.wn(200)
 for n in niv_array:
-    gchi0.append(fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
+    gchi0.append(fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, niv_shell=n))
 
     # Magn:
     # lam_magn.append(fp.lam_from_chir_FisUr(chi_magn, gchi0[-1], u=u))
@@ -178,8 +178,8 @@ niv_urange = niv
 ind_comp = np.where(niv_urange == niv_array)[0][0]
 iw = wn
 # Extract gamma:
-chi0_urange = fp.LocalBubble(giw=giw_obj, niv=niv_urange, wn=wn)
-chi0_core = fp.LocalBubble(giw=giw_obj, niv=niv_core, wn=wn)
+chi0_urange = fp.BubbleGenerator(giw=giw_obj, niv=niv_urange, wn=wn)
+chi0_core = fp.BubbleGenerator(giw=giw_obj, niv=niv_core, wn=wn)
 gamma_dens = fp.gammar_from_gchir(gchir=chi_dens, gchi0_urange=chi0_urange, u=u)
 gamma_magn = fp.gammar_from_gchir(gchir=chi_magn, gchi0_urange=chi0_urange, u=u)
 

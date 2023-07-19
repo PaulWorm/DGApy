@@ -29,7 +29,8 @@ class MpiDistributor():
 
         if(output_path is not None):
             # Read/write file. Create if it does not exist.
-            self.fname = output_path +'/' +name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
+            if(output_path[-1] != '/'): output_path += '/'
+            self.fname = output_path + name + 'Rank{0:05d}'.format(self.my_rank) + '.hdf5'
             self.file = h5py.File(self.fname,'a')
             self.file.close()
 
@@ -53,6 +54,10 @@ class MpiDistributor():
     @property
     def my_rank(self):
         return self._comm.Get_rank()
+
+    @property
+    def my_tasks(self):
+        return np.arange(0,self.ntasks)[self.my_slice]
 
     @property
     def mpi_size(self):

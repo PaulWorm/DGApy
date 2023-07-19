@@ -8,6 +8,11 @@ import dga.continuation as cont
 import dga.matsubara_frequencies as mf
 import gc
 import dga.config as config
+import dga.plotting as plotting
+import dga.brillouin_zone as bz
+import dga.two_point as twop
+import dga.mpi_aux as mpi_aux
+import scipy.optimize as opt
 
 # --------------------------------------- Obtain the real frequency grid -----------------------------------------------
 
@@ -203,3 +208,102 @@ def extract_coefficient_imaxis(siwk=None, iw=None, N=4, order=3):
     poly_imag_der = np.polyval(coeff_imag_der, xnew)
     Z = 1. / (1. - poly_imag_der[0])
     return poly_real[0], poly_imag[0], Z
+
+
+def max_ent_loc_bw_range(mat, me_conf: config.MaxEntConfig, name=''):
+    v_real = me_conf.mesh
+    chi2 = []
+    bw_range = me_conf.bw_range_loc
+    for bw in bw_range:
+        # mu-adjusted DGA Green's function:
+        mat_cont, chi2_tmp = max_ent_loc(mat, me_conf, bw)
+        chi2.append(chi2_tmp)
+        plotting.plot_aw_loc(output_path=me_conf.output_path_loc, v_real=v_real, gloc=mat_cont,
+                             name=name + '-bw{}'.format(bw))
+        np.save(me_conf.output_path_loc + name + '_cont_bw{}.npy'.format(bw), mat_cont, allow_pickle=True)
+
+    chi2 = np.array(chi2)
+
+    def fitfun(x, a, b, c, d):
+        return a + b / (1. + np.exp(-d * (x - c)))
+
+    popt, pcov = opt.curve_fit(f=fitfun, xdata=np.log(bw_range), ydata=np.log(chi2), p0=(0., 5., 2., 0.))
+    a, b, c, d = popt
+    a_opt = c - me_conf.bw_fit_position / d
+    bw_opt = np.exp(a_opt)
+    np.savetxt(me_conf.output_path_loc + 'bw_opt_' + name + '.txt', [bw_opt, ], delimiter=',', fmt='%.9f', header='bw_opt')
+    plotting.plot_bw_fit(bw_opt=bw_opt, bw=bw_range, chi2=chi2, fits=[np.exp(fitfun(np.log(bw_range), a, b, c, d)), ],
+                         output_path=me_conf.output_path_loc, name='chi2_bw_{}'.format(name))
+    return bw_opt
+
+
+def max_ent_irrk(mat, k_grid, me_conf: config.MaxEntConfig, comm, bw):
+    mpi_distributor = mpi_aux.MpiDistributor(ntasks=k_grid.nk_irr, comm=comm)
+    my_ind = k_grid.irrk_ind_lin[mpi_distributor.my_slice]
+    mat_cont = do_max_ent_on_ind_T(mat=mat, ind_list=my_ind, v_real=me_conf.mesh,
+                                          beta=me_conf.beta,
+                                          n_fit=me_conf.n_fit, err=me_conf.err, alpha_det_method=me_conf.alpha_det_method,
+                                          use_preblur=me_conf.use_preblur, bw=bw, optimizer=me_conf.optimizer)
+    mat_cont = mpi_distributor.allgather(rank_result=mat_cont)
+    return mat_cont
+
+
+def max_ent_irrk_bw_range_sigma(sigma: twop.SelfEnergy, k_grid: bz.KGrid, me_conf: config.MaxEntConfig, comm, bw, logger=None,
+                                name=''):
+    hartree = sigma.smom0
+    sigma = k_grid.map_fbz2irrk(sigma.get_siw(niv=me_conf.n_fit) - hartree)
+    sigma_cont = max_ent_irrk(sigma, k_grid, me_conf, comm, bw)
+    if (logger is not None): logger.log_cpu_time(task=' for {} MaxEnt done left are plots and gather '.format(name))
+
+    if (logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
+    if (comm.rank == 0):
+        sigma_cont = k_grid.map_irrk2fbz(sigma_cont) + hartree  # re-add the hartree term
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_s,
+                              name='swk_fermi_surface_' + name + '_cont_w0-bw{}'.format(bw),
+                              gk=sigma_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=0)
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_s,
+                              name='swk_fermi_surface_' + name + '_cont_w0.1-bw{}'.format(bw),
+                              gk=sigma_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=0.1)
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_s,
+                              name='swk_fermi_surface_' + name + '_cont_w-0.1-bw{}'.format(bw),
+                              gk=sigma_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=-0.1)
+
+        np.save(me_conf.output_path_nl_s + 'swk_' + name + '_cont_fbz_bw{}.npy'.format(bw), sigma_cont,
+                allow_pickle=True)
+    return None
+    # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=sigma_cont, _k_grid=_k_grid,
+    #                             output_path=me_conf.output_path_nl_s,
+    #                             name='swk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
+
+
+def max_ent_irrk_bw_range_green(green: twop.GreensFunction, k_grid: bz.KGrid, me_conf: config.MaxEntConfig, comm, bw, logger=None,
+                                name=''):
+    green = k_grid.map_fbz2irrk(green.g_full())
+    green_cont = max_ent_irrk(green, k_grid, me_conf, comm, bw)
+    if (logger is not None): logger.log_cpu_time(task=' for {} MaxEnt done left are plots and gather '.format(name))
+
+    if (logger is not None):  logger.log_cpu_time(task=' for {} Gather done left are plots '.format(name))
+    if (comm.rank == 0):
+        green_cont = k_grid.map_irrk2fbz(green_cont)
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_g,
+                              name='gwk_fermi_surface_' + name + '_cont_w0-bw{}'.format(bw),
+                              gk=green_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=0)
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_g,
+                              name='gwk_fermi_surface_' + name + '_cont_w0.1-bw{}'.format(bw),
+                              gk=green_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=0.1)
+
+        plotting.plot_cont_fs(output_path=me_conf.output_path_nl_g,
+                              name='gwk_fermi_surface_' + name + '_cont_w-0.1-bw{}'.format(bw),
+                              gk=green_cont, v_real=me_conf.mesh, k_grid=k_grid, w_plot=-0.1)
+
+        np.save(me_conf.output_path_nl_g + 'gwk_' + name + '_cont_fbz_bw{}.npy'.format(bw), green_cont,
+                allow_pickle=True)
+        # plotting.plot_cont_edc_maps(v_real=me_conf.mesh, gk_cont=green_cont, k_grid=k_grid,
+        #                             output_path=me_conf.output_path_nl_g,
+        #                             name='gwk_fermi_surface_' + name + '_cont_edc_maps_bw{}'.format(bw))
+    return None

@@ -38,12 +38,12 @@ g2_dens.cut_iv(niv_cut=niv)
 
 chi_magn = fp.chir_from_g2(g2=g2_magn, giw=giw_obj)
 chi_dens = fp.chir_from_g2(g2=g2_dens, giw=giw_obj)
-gchi0_inv = fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv,is_inv=True,do_shell=False)
+gchi0_inv = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, is_inv=True, do_shell=False)
 F_magn = fp.Fob2_from_chir(chi_magn,gchi0_inv)
 F_dens = fp.Fob2_from_chir(chi_dens,gchi0_inv)
 F_upup = fp.LocalFourPoint(matrix=0.5*(F_dens.mat + F_magn.mat), channel='upup', beta=F_magn.beta, wn=F_magn.wn)
 
-gchi0 = fp.LocalBubble(wn=wn, giw=giw_obj, niv=niv,is_inv=False,do_shell=True)
+gchi0 = fp.BubbleGenerator(wn=wn, giw=giw_obj, niv=niv, is_inv=False, do_shell=True)
 siw_upup = fp.schwinger_dyson_F(F_upup,gchi0,giw=giw_obj.mat,u=u,totdens=0) # avoid Hartree contribution by setting totdens = 0
 siw_magn = fp.schwinger_dyson_F(F_magn,gchi0,giw=giw_obj.mat,u=u,totdens=0) # avoid Hartree contribution by setting totdens = 0
 siw_dens = fp.schwinger_dyson_F(F_dens,gchi0,giw=giw_obj.mat,u=u,totdens=0) # avoid Hartree contribution by setting totdens = 0
