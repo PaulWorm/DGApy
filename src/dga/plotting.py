@@ -101,7 +101,7 @@ def plot_along_ind(mat, indizes, step_size=1, figsize=ps.FIGSIZE, cmap='rainbow'
 
     if (niv_plot == -1):
         niv_plot = np.shape(mat)[-1] // 2
-    vn = mf.vn_from_mat(mat)
+    vn = mf.vn(mat)
     ind_v = np.logical_and(vn >= niv_plot_min, vn <= niv_plot)
 
     n_plots = len(indizes[::step_size])
@@ -183,14 +183,15 @@ def chi_checks(chi_dens, chi_magn, labels, green, plot_dir, verbose=False, do_pl
 
     for i, cd in enumerate(chi_dens):
         axes[2].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i], ms=0)
-    axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2,
+    axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (1j*mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2,
                    ls='--', label='Asympt', ms=0)
     axes[2].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
     axes[2].legend()
 
     for i, cd in enumerate(chi_magn):
         axes[3].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i], ms=0)
-    axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (mf.iw(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, '--',
+    axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (1j*mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, \
+    '--',
                    label='Asympt', ms=0)
     axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
     axes[3].legend()
@@ -212,8 +213,8 @@ def local_diff_checks(arrs, labels, output_dir, verbose=False, do_plot=True, nam
     axes = axes.flatten()
 
     for i, arr in enumerate(arrs):
-        wn_1 = mf.wn_from_mat(arr[0])
-        wn_2 = mf.wn_from_mat(arr[1])
+        wn_1 = mf.wn(arr[0])
+        wn_2 = mf.wn(arr[1])
         axes[0].plot(wn_1, arr[0].real, label=labels[i][0])
         axes[0].plot(wn_2, arr[1].real, label=labels[i][1])
 

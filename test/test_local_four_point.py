@@ -655,7 +655,7 @@ def test_vertex_frequency_convention_3():
 
 
 if __name__ == '__main__':
-    # test_chi_convergence_niv_core_6()
+    test_chi_convergence_niv_core_6()
     test_chi_convergence_niv_shell_6()
 
     print('Finished!')

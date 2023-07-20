@@ -118,7 +118,7 @@ def fit_and_plot_oz(output_path, q_grid):
 
 
 def poly_fit(mat_data, beta, k_grid: bz.KGrid, n_fit, order, name='poly_cont', output_path='./'):
-    v = mf.v_plus(beta=beta, n=mat_data.shape[-1] // 2)
+    v = mf.vn(beta, mat_data.shape[-1] // 2)
 
     re_fs, im_fs, Z = a_cont.extract_coeff_on_ind(
         siwk=np.squeeze(mat_data.reshape(-1, mat_data.shape[-1])[:, mat_data.shape[-1] // 2:]),

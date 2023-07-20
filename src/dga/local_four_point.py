@@ -128,7 +128,7 @@ class LocalFourPoint():
         return mf.vn(self.niv)
 
     def cut_iv(self, niv_cut=None):
-        self.mat = mf.cut_iv_fp(self.mat, niv_cut)
+        self.mat = mf.cut_v(self.mat, niv_cut, axes=(-2,-1))
 
     def cut_iw(self, niw_cut=None):
         assert self.is_full_w, 'Full wn range has to be ensured.'
@@ -143,7 +143,7 @@ class LocalFourPoint():
     def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1, verbose=False):
         assert iwn in self.wn, 'omega index not in dataset.'
         iwn_lin = self.wn_lin[self.wn == iwn][0]
-        data = mf.cut_iv_2d(self.mat[iwn_lin], niv_cut=niv)
+        data = mf.cut_v(self.mat[iwn_lin], niv_cut=niv,axes=(-2,-1))
         vn = mf.cut_v_1d(self.vn, niv_cut=niv)
         plot_fourpoint_nu_nup(data, vn, pdir=pdir, name=name + f'_wn{iwn}_niv{niv}', do_save=do_save, show=verbose)
 
@@ -481,7 +481,7 @@ def vrg_from_gchi_aux(gchir_aux: LocalFourPoint, gchi0_core, chir_urange, chir_a
 def schwinger_dyson_vrg(vrg: LocalThreePoint, chir_phys, giw, u):
     ''' Sigma = U*n/2 + '''
     u_r = get_ur(u, channel=vrg.channel)
-    mat_grid = mf.wn_slices(giw, n_cut=vrg.niv, wn=vrg.wn)
+    mat_grid = mf.wn_slices_gen(giw, n_cut=vrg.niv, wn=vrg.wn)
     sigma_F = u_r / 2 * 1 / vrg.beta * np.sum((1 - (1 - u_r * chir_phys[:, None]) * vrg.mat) * mat_grid, axis=0)
     return sigma_F
 

@@ -1,7 +1,7 @@
 # Set Boxsizes:
 box_sizes:
   niw_core: 30      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
-  niv_core: 20      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
+  niv_core: 30      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
   niv_shell: 200    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
 
 # Specify the lattice: [mandatory]

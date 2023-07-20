@@ -28,8 +28,9 @@ def test_mom_fit(siw,beta,u,n,count=1):
     min_plot_dmft = niv_dmft + niv_core - 50
     max_plot_dmft = niv_dmft + niv_core + 50
     vn_asympt = mf.vn(niv_full)
-    v_asympt = mf.v(beta=sigma_dmft.beta,n=niv_full)
+    v_asympt = mf.vn(sigma_dmft.beta,niv_full)
     sigma_asympt = sigma_dmft.get_siw(niv=niv_full)
+
 
     fig, ax = plt.subplots(1,2,figsize=(7,4))
     ax[0].plot(vn_asympt[min_plot:max_plot], sigma_asympt[0, 0, 0, min_plot:max_plot].real, '-o', color='cornflowerblue')

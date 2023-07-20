@@ -47,7 +47,8 @@ def fit_smom(iv=None, siwk=None):
     fitdata = s_loc[niv - n_freq_fit:]
 
     mom0 = np.mean(fitdata.real)
-    mom1 = np.mean(fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
+    mom1 = np.mean(
+        fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
 
     return mom0, mom1
 
@@ -56,7 +57,6 @@ def sigma_const(beta, delta, nk, v):
     sigma = np.ones(nk + (len(v),), dtype=complex)
     sigma *= -1j * delta
     return SelfEnergy(sigma, beta, pos=False)
-
 
 
 class SelfEnergy():
@@ -83,11 +83,9 @@ class SelfEnergy():
 
         self.sigma = sigma
         self.beta = beta
-        iv_fit = mf.iv_plus(beta, self.niv)
+        iv_fit = 1j * mf.vn(beta, self.niv, pos=True)
         fit_mom0, fit_mom1 = fit_smom(iv_fit, sigma)  # Currently moment fitting is local. Non-local parts
-        # should decay
-        # quickly
-        # enough to be negligible.
+        # should decay quickly enough to be negligible.
 
         self.err = err
 
@@ -137,8 +135,8 @@ class SelfEnergy():
         if (niv <= self.niv_core):
             sigma = mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
-            # niv_asympt = niv - self.niv
-            iv_asympt = mf.iv_plus(self.beta, n=niv, n_min=self.niv_core)
+            niv_shell = niv-self.niv_core
+            iv_asympt = 1j * mf.vn(self.beta, niv_shell, shift=self.niv_core, pos=True)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
             sigma_asympt = np.concatenate((self.sigma[..., :self.niv_core], asympt), axis=-1)
             sigma = mf.fermionic_full_nu_range(sigma_asympt)
@@ -148,7 +146,7 @@ class SelfEnergy():
     def get_asympt(self, niv_asympt, n_min=None, pos=True):
         if (n_min is None):
             n_min = self.niv_core
-        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt + n_min, n_min=n_min)
+        iv_asympt = 1j * mf.vn(self.beta, niv_asympt, shift=n_min, pos=True)
         asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
         if (pos):
             return asympt
@@ -156,13 +154,13 @@ class SelfEnergy():
             return mf.fermionic_full_nu_range(asympt)
 
 
-def create_dga_siwk_with_dmft_as_asympt(siwk_dga,siwk_dmft: SelfEnergy, niv_shell):
+def create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft: SelfEnergy, niv_shell):
     nk = siwk_dga.shape[:3]
-    niv_core = siwk_dga.shape[-1]//2
+    niv_core = siwk_dga.shape[-1] // 2
     niv_full = niv_core + niv_shell
     siwk_shell = siwk_dmft.get_siw(niv_full)
     siwk_shell = np.ones(nk)[:, :, :, None] * \
-                 mf.inv_cut_v(siwk_shell, niv_core=niv_core, niv_shell=niv_shell,axes=-1)[0, 0, 0, :][None, None, None, :]
+                 mf.inv_cut_v(siwk_shell, niv_core=niv_core, niv_shell=niv_shell, axes=-1)[0, 0, 0, :][None, None, None, :]
     siwk_dga = mf.concatenate_core_asmypt(siwk_dga, siwk_shell)
     return SelfEnergy(siwk_dga, siwk_dmft.beta)
 
@@ -305,7 +303,7 @@ class GreensFunction():
 
     def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None, niv_asympt=2000):
         self.sigma = sigma
-        self.iv_core = mf.iv(sigma.beta, self.sigma.niv_core)
+        self.iv_core = 1j * mf.vn(sigma.beta, self.sigma.niv_core)
         self.ek = ek
         if (n is not None):
             self._n = n
@@ -339,11 +337,11 @@ class GreensFunction():
 
     @property
     def v_core(self):
-        return mf.v(self.beta, self.niv_core)
+        return mf.vn(self.beta, self.niv_core)
 
     @property
     def v(self):
-        return mf.v(self.beta, self.niv_core + self.niv_asympt)
+        return mf.vn(self.beta, self.niv_core + self.niv_asympt)
 
     @property
     def vn(self):
@@ -400,7 +398,7 @@ class GreensFunction():
 
     def build_asympt(self, niv_asympt):
         sigma_asympt = self.sigma.get_asympt(niv_asympt)
-        iv_asympt = mf.iv_plus(self.beta, n=niv_asympt + self.niv_core, n_min=self.niv_core)
+        iv_asympt = 1j * mf.vn(self.beta, niv_asympt, shift=self.niv_core, pos=True)
         return mf.fermionic_full_nu_range(build_g(iv_asympt, self.ek, self.mu, sigma_asympt))
 
     @property

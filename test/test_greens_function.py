@@ -3,16 +3,14 @@ import sys, os
 
 sys.path.append('../src')
 sys.path.append('./src')
-import TwoPoint as tp
-import MatsubaraFrequencies as mf
-import w2dyn_aux_dga
+import dga.two_point as tp
+import dga.matsubara_frequencies as mf
 import matplotlib.pyplot as plt
-import BrillouinZone as bz
-import Hr as hamr
-import Hk as hamk
+import dga.brillouin_zone as bz
+import dga.hk as hamk
 import TestData as td
 
-PLOT_PATH = './TestPlots/'
+PLOT_PATH = './TestPlots/TestGF/'
 
 
 def local_dmft_consistency(giw_dmft, sigma_dmft, mu_dmft, ek, u,n, beta, count=1):
@@ -133,19 +131,37 @@ def test_local_dmft_consistency_ed_1():
     local_dmft_consistency(ddict['giw'], ddict['siw'], ddict['mu'], ek, ddict['u'], ddict['n'], ddict['beta'], count=4)
 
 
+def test_local_dmft_consistency_9():
+    ddict = td.get_data_set_9()
+    # Build Green's function:
+    nk = (42, 42, 1)
+    k_grid = bz.KGrid(nk=nk, symmetries=bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid, ddict['hr'])
+    local_dmft_consistency(ddict['giw'], ddict['siw'], ddict['mu'], ek, ddict['u'], ddict['n'], ddict['beta'], count=9)
+
+def test_greens_function_asymptotic_9():
+    ddict = td.get_data_set_9()
+    nk = (42, 42, 1)
+    k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
+    ek = hamk.ek_3d(k_grid.grid, ddict['hr'])
+    greens_function_asymptotic(ddict['giw'], ddict['siw'], ek, ddict['u'], ddict['n'], ddict['beta'], count=9)
+
 if __name__ == '__main__':
 
     # test_greens_function_asymptotic_1()
     # test_greens_function_asymptotic_2()
     # test_greens_function_asymptotic_3()
-
-    test_greens_function_asymptotic_ed_1()
-    test_local_dmft_consistency_ed_1()
-
+    #
+    # test_greens_function_asymptotic_ed_1()
+    # test_local_dmft_consistency_ed_1()
+    #
     # test_local_dmft_consistency_1()
     # test_local_dmft_consistency_2()
-
+    #
     # test_local_dmft_consistency_3()
-
+    #
     # test_local_dmft_consistency_2()
     # test_greens_function_asymptotic_2()
+
+    test_local_dmft_consistency_9()
+    test_greens_function_asymptotic_9()

@@ -7,25 +7,13 @@ import dga.brillouin_zone as bz
 # ---------------------------------------------- LOCAL BUBBLE CLASS  ---------------------------------------------------
 # ======================================================================================================================
 KNOWN_CHI0_METHODS = ['sum']
-KNOWN_FREQ_SHIFTS = ['plus', 'minus', 'center']
 
-
-def get_freq_shift(iwn, freq_notation):
-    if (freq_notation == 'plus'):  # chi_0[w,v] = - beta G(v) * G(v+w)
-        iws, iws2 = 0, iwn
-    elif (freq_notation == 'minus'):  # chi_0[w,v] = - beta G(v) * G(v-w)
-        iws, iws2 = 0, -iwn
-    elif (freq_notation == 'center'):  # chi_0[w,v] = - beta G(v+w//2) * G(v-w//2-w%2)
-        iws, iws2 = iwn // 2, -(iwn // 2 + iwn % 2)
-    else:
-        raise NotImplementedError(f'freq_notation {freq_notation} is not known. Known are: {KNOWN_FREQ_SHIFTS}')
-    return iws, iws2
 
 
 def get_gchi0(giw, niv, beta, iwn, freq_notation='minus'):
     ''' chi_0[w,v] = - beta G(v) * G(v-w) for minus'''
     niv_giw = np.shape(giw)[0] // 2
-    iws, iws2 = get_freq_shift(iwn, freq_notation)
+    iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
     return - beta * giw[niv_giw - niv + iws:niv_giw + niv + iws] * giw[niv_giw - niv + iws2:niv_giw + niv + iws2]
 
 
@@ -37,7 +25,7 @@ def vec_get_gchi0(giw, beta, niv, wn, freq_notation='minus'):
 def get_gchi0_q(giwk, beta, niv, iwn, q, freq_notation='minus'):
     ''' chi_0[w,v] = - beta G(v,k) * G(v-w,k-q) for minus'''
     niv_giw = np.shape(giwk)[-1] // 2
-    iws, iws2 = get_freq_shift(iwn, freq_notation)
+    iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
     giwkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
     return - beta * np.mean((giwk[..., niv_giw - niv + iws:niv_giw + niv + iws] *
                                         giwkpq[..., niv_giw - niv + iws2:niv_giw + niv + iws2]), axis=(0, 1, 2))
@@ -54,7 +42,7 @@ def vec_get_gchi0_q(giwk, beta, niv, wn, q_list, freq_notation='minus'):
 def get_chi0_q(giwk, beta, niv, iwn, q, freq_notation='minus'):
     ''' chi_0[w,v] = - beta G(v,k) * G(v-w,k-q) for minus'''
     niv_giw = np.shape(giwk)[-1] // 2
-    iws, iws2 = get_freq_shift(iwn, freq_notation)
+    iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
     giwkpq = bz.shift_mat_by_ind(giwk, ind=[-iq for iq in q])
     return - 1 / beta * np.sum(np.mean((giwk[..., niv_giw - niv + iws:niv_giw + niv + iws] *
                                         giwkpq[..., niv_giw - niv + iws2:niv_giw + niv + iws2]), axis=(0, 1, 2)))
@@ -70,7 +58,7 @@ def vec_get_chi0_q(giwk, beta, niv, wn, q_list, freq_notation='minus'):
 
 def get_chi0_sum(giw, beta, niv, iwn=0, freq_notation='minus'):
     niv_giw = np.shape(giw)[0] // 2
-    iws, iws2 = get_freq_shift(iwn, freq_notation)
+    iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
     return - 1. / beta * np.sum(giw[niv_giw - niv + iws:niv_giw + niv + iws] * giw[niv_giw - niv + iws2:niv_giw + niv + iws2])
 
 
@@ -92,8 +80,8 @@ class BubbleGenerator():
             raise ValueError(f'Chi0-method ({chi0_method}) not in {KNOWN_CHI0_METHODS}')
         self.chi0_method = chi0_method
 
-        if (freq_notation not in KNOWN_FREQ_SHIFTS):
-            raise ValueError(f'freq_notation ({freq_notation}) not in {KNOWN_FREQ_SHIFTS}')
+        if (freq_notation not in mf.KNOWN_FREQ_SHIFTS):
+            raise ValueError(f'freq_notation ({freq_notation}) not in {mf.KNOWN_FREQ_SHIFTS}')
         self.freq_notation = freq_notation
 
     @property
@@ -214,11 +202,11 @@ class BubbleGenerator():
         if (freq_notation is None):
             freq_notation = self.freq_notation
         chi0_asympt_sum = np.zeros((self.niw), dtype=complex)
-        v = 1 / (1j * mf.v(self.beta, n=niv_sum + self.niw))
+        v = 1 / (1j * mf.vn(self.beta, niv_sum + self.niw))
         niv = v.size // 2
         fac1, fac2, fac3 = self.get_asympt_prefactors()
         for i, iwn in enumerate(self.wn):
-            iws, iws2 = get_freq_shift(iwn, freq_notation)
+            iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
             v_sum = v[niv - niv_sum + iws:niv + niv_sum + iws]
             vpw_sum = v[niv - niv_sum + iws2:niv + niv_sum + iws2]
             chi0_asympt_sum[i] += np.sum(v_sum * vpw_sum)
@@ -241,11 +229,11 @@ class BubbleGenerator():
         if (freq_notation is None):
             freq_notation = self.freq_notation
         chi0_asympt_sum = np.zeros((len(q_list),self.niw), dtype=complex)
-        v = 1 / (1j * mf.v(self.beta, n=niv_sum + self.niw))
+        v = 1 / (1j * mf.vn(self.beta, niv_sum + self.niw))
         niv = v.size // 2
         fac1, fac2, fac3 = self.get_asympt_prefactors_q(q_list)
         for i, iwn in enumerate(self.wn):
-            iws, iws2 = get_freq_shift(iwn, freq_notation)
+            iws, iws2 = mf.get_freq_shift(iwn, freq_notation)
             v_sum = v[niv - niv_sum + iws:niv + niv_sum + iws]
             vpw_sum = v[niv - niv_sum + iws2:niv + niv_sum + iws2]
             chi0_asympt_sum[:,i] += np.sum(v_sum * vpw_sum)
@@ -354,7 +342,7 @@ if __name__ == '__main__':
 #     q_grid = bz.KGrid(nk=(16, 16, 1), symmetries=bz.two_dimensional_square_symmetries())
 #     q_list = q_grid.irrk_mesh_ind
 #     niv_giw = np.shape(giwk.full)[-1] // 2
-#     iws, iws2 = get_freq_shift(0, 'minus')
+#     iws, iws2 = mf.get_freq_shift(0, 'minus')
 #     giwkpq = bz.shift_mat_by_ind(giwk.full, ind=[-iq for iq in q_list.T[0]])
 #     print(- 1 / beta * np.sum(np.mean((giwk.full[..., niv_giw - niv_core + iws:niv_giw + niv_core + iws] *
 #                                        giwkpq[..., niv_giw - niv_core + iws2:niv_giw + niv_core + iws2]), axis=(0, 1, 2))))
