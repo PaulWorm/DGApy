@@ -56,10 +56,10 @@ def wn_cen2lin(wn=0, niw=None):
     return cen2lin(wn, -niw)
 
 
-def wn_slices_gen(mat=None, n_cut=None, wn=None, freq_notation='minus'):
+def wn_slices_gen(mat=None, n_cut=None, wn=None):
     n = mat.shape[-1] // 2
-    _,iwn = get_freq_shift(wn,freq_notation)
-    mat_grid = np.array([mat[..., n - n_cut + iwn:n + n_cut + iwn] for iwn in wn])
+    # _,iwn = get_freq_shift(wn,freq_notation)
+    mat_grid = np.array([mat[..., n - n_cut - iwn:n + n_cut - iwn] for iwn in wn])
     return mat_grid
 
 def wn_slices_shell(mat, n_shell, n_core=0, wn=None):

@@ -67,6 +67,20 @@ def greens_function_asymptotic(giw_dmft, sigma_dmft, ek, u,n, beta, count=1):
     plt.savefig(PLOT_PATH + f'GreensFunction_TestAsymptotic_{count}.png')
     plt.show()
 
+    # n_start = 500
+    # fig, ax = plt.subplots(1, 2, figsize=(7, 3.5))
+    # ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(g_loc, n_plot, n_start).real, '-o', color='cornflowerblue')
+    # ax[0].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(giw_dmft, n_plot, n_start).real, '-', color='k')
+    # ax[1].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(g_loc, n_plot, n_start).imag, '-o', color='cornflowerblue')
+    # ax[1].plot(mf.cut_v_1d_pos(vn_asympt, n_plot, n_start), mf.cut_v_1d_pos(giw_dmft, n_plot, n_start).imag, '-', color='k')
+    # ax[0].set_xlabel(r'$\nu_n$')
+    # ax[1].set_xlabel(r'$\nu_n$')
+    # ax[0].set_ylabel(r'$\Re G$')
+    # ax[1].set_ylabel(r'$\Im G$')
+    # plt.tight_layout()
+    # plt.savefig(PLOT_PATH + f'GreensFunction_TestAsymptotic_core_{count}.png')
+    # plt.show()
+
 
 def test_greens_function_asymptotic_1():
     ddict = td.get_data_set_1()
@@ -163,5 +177,5 @@ if __name__ == '__main__':
     # test_local_dmft_consistency_2()
     # test_greens_function_asymptotic_2()
 
-    test_local_dmft_consistency_9()
+    # test_local_dmft_consistency_9()
     test_greens_function_asymptotic_9()
