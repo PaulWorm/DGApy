@@ -21,6 +21,15 @@ KNOWN_K_POINTS = {
 def get_extent_pi_shift(kgrid=None):
     return [kgrid.kx[0] - np.pi, kgrid.kx[-1] - np.pi, kgrid.ky[0] - np.pi, kgrid.ky[-1] - np.pi]
 
+def shift_mat_by_pi(mat, nk=None):
+    if nk is None:
+        nk = [mat.shape[0], mat.shape[1]]
+    mat_shift = np.copy(mat)
+    mat_shift = np.roll(mat_shift, nk[0] // 2, 0)
+    mat_shift = np.roll(mat_shift, nk[1] // 2, 1)
+    return mat_shift
+
+
 
 def find_zeros(mat):
     ''' Finds the zero crossings of a 2D matrix.

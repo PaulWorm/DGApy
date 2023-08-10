@@ -195,19 +195,27 @@ def extract_coeff_on_ind(siwk=None,indizes=None, v=None, N=4, order=3):
     return siwk_re_fs, siwk_im_fs, siwk_Z
 
 
+def poly_extrap_0(x,y,order,N):
+    x_new = np.linspace(0,1,101)
+    fit = np.polyfit(x[:N],y[:N],deg=order)
+    return np.polyval(fit,x_new)[0]
+
+def poly_der_extrap_0(x,y,order,N):
+    x_new = np.linspace(0,1,101)
+    fit = np.polyfit(x[:N],y[:N],deg=order)
+    der = np.polyder(fit)
+    return np.polyval(der,x_new)[0]
+
+def get_gamma_bandshift_Z(wn,siw,order,N):
+    gamma = -poly_extrap_0(wn,siw.imag,order,N)
+    bandshift = poly_extrap_0(wn,siw.real,order,N)
+    Z = 1/(1-poly_der_extrap_0(wn,siw.imag,order,N))
+    return gamma,bandshift,Z
+
 def extract_coefficient_imaxis(siwk=None, iw=None, N=4, order=3):
-    xnew = np.linspace(0.0, iw[N - 1] + 0.01, num=50)
-
-    coeff_imag = np.polyfit(iw[0:N], siwk[0:N].imag, order)
-    coeff_real = np.polyfit(iw[0:N], siwk[0:N].real, order)
-
-    poly_imag = np.polyval(coeff_imag, xnew)
-    poly_real = np.polyval(coeff_real, xnew)
-
-    coeff_imag_der = np.polyder(poly_imag)
-    poly_imag_der = np.polyval(coeff_imag_der, xnew)
-    Z = 1. / (1. - poly_imag_der[0])
-    return poly_real[0], poly_imag[0], Z
+    ''' Exists for backward compatibility. '''
+    gamma, bandshift, Z = get_gamma_bandshift_Z(iw,siwk,order,N)
+    return bandshift, gamma, Z
 
 
 def max_ent_loc_bw_range(mat, me_conf: config.MaxEntConfig, name=''):
