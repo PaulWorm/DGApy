@@ -459,6 +459,41 @@ def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w
     plt.savefig(output_path + '{}.png'.format(name))
     plt.close()
 
+def plot_cont_fs_no_shift(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+
+    if (w_int == None):
+        w0_ind = np.argmin(np.abs(v_real - w_plot))
+        gk_fs = gk[:, :, 0, w0_ind]
+    else:
+        ind_int = np.logical_and(v_real < 0, w_int < v_real)
+        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
+
+    awk_fs = np.squeeze(-1. / np.pi * gk_fs.imag)
+    gk_real = np.squeeze(gk_fs.real)
+    v0 = np.argmin(np.abs(v_real))
+    qdp = np.squeeze((1. / gk)[:, :, 0, v0].real)
+    im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent(kgrid=k_grid), origin='lower')
+    insert_colorbar(ax=ax[0], im=im)
+    ax[0].set_title('$A(k,\omega=0)$')
+    norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())
+    im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent(kgrid=k_grid), norm=norm, origin='lower')
+    insert_colorbar(ax=ax[1], im=im)
+    ax[1].set_title('$\Re G(k,\omega=0)$')
+    norm = MidpointNormalize(midpoint=0, vmin=qdp.min(), vmax=qdp.max())
+    im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent(kgrid=k_grid), norm=norm, origin='lower')
+    insert_colorbar(ax=ax[2], im=im)
+    ax[2].set_title('QPD')
+
+    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
+    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
+    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
+
+    plt.tight_layout()
+    fig.suptitle(name)
+    plt.savefig(output_path + '{}.png'.format(name))
+    plt.close()
+
 
 def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
     '''

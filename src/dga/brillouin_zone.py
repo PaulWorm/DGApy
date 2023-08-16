@@ -18,6 +18,9 @@ KNOWN_K_POINTS = {
 }
 
 
+def get_extent(kgrid=None):
+    return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
+
 def get_extent_pi_shift(kgrid=None):
     return [kgrid.kx[0] - np.pi, kgrid.kx[-1] - np.pi, kgrid.ky[0] - np.pi, kgrid.ky[-1] - np.pi]
 
