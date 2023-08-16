@@ -108,7 +108,7 @@ def pade(mat=None, v_real=None, beta=None, method='thiele', n_fit=60, n_pade=20,
     ''' mat may only depend on one Matsubara frequency and nothing else.'''
     niv_mat = np.size(mat) // 2
     mat_plus = mat[niv_mat:niv_mat + n_fit]
-    iv_plus = mf.iv_plus(beta=beta, n=n_fit)
+    iv_plus = mf.vn(beta=beta, n=n_fit,pos=True)
     v_real = v_real + 1j * delta
     if (method == 'thiele'):
         mat_cont = pa.padeThiele(iv_plus, np.atleast_2d(mat_plus).T, v_real)
@@ -163,7 +163,7 @@ def do_max_ent_on_ind_T(mat=None, ind_list=None, v_real=None, beta=None, n_fit=6
 def max_ent(mat=None, v_real=None, beta=None, n_fit=60, alpha_det_method='historic', err=2e-6, use_preblur = False, bw=None, optimizer='newton', return_chi2=False):
     niv_mat = np.size(mat) // 2
     mat_plus = mat[niv_mat:niv_mat + n_fit]
-    iv_plus = mf.iv_plus(beta=beta, n=n_fit)
+    iv_plus = mf.vn(beta=beta, n=n_fit, pos=True)
     problem = cont.AnalyticContinuationProblem(im_axis=iv_plus.imag, re_axis=v_real, im_data=mat_plus,
                                                kernel_mode="freq_fermionic",
                                                beta=beta)
