@@ -188,6 +188,7 @@ def niv_from_mat(mat, axes=-1, pos=False):
 
 @multimethod
 def vn(n: numbers.Integral, shift: numbers.Integral = 0, pos: bool = False):
+    ''' beta and n are NOT keyword args! '''
     if (pos):
         return np.arange(shift, n + shift)
     else:
@@ -238,7 +239,7 @@ def wn(n: numbers.Integral, shift: numbers.Integral = 0, pos: bool = False):
 
 @multimethod
 def wn(beta: numbers.Real, n: numbers.Integral, shift: numbers.Integral = 0, pos: bool = False):
-    return np.pi / beta * (2 * wn(n, shift=shift, pos=pos) + 1)
+    return np.pi / beta * (2 * wn(n, shift=shift, pos=pos))
 
 
 @multimethod
@@ -299,3 +300,8 @@ if __name__ == '__main__':
     vn_core = vn(niv_core)
     wn_core = wn(niv_core)
     wn_core = wn(np.int64(niv_core))
+
+    print('----------------')
+    print(f'wn = {wn(10.,10,pos=True)}')
+    print(f'vn = {vn(10.,10,pos=True)}')
+    print('----------------')
