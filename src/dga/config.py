@@ -27,8 +27,8 @@ DGA_OUPUT_PATH = '/LDGA_{}_Nk{}_Nq{}_wc{}_vc{}_vs{}'
 def create_dga_argparser(name='dga_config.yaml', path=os.getcwd() + '/'):
     ''' Set up an argument parser for the DGA code. '''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', nargs='?', default=name, type=str, help=' Config file name. ')
-    parser.add_argument('--path', nargs='?', default=path, type=str, help=' Path to the config file. ')
+    parser.add_argument('-c','--config', nargs='?', default=name, type=str, help=' Config file name. ')
+    parser.add_argument('-p','--path', nargs='?', default=path, type=str, help=' Path to the config file. ')
     return parser
 
 

@@ -15,6 +15,7 @@ from ruamel.yaml import YAML
 import gc
 
 import dga.config as config
+import dga.analytic_continuation as a_cont
 import dga.matsubara_frequencies as mf
 import dga.brillouin_zone as bz
 import dga.loggers as loggers
@@ -82,6 +83,12 @@ if comm.rank == 0 and dga_config.do_poly_fitting:
                     dga_config.o_fit,
                     name='Giwk_dmft_poly_cont_',
                     output_path=dga_config.poly_fit_dir)
+    gamma_dmft, bandshift_dmft, Z_dmft = a_cont.get_gamma_bandshift_Z(mf.vn(dmft_input['beta'],siwk_dmft.sigma[0,0,0,:],
+                                                                             pos=True),
+                                                       siwk_dmft.sigma[0,0,0,:],
+                                 order=dga_config.o_fit,N=dga_config.n_fit)
+    np.savetxt(dga_config.poly_fit_dir+'Siw_DMFT_polyfit.txt',np.array([[bandshift_dmft,],[gamma_dmft,],[Z_dmft,]]).T,
+               header = 'bandshift gamma Z', fmt='%.6f')
 
 # --------------------------------------------- LOCAL PART --------------------------------------------------------
 gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full = hlr.local_sde_from_g2(g2_dens,g2_magn,giwk_dmft,
