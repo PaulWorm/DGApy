@@ -119,6 +119,7 @@ class OutputConfig(ConfigBase):
                 if (comm.rank == 0): os.mkdir(self.output_path)
             else:
                 os.mkdir(self.output_path)
+        return self.output_path
 
     def save_data(self, mat, name):
         np.save(self.output_path + '/' + name + '.npy', mat, allow_pickle=True)
@@ -285,30 +286,17 @@ class MaxEntConfig(OutputConfig):
         self.nwr = 501  # Number of frequencies on the real axis
         self.wmax = 15  # frequency range on the real axis
         self.use_preblur = True  # whether o not to use the pre-blur feature
-        self.use_preblur_chi = False  # whether o not to use the pre-blur feature for chi (do NOT use preblur for bosonic stuff)
         self.err = 1e-3  # Error for the analytical continuation
-        self.err_chi = 1e-3  # Error for the analytical continuation of chi
         self.beta = beta  # Inverse Temperature
         self.alpha_det_method = 'chi2kink'  # alpha determination method
         self.optimizer = 'newton'  # alpha determination method
         self.mesh_type = 'tan'  # mesh type
         self.n_fit = int(beta * 3 + 10)  # Number of frequencies used for the analytic continuation
-        self.n_fit_chi = int(20)  # Number of frequencies used for the analytic continuation
         self.bw_fit_position = 10  # Fit position for estimating the optimal blur width
         self.bw_dga = [0.1, ]  # Blur width for DGA
-        self.bw_chi = [0.0, ] # Blur width for chi-continuation
 
         # Flags what continuation to perform:
-        self.cont_g_loc = True
-        self.cont_s_nl = True
-        self.cont_g_nl = False
-        self.cont_chi_d = False
-        self.cont_chi_m = False
-        self.output_path_loc = output_path_loc
-        self.output_path_nl_s = output_path_nl_s
-        self.output_path_nl_g = output_path_nl_g
         self.bw_range_loc = np.array([0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1])
-
         self.update_dict(**config_dict)
 
     @property

@@ -33,18 +33,29 @@ poly_fitting:
 # Uses the ana_cont package of Josef Kaufmann (https://doi.org/10.1016/j.cpc.2022.108519)
 
 max_ent:
-  cont_g_loc: False   # Perform the continuation of the local Green's function; default: True
-  cont_s_nl: False    # Perform the continuation of the non-local self-energy; default: True
-  cont_g_nl: False   # Perform the continuation of the non-local Green's function; default: False
-  nwr: 501           # Number of mesh points on the real frequency axis; default: 501
-  wmax: 15           # Maximum frequency in the mesh
-  use_preblur: True  # default: True
-  alpha_det_method: 'chi2kink' # default: chi2kink
-  optimizer: 'newton' # default: newton
-  mesh_type: 'tan'   # Frequency mesh on the real axis; default: tan; Available: [lin, tan, lorentzian, hyperbolic]
-  err: 1e-3          # estimated error of the calculation.
-  n_fit: 60          # Number of frequencies used for the analytic continuation; default: beta*3+10
-  bw_fit_position: 10 # Fit position for estimating the optimal blur width; default: 10
+  # Change default values
+  nwr: 501
+  wmax: 15
+  wmin: -15
+  mesh_type: 'tan'
+  alpha_det_method: 'chi2kink'
+  bw: 0.01
+  n_fit: 60
+
+  loc: # Perform continuation of the local Green's function
+
+  g_dga: # Perform continuation of the dga Green's function
+
+  s_dga: # Perform continuation of the dga self-energy
+
+  chi_d: # Perform continuation of the density susceptibility
+    bw: 0.0
+    n_fit: 20
+
+  chi_m: # Perform continuation of the magnetic susceptibility
+    bw: 0.0
+    n_fit: 20
+
 
 # Parameters for the Eliashberg calculations concerning superconductivity. [optional]
 pairing: # For the pairing part nk == nq is required.

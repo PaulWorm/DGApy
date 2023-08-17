@@ -15,6 +15,8 @@ import dga.dga_io as dga_io
 import dga.two_point as twop
 import dga.hk as hamk
 import dga.analytic_continuation as a_cont
+import dga.mpi_aux as mpi_aux
+import dga.plotting as plotting
 
 import dga.plot_specs
 
@@ -33,81 +35,117 @@ def main(path='./', comm=None):
 
     dmft_input = np.load(path + 'dmft_input.npy', allow_pickle=True).item()
     ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, dga_config.lattice.hr)
-    # Broadcast bw_opt_dga
-    max_ent_dir = path + '/MaxEnt/'
     dga_config.output_path = path
-    if (comm.rank == 0 and not os.path.exists(max_ent_dir)): os.mkdir(max_ent_dir)
 
-    me_conf = config.MaxEntConfig(t=dga_config.lattice.hr[0, 0], beta=dmft_input['beta'], config_dict=conf_file['max_ent'],
-                                  output_path_loc=max_ent_dir)
-
-    if comm.rank == 0 and me_conf.cont_g_loc:
+    max_ent_config = conf_file['max_ent']
+    me_conf = config.MaxEntConfig(1,dmft_input['beta'],max_ent_config)
+    if comm.rank == 0 and 'loc' in max_ent_config:
+        loc_dir = path + 'MaxEnt/'
+        loc_dir = me_conf.set_output_path(loc_dir,comm=comm)
         siwk_dmft = twop.SelfEnergy(sigma=dmft_input['siw'][None, None, None, :], beta=dmft_input['beta'])
         giwk_dmft = twop.GreensFunction(siwk_dmft, ek, mu=dmft_input['mu_dmft'], niv_asympt=dga_config.box_sizes.niv_asympt)
         g_loc_dmft = giwk_dmft.g_loc
-        a_cont.max_ent_loc_bw_range(g_loc_dmft, me_conf, name='dmft')
-    # Broadcast bw_opt_dga
+        a_cont.max_ent_loc_bw_range(g_loc_dmft, me_conf, name='dmft', out_dir=loc_dir)
 
-    sigma_dga = np.load(path + 'siwk_dga.npy', allow_pickle=True)
-    sigma_dga = twop.SelfEnergy(sigma=sigma_dga, beta=dmft_input['beta'])
 
-    giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full)
+    if(comm.rank == 0):
+        sigma_dga = np.load(path + 'siwk_dga.npy', allow_pickle=True)
+        sigma_dga = twop.SelfEnergy(sigma=sigma_dga, beta=dmft_input['beta'])
 
-    if comm.rank == 0 and me_conf.cont_g_loc:
+        giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full)
+    comm.barrier()
+
+    # Perform analytic continuation of local quantities:
+    if comm.rank == 0 and 'loc' in max_ent_config:
         g_loc_dga = giwk_dga.g_loc
-        bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga')
+        bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga', out_dir=loc_dir)
 
         logger.log_cpu_time(task=' MaxEnt local ')
         logger.log_memory_usage()
     else:
         bw_opt_dga = None
 
+    # Broadcast bw_opt_dga
     bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
     # me_conf.bw_dga.append(bw_opt_dga)
 
-    if me_conf.cont_s_nl:
-        me_conf.output_path_nl_s = dga_config.output_path + '/MaxEntSiwk/'
-        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_s)): os.mkdir(me_conf.output_path_nl_s)
 
-        for bw in me_conf.bw_dga:
-            a_cont.max_ent_irrk_bw_range_sigma(sigma_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
-                                               name='siwk_dga')
+    # Create a mpi distributor:
+    mpi_dist = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_irr, comm=comm,
+                                          output_path=dga_config.output_path + '/',
+                                          name='MaxEntIrrk')
+
+
+
+    # Continuation of the k-dependent self-energy:
+    if 's_dga' in max_ent_config:
+        siw_cont_path = path + 'MaxEntSiwk'
+        siw_cont_path = me_conf.set_output_path(siw_cont_path,comm=comm)
+        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config['s_dga'])
+
+        if(comm.rank == 0):
+            sigma_mat = sigma_dga.get_siw(me_controller.n_fit)
+            sigma_mat = dga_config.lattice.k_grid.map_fbz2irrk(sigma_mat)
+        else:
+            sigma_mat = None
+
+        my_siwk = mpi_dist.scatter(sigma_mat)
+        siw_cont = me_controller.analytic_continuation(my_siwk)
+        siw_cont = mpi_dist.gather(siw_cont)
+        if(comm.rank == 0):
+            siw_cont = dga_config.lattice.k_grid.map_irrk2fbz(siw_cont)
+            np.save(siw_cont_path + 'swk_dga_cont_fbz_bw{}.npy'.format(me_controller.bw), siw_cont,
+                    allow_pickle=True)
+            np.save(siw_cont_path + 'w.npy', me_conf.mesh, allow_pickle=True)
+
+            plotting.plot_cont_fs(output_path=siw_cont_path,
+                                  name='swk_fermi_surface_dga_cont_w0-bw{}'.format(me_controller.bw),
+                                  gk=siw_cont, v_real=me_conf.mesh, k_grid=dga_config.lattice.k_grid, w_plot=0)
+
+            plotting.plot_cont_fs(output_path=siw_cont_path,
+                                  name='swk_fermi_surface_dga_cont_w0.1-bw{}'.format(me_controller.bw),
+                                  gk=siw_cont, v_real=me_conf.mesh, k_grid=dga_config.lattice.k_grid, w_plot=0.1)
+
+            plotting.plot_cont_fs(output_path=siw_cont_path,
+                                  name='swk_fermi_surface_dga_cont_w-0.1-bw{}'.format(me_controller.bw),
+                                  gk=siw_cont, v_real=me_conf.mesh, k_grid=dga_config.lattice.k_grid, w_plot=-0.1)
+
         logger.log_cpu_time(task=' MaxEnt Siwk ')
         logger.log_memory_usage()
 
-    if me_conf.cont_g_nl:
-        me_conf.output_path_nl_g = dga_config.output_path + '/MaxEntGiwk/'
-        if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
-
-        for bw in me_conf.bw_dga:
-            a_cont.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
-                                               name='Giwk_dga')
-        logger.log_cpu_time(task=' MaxEnt Giwk ')
-        logger.log_memory_usage()
-
-    # Continue the susceptibility:
-
-    if me_conf.cont_chi_d:
-        chi = np.load(path + 'chi_dens_lam.npy', allow_pickle=True)
-        output_path = dga_config.output_path + '/MaxEntChiDens/'
-        if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
-
-        for bw in me_conf.bw_dga:
-            a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='dens',
-                                             out_dir=output_path)
-        logger.log_cpu_time(task=' MaxEnt Chi-dens ')
-        logger.log_memory_usage()
-
-    if me_conf.cont_chi_m:
-        chi = np.load(path + 'chi_magn_lam.npy', allow_pickle=True)
-        output_path = dga_config.output_path + '/MaxEntChiMagn/'
-        if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
-
-        for bw in me_conf.bw_chi:
-            a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='magn',
-                                             out_dir=output_path)
-        logger.log_cpu_time(task=' MaxEnt Chi-magn ')
-        logger.log_memory_usage()
+    # if me_conf.cont_g_nl:
+    #     me_conf.output_path_nl_g = dga_config.output_path + '/MaxEntGiwk/'
+    #     if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
+    #
+    #     for bw in me_conf.bw_dga:
+    #         a_cont.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
+    #                                            name='Giwk_dga')
+    #     logger.log_cpu_time(task=' MaxEnt Giwk ')
+    #     logger.log_memory_usage()
+    #
+    # # Continue the susceptibility:
+    #
+    # if me_conf.cont_chi_d:
+    #     chi = np.load(path + 'chi_dens_lam.npy', allow_pickle=True)
+    #     output_path = dga_config.output_path + '/MaxEntChiDens/'
+    #     if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
+    #
+    #     for bw in me_conf.bw_dga:
+    #         a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='dens',
+    #                                          out_dir=output_path)
+    #     logger.log_cpu_time(task=' MaxEnt Chi-dens ')
+    #     logger.log_memory_usage()
+    #
+    # if me_conf.cont_chi_m:
+    #     chi = np.load(path + 'chi_magn_lam.npy', allow_pickle=True)
+    #     output_path = dga_config.output_path + '/MaxEntChiMagn/'
+    #     if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
+    #
+    #     for bw in me_conf.bw_chi:
+    #         a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='magn',
+    #                                          out_dir=output_path)
+    #     logger.log_cpu_time(task=' MaxEnt Chi-magn ')
+    #     logger.log_memory_usage()
 
 
 if __name__ == '__main__':
