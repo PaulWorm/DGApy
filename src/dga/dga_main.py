@@ -442,6 +442,7 @@ if (dga_config.do_poly_fitting):
 
 # %%Perform the Eliashberg Routine:
 if (comm.rank == 0 and dga_config.eliash.do_eliash):
+    logger.log_cpu_time(task=' Staring Eliashberg ')
     gk_dga = mf.cut_v(giwk_dga.core, dga_config.box_sizes.niv_pp, (-1,))
     norm = np.prod(dga_config.lattice.q_grid.nk_tot) * dmft_input['beta']
     gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=dga_config.eliash.gap0_sing['k'], v_type=dga_config.eliash.gap0_sing['v'],
@@ -483,6 +484,7 @@ if (comm.rank == 0 and dga_config.eliash.do_eliash):
 # ------------------------------------------------- MAXENT ------------------------------------------------------------
 if('max_ent' in conf_file):
     import dga.dga_max_ent as dme
+    logger.log_cpu_time(task=' Starting Max-Ent ')
     dme.main(path=dga_config.output_path,comm=comm)
     logger.log_event('MaxEnt completed')
 

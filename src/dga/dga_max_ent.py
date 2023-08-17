@@ -29,7 +29,7 @@ def main(path='./', comm=None):
         conf_file = None
     conf_file = comm.bcast(conf_file, root=0)
     dga_config = config.DgaConfig(conf_file, comm=comm)
-    logger = loggers.MpiLogger(logfile='max_ent.log', comm=comm, output_path=path)
+    logger = loggers.MpiLogger(logfile=path + 'max_ent.log', comm=comm, output_path=path)
 
     dmft_input = np.load(path + 'dmft_input.npy', allow_pickle=True).item()
     ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, dga_config.lattice.hr)
