@@ -12,6 +12,8 @@ import dga.plotting as plotting
 import dga.brillouin_zone as bz
 import dga.two_point as twop
 import scipy.optimize as opt
+import dga.mpi_aux as mpi_aux
+import dga.dga_io as dga_io
 
 
 # -------------------------------------------- Matsubara Fit ----------------------------------------------------------
@@ -187,7 +189,7 @@ class MaxEnt():
             model /= np.trapz(model, self.w)
         elif (self.kernel_mode == 'freq_bosonic'):
             model = np.ones_like(self.w)
-            model *= mat[0]/np.trapz(model, self.w)
+            model *= mat[0].real/np.trapz(model, self.w)
         else:
             raise ValueError(f'Unknown kernel mode: {self.kernel_mode}.')
 
@@ -223,6 +225,38 @@ class MaxEnt():
                 print('Error in analytic continuation. Setting result to 0.')
                 cont_list.append(np.zeros_like(self.w)) # make sure the code does not hang up when ana_cont fails for one index
         return np.array(cont_list)
+
+def mpi_ana_cont(mat, me_controller: MaxEnt, mpi_dist: mpi_aux.MpiDistributor, name,logger=None):
+    if(logger is not None): logger.log_cpu_time(task=' MaxEnt controller for Siwk created ')
+    my_mat = mpi_dist.scatter(mat)
+    if(logger is not None): logger.log_cpu_time(task=f' {name} scattered among cores. ')
+    cont = me_controller.analytic_continuation(my_mat)
+    if(logger is not None): logger.log_cpu_time(task=f' {name} continuation performed. ')
+    cont = mpi_dist.gather(cont)
+    if(logger is not None): logger.log_cpu_time(task=f' {name} gather done. ')
+    return cont
+
+def save_and_plot_cont_fermionic(mat,w,k_grid, name,out_dir):
+    np.save(out_dir + f'{name}_cont_fbz.npy', mat,
+            allow_pickle=True)
+    np.save(out_dir + 'w.npy', w, allow_pickle=True)
+
+    plotting.plot_cont_fs(output_path=out_dir, name=name,mat=mat, v_real=w, k_grid=k_grid, w_plot=0)
+
+    plotting.plot_cont_fs(output_path=out_dir, name=name,mat=mat, v_real=w, k_grid=k_grid, w_plot=0.1)
+
+    plotting.plot_cont_fs(output_path=out_dir,name=name, mat=mat,v_real=w, k_grid=k_grid, w_plot=-0.1)
+
+def save_and_plot_cont_bosonic(mat,w,k_grid, name,out_dir):
+    np.save(out_dir + f'{name}_cont_fbz.npy', mat,
+            allow_pickle=True)
+    np.save(out_dir + 'w.npy', w, allow_pickle=True)
+
+    plotting.plot_cont_fs_no_shift(output_path=out_dir, name=name,mat=mat, v_real=w, k_grid=k_grid, w_plot=0)
+
+    plotting.plot_cont_fs_no_shift(output_path=out_dir, name=name,mat=mat, v_real=w, k_grid=k_grid, w_plot=0.1)
+
+    plotting.plot_cont_fs_no_shift(output_path=out_dir,name=name, mat=mat,v_real=w, k_grid=k_grid, w_plot=-0.1)
 
 # ---------------------------------------------- MaxEnt ----------------------------------------------------------------
 

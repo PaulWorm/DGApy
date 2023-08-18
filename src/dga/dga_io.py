@@ -14,10 +14,22 @@ import dga.matsubara_frequencies as mf
 import dga.analytic_continuation as a_cont
 import scipy.optimize as opt
 import dga.two_point as twop
+import dga.util as util
 
 # ----------------------------------------------- LOAD DATA ------------------------------------------------------------
 KNOWNINPUTTYPES = ['EDFermion', 'w2dyn']
 
+
+def set_output_path(base_name, comm=None):
+    ''' comm is for mpi applications '''
+    output_path = util.uniquify(base_name)
+
+    if (not os.path.exists(output_path)):
+        if (comm is not None):
+            if (comm.rank == 0): os.mkdir(output_path)
+        else:
+            os.mkdir(output_path)
+    return output_path
 
 def load_1p_data(input_type, path, fname_1p, fname_2p):
     if (input_type == 'EDFermion'):

@@ -424,31 +424,31 @@ def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=
     plt.close()
 
 
-def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
+def plot_cont_fs(output_path=None, name='', mat=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
     if (w_int == None):
         w0_ind = np.argmin(np.abs(v_real - w_plot))
-        gk_fs = gk[:, :, 0, w0_ind]
+        mat_fs = mat[:, :, 0, w0_ind]
     else:
         ind_int = np.logical_and(v_real < 0, w_int < v_real)
-        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
+        mat_fs = np.trapz(mat[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
 
-    awk_fs = np.squeeze(bz.shift_mat_by_pi(mat=-1. / np.pi * gk_fs.imag, nk=k_grid.nk))
-    gk_real = np.squeeze(bz.shift_mat_by_pi(mat=gk_fs.real, nk=k_grid.nk))
+    awk_fs = np.squeeze(bz.shift_mat_by_pi(mat=-1. / np.pi * mat_fs.imag, nk=k_grid.nk))
+    gk_real = np.squeeze(bz.shift_mat_by_pi(mat=mat_fs.real, nk=k_grid.nk))
     v0 = np.argmin(np.abs(v_real))
-    qdp = np.squeeze(bz.shift_mat_by_pi(mat=(1. / gk)[:, :, 0, v0].real, nk=k_grid.nk))
+    qdp = np.squeeze(bz.shift_mat_by_pi(mat=(1. / mat)[:, :, 0, v0].real, nk=k_grid.nk))
     im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), origin='lower')
     insert_colorbar(ax=ax[0], im=im)
-    ax[0].set_title('$A(k,\omega=0)$')
+    ax[0].set_title('$-1/pi \Im (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())
     im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[1], im=im)
-    ax[1].set_title('$\Re G(k,\omega=0)$')
+    ax[1].set_title('$\Re (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=qdp.min(), vmax=qdp.max())
     im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[2], im=im)
-    ax[2].set_title('QPD')
+    ax[2].set_title('QPD $(1/(\Re (k, \omega = {})$'.format(w_plot))
 
     add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
     add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
@@ -456,42 +456,42 @@ def plot_cont_fs(output_path=None, name='', gk=None, v_real=None, k_grid=None, w
 
     plt.tight_layout()
     fig.suptitle(name)
-    plt.savefig(output_path + '{}.png'.format(name))
+    plt.savefig(output_path + '{}_at_w{}.png'.format(name,w_plot))
     plt.close()
 
-def plot_cont_fs_no_shift(output_path=None, name='', gk=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
+def plot_cont_fs_no_shift(output_path=None, name='', mat=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
 
     if (w_int == None):
         w0_ind = np.argmin(np.abs(v_real - w_plot))
-        gk_fs = gk[:, :, 0, w0_ind]
+        mat_fs = mat[:, :, 0, w0_ind]
     else:
         ind_int = np.logical_and(v_real < 0, w_int < v_real)
-        gk_fs = np.trapz(gk[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
+        mat_fs = np.trapz(mat[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
 
-    awk_fs = np.squeeze(-1. / np.pi * gk_fs.imag)
-    gk_real = np.squeeze(gk_fs.real)
+    awk_fs = np.squeeze(mat=-1. / np.pi * mat_fs.imag, nk=k_grid.nk)
+    gk_real = np.squeeze(mat=mat_fs.real, nk=k_grid.nk)
     v0 = np.argmin(np.abs(v_real))
-    qdp = np.squeeze((1. / gk)[:, :, 0, v0].real)
+    qdp = np.squeeze(mat=(1. / mat)[:, :, 0, v0].real, nk=k_grid.nk)
     im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent(kgrid=k_grid), origin='lower')
     insert_colorbar(ax=ax[0], im=im)
-    ax[0].set_title('$A(k,\omega=0)$')
+    ax[0].set_title('$-1/pi \Im (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())
     im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[1], im=im)
-    ax[1].set_title('$\Re G(k,\omega=0)$')
+    ax[1].set_title('$\Re (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=qdp.min(), vmax=qdp.max())
     im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent(kgrid=k_grid), norm=norm, origin='lower')
     insert_colorbar(ax=ax[2], im=im)
-    ax[2].set_title('QPD')
+    ax[2].set_title('QPD $(1/(\Re (k, \omega = {})$'.format(w_plot))
 
-    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
-    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
-    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw, shift_pi=False)
+    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
 
     plt.tight_layout()
     fig.suptitle(name)
-    plt.savefig(output_path + '{}.png'.format(name))
+    plt.savefig(output_path + '{}_at_w{}.png'.format(name,w_plot))
     plt.close()
 
 
