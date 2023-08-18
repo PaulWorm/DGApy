@@ -38,10 +38,27 @@ import dga.plot_specs
 # Define MPI communicator:
 comm = mpi.COMM_WORLD
 
+def get_largest_vars(num=5):
+    mem = []
+    names = []
+    vs = globals()
+    for k, v in vs.items():
+        # mem.append(v.size * v.itemsize * 1e-6)
+        mem.append(sys.getsizeof(v)  * 1e-6)
+        names.append(k)
+    mem = np.array(mem)
+    names = np.array(names)
+    sort_ind = np.argsort(mem, axis=0)[::-1]
+    mem[:] = mem[sort_ind]
+    names[:] = names[sort_ind]
+    n = min(len(mem), num)
+    string =[f'{i}: {names[i]} uses {mem[i]} MB |' for i in range(n)]
+    string = f'Total consumption is : {np.sum(mem)} MB |' + ' '.join(string)
+    return string
+
 # --------------------------------------------- CONFIGURATION ----------------------------------------------------------
 
 dga_config, conf_file = config.parse_config_file(comm=comm)
-
 
 # %%
 # --------------------------------------------------- LOAD THE INPUT -------------------------------------------------------------
@@ -58,13 +75,15 @@ comm.barrier()
 logger = loggers.MpiLogger(logfile=dga_config.output_path + '/dga.log', comm=comm, output_path=dga_config.output_path)
 logger.log_message(f'Running on {comm.size} threads.')
 logger.log_memory_usage()
+print(get_largest_vars())
 logger.log_event(message=' Config Init and folder set up done!')
+comm.Barrier()
 
 # Save dmft input to output folder
 if (comm.rank == 0): dga_config.save_data(dmft_input, 'dmft_input')
 
 # Save the full config to yaml file:
-if (comm.rank == 0): config.save_config_file(conf_file,dga_config.output_path)
+if (comm.rank == 0): config.save_config_file(conf_file, dga_config.output_path)
 
 # Plot standard sanity plots for the two-particle Green's function:
 if (comm.rank == 0): plotting.default_g2_plots(g2_dens, g2_magn, dga_config.output_path)
@@ -83,18 +102,20 @@ if comm.rank == 0 and dga_config.do_poly_fitting:
                     dga_config.o_fit,
                     name='Giwk_dmft_poly_cont_',
                     output_path=dga_config.poly_fit_dir)
-    gamma_dmft, bandshift_dmft, Z_dmft = a_cont.get_gamma_bandshift_Z(mf.vn(dmft_input['beta'],siwk_dmft.sigma[0,0,0,:],
-                                                                             pos=True),
-                                                       siwk_dmft.sigma[0,0,0,:],
-                                 order=dga_config.o_fit,N=dga_config.n_fit)
-    np.savetxt(dga_config.poly_fit_dir+'Siw_DMFT_polyfit.txt',np.array([[bandshift_dmft,],[gamma_dmft,],[Z_dmft,]]).T,
-               header = 'bandshift gamma Z', fmt='%.6f')
+    gamma_dmft, bandshift_dmft, Z_dmft = a_cont.get_gamma_bandshift_Z(mf.vn(dmft_input['beta'], siwk_dmft.sigma[0, 0, 0, :],
+                                                                            pos=True),
+                                                                      siwk_dmft.sigma[0, 0, 0, :],
+                                                                      order=dga_config.o_fit, N=dga_config.n_fit)
+    np.savetxt(dga_config.poly_fit_dir + 'Siw_DMFT_polyfit.txt', np.array([[bandshift_dmft, ], [gamma_dmft, ], [Z_dmft, ]]).T,
+               header='bandshift gamma Z', fmt='%.6f')
 
 # --------------------------------------------- LOCAL PART --------------------------------------------------------
-gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full = hlr.local_sde_from_g2(g2_dens,g2_magn,giwk_dmft,
-                                                                                              dga_config,dmft_input,comm,
+gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full = hlr.local_sde_from_g2(g2_dens, g2_magn, giwk_dmft,
+                                                                                                     dga_config, dmft_input, comm,
                                                                                                      logger=logger)
-
+logger.log_memory_usage()
+print(get_largest_vars())
+comm.Barrier()
 # ---------------------------------------------------------------------------------------------------------------------
 # --------------------------------------------- NON-LOCAL PART --------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
@@ -104,11 +125,19 @@ bubble_gen = bub.BubbleGenerator(wn=dga_config.box_sizes.wn, giw=giwk_dmft)
 gchi0_urange = bubble_gen.get_gchi0(dga_config.box_sizes.niv_full)
 
 # Split the momenta between the different cores.
-mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_irr, comm=comm, output_path=dga_config.output_path,
-                                         name='Q')
+if (dga_config.eliash.do_pairing_vertex):
+    mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_irr, comm=comm,
+                                             output_path=dga_config.output_path,
+                                             name='Q')
+else:
+    mpi_distributor = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_irr, comm=comm,
+                                             name='Q')
+comm.Barrier()
 my_q_list = dga_config.lattice.q_grid.irrk_mesh_ind.T[mpi_distributor.my_slice]
 # %%
 F_dc = lfp.Fob2_from_gamob2_urange(gamma_magn, gchi0_urange, dmft_input['u'])
+del gchi0_urange
+gc.collect()
 # #
 #     Compute the fermi-bose vertex and susceptibility using the asymptotics proposed in
 #     Motoharu Kitatani et al. 2022 J. Phys. Mater. 5 034005
@@ -133,6 +162,8 @@ if (logger is not None):
         F_dc.plot(pdir=logger.out_dir + '/', name='F_dc')
 
 kernel_dc = mf.cut_v(fp.get_kernel_dc(F_dc.mat, gchi0_q_urange, u, 'magn'), niv_core, axes=(-1,))
+del gchi0_q_urange
+gc.collect()
 if (logger is not None): logger.log_cpu_time(task=' DC kernel constructed. ')
 
 # Density channel:
@@ -180,7 +211,7 @@ kernel_dc += u_r / gamma_magn.beta * (1 - u_r * chi_magn[None, :, None]) * vrg_m
                                                                                                       :, :, None]
 vrg_q_magn = fp.vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
 
-if ('pairing' in conf_file):
+if (dga_config.eliash.do_pairing_vertex):
     niv_pp = dga_config.box_sizes.niv_pp
     omega = pv.get_omega_condition(niv_pp=niv_pp)
     channel = 'magn'
@@ -208,6 +239,7 @@ del gamma_magn, gamma_dens, F_dc, vrg_magn, vrg_dens, gchiq_aux, chiq_aux
 gc.collect()
 logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 logger.log_memory_usage()
+print(get_largest_vars())
 
 # %% Collect the results from the different cores:
 chi_lad_dens = mpi_distributor.gather(rank_result=chi_lad_dens, root=0)
@@ -261,6 +293,7 @@ del chi_dens, chi_magn
 gc.collect()
 logger.log_cpu_time(task=' Lambda-correction done. ')
 logger.log_memory_usage()
+print(get_largest_vars())
 
 # %% Build the pairing vertex
 comm.Barrier()
@@ -322,8 +355,8 @@ q_dupl = np.ones((np.shape(full_q_list)[0]))
 
 # Create new mpi-distributor for the full fbz:
 mpi_dist_fbz = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_tot, comm=comm,
-                                      output_path=dga_config.output_path + '/',
                                       name='FBZ')
+comm.Barrier()
 my_full_q_list = full_q_list[mpi_dist_fbz.my_slice]
 
 if (comm.rank == 0):
@@ -357,6 +390,7 @@ gc.collect()
 
 logger.log_cpu_time(task=' Non-local SDE done. ')
 logger.log_memory_usage()
+print(get_largest_vars())
 
 # %%
 # Collect from the different cores:
@@ -391,6 +425,7 @@ if (comm.rank == 0):
 logger.log_cpu_time(task=' Siwk collected and plotted. ')
 logger.log_memory_usage()
 
+
 # %% Build the DGA Green's function:
 giwk_dga = twop.GreensFunction(sigma_dga, ek, n=dmft_input['n'], niv_asympt=dga_config.box_sizes.niv_full)
 
@@ -413,10 +448,10 @@ if (comm.rank == 0):
                             niv_plot=20, name='Sigma_{dga}')
 
 logger.log_cpu_time(task=' Giwk build and plotted. ')
-logger.log_memory_usage()
 mpi_distributor.delete_file()
 mpi_dist_fbz.delete_file()
 logger.log_memory_usage()
+print(get_largest_vars())
 # --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
 
 # %%
@@ -435,17 +470,13 @@ if (dga_config.do_poly_fitting):
 
     logger.log_cpu_time(task=' Poly-fits ')
 
-
-
-
-
-
 # %%Perform the Eliashberg Routine:
 if (comm.rank == 0 and dga_config.eliash.do_eliash):
     logger.log_cpu_time(task=' Staring Eliashberg ')
     gk_dga = mf.cut_v(giwk_dga.core, dga_config.box_sizes.niv_pp, (-1,))
     norm = np.prod(dga_config.lattice.q_grid.nk_tot) * dmft_input['beta']
-    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=dga_config.eliash.gap0_sing['k'], v_type=dga_config.eliash.gap0_sing['v'],
+    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=dga_config.eliash.gap0_sing['k'],
+                            v_type=dga_config.eliash.gap0_sing['v'],
                             k_grid=dga_config.lattice.q_grid.grid)
 
     gamma_sing = -dga_config.eliash.load_data('F_sing_pp')
@@ -453,7 +484,8 @@ if (comm.rank == 0 and dga_config.eliash.do_eliash):
     powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
                                               n_eig=dga_config.eliash.n_eig)
 
-    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=dga_config.eliash.gap0_trip['k'], v_type=dga_config.eliash.gap0_trip['v'],
+    gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=dga_config.eliash.gap0_trip['k'],
+                            v_type=dga_config.eliash.gap0_trip['v'],
                             k_grid=dga_config.lattice.q_grid.grid)
 
     gamma_trip = -dga_config.eliash.load_data('F_trip_pp')
@@ -482,10 +514,11 @@ if (comm.rank == 0 and dga_config.eliash.do_eliash):
     logger.log_event('Eliashberg completed!')
 
 # ------------------------------------------------- MAXENT ------------------------------------------------------------
-if('max_ent' in conf_file):
+if ('max_ent' in conf_file):
     import dga.dga_max_ent as dme
+
     logger.log_cpu_time(task=' Starting Max-Ent ')
-    dme.main(path=dga_config.output_path,comm=comm)
+    dme.main(path=dga_config.output_path, comm=comm)
     logger.log_event('MaxEnt completed')
 
 # End program:

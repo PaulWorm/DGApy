@@ -2,12 +2,15 @@
 # Handels the logging of program progress.
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
-import os
+import os,sys
 import time
 import datetime
 import psutil
 import resource
+import numpy as np
 # ----------------------------------------------- CLASSES --------------------------------------------------------------
+
+
 
 class real_time():
     ''' simple class to keep track of real time '''
@@ -78,17 +81,15 @@ class MpiLogger():
 
     def log_memory_usage(self):
         if(self.is_root):
-            f = open(self.logfile,'a')
-            mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
-            message = f'Estimated RAM used by root (GB): {mem}'
-            f.write(self.local_time() + ' : ' + message + '\n')
-            f.close()
-        # elif(self.comm.size > 1 and self.comm.rank == 1):
-        #     f = open(self.logfile,'a')
-        #     mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
-        #     message = f'Estimated RAM used by other ranks (GB): {mem}'
-        #     f.write(self.local_time() + ' : ' + message + '\n')
-        #     f.close()
+            with open(self.logfile, 'a') as f:
+                mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
+                message = f'Estimated RAM used by root (GB): {mem}'
+                f.write(f'{self.local_time()} : {message}\n')
+        elif(self.comm.size > 1 and self.comm.rank == 1):
+            with open(self.logfile, 'a') as f:
+                mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1e-6
+                message = f'Estimated RAM used by root (GB): {mem}'
+                f.write(f'{self.local_time()} : {message}\n')
         else:
             pass
 

@@ -37,7 +37,10 @@ class MpiDistributor():
     def __del__(self):
         # self.__del__()
         if(self.file is not None):
-            self.close_file()
+            try:
+                self.close_file()
+            except:
+                pass
 
     @property
     def comm(self):

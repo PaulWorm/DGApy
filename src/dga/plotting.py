@@ -469,10 +469,10 @@ def plot_cont_fs_no_shift(output_path=None, name='', mat=None, v_real=None, k_gr
         ind_int = np.logical_and(v_real < 0, w_int < v_real)
         mat_fs = np.trapz(mat[:, :, 0, ind_int], v_real[ind_int]) / np.abs(w_int)
 
-    awk_fs = np.squeeze(mat=-1. / np.pi * mat_fs.imag, nk=k_grid.nk)
-    gk_real = np.squeeze(mat=mat_fs.real, nk=k_grid.nk)
+    awk_fs = np.squeeze(-1. / np.pi * mat_fs.imag)
+    gk_real = np.squeeze(mat_fs.real)
     v0 = np.argmin(np.abs(v_real))
-    qdp = np.squeeze(mat=(1. / mat)[:, :, 0, v0].real, nk=k_grid.nk)
+    qdp = np.squeeze((1. / mat)[:, :, 0, v0].real)
     im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent(kgrid=k_grid), origin='lower')
     insert_colorbar(ax=ax[0], im=im)
     ax[0].set_title('$-1/pi \Im (k,\omega={})$'.format(w_plot))
@@ -485,9 +485,9 @@ def plot_cont_fs_no_shift(output_path=None, name='', mat=None, v_real=None, k_gr
     insert_colorbar(ax=ax[2], im=im)
     ax[2].set_title('QPD $(1/(\Re (k, \omega = {})$'.format(w_plot))
 
-    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
+    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
+    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
 
     plt.tight_layout()
     fig.suptitle(name)

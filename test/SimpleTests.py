@@ -1,21 +1,15 @@
+import sys
 import numpy as np
-
-import dga.analytic_continuation as dga_cont
-
-# dga_cont.MAX_ENT_DEFAULT_SETTINGS['bw'] = 1
-
-print(dga_cont.MAX_ENT_DEFAULT_SETTINGS)
+import dga.loggers as loggers
+from dga.loggers import get_largest_vars
 
 
-test = {
-    'cut': 0.04, # only relevant for the Lorentzian mesh,
-    'n_fit': 20,
-    'bw': 1,
-    'nwr': 1001,  # Number of frequencies on the real axis
-    'wmax': 15,  # frequency range on the real axis
+tmp1 = np.array((10,10))
+tmp2 = np.array((20,10))
+tmp3 = np.array((30,10))
+tmp4 = np.random.rand(100,100,100)
 
-}
+# print(loggers.get_largest_vars(5))
+print(get_largest_vars(5))
 
-dga_cont.MAX_ENT_DEFAULT_SETTINGS.update(test)
 
-print(dga_cont.MAX_ENT_DEFAULT_SETTINGS)
