@@ -162,6 +162,7 @@ if (logger is not None):
         F_dc.plot(pdir=logger.out_dir + '/', name='F_dc')
 
 kernel_dc = mf.cut_v(fp.get_kernel_dc(F_dc.mat, gchi0_q_urange, u, 'magn'), niv_core, axes=(-1,))
+print(get_largest_vars(5))
 del gchi0_q_urange
 gc.collect()
 if (logger is not None): logger.log_cpu_time(task=' DC kernel constructed. ')

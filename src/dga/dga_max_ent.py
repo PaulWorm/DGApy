@@ -81,111 +81,83 @@ def main(path='./', comm=None):
         siw_cont_path = path + 'MaxEntSiwk'
         siw_cont_path = dga_io.set_output_path(siw_cont_path,comm=comm)
         me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config['s_dga'])
-        logger.log_cpu_time(task=' MaxEnt controller for Siwk created ')
-        if(comm.rank == 0):
-            sigma_mat = sigma_dga.get_siw(me_controller.n_fit)-sigma_dga.smom0 # subtract Hartree
-            sigma_mat = dga_config.lattice.k_grid.map_fbz2irrk(sigma_mat)
-        else:
-            sigma_mat = None
+        if(me_controller.do_cont):
+            logger.log_cpu_time(task=' MaxEnt controller for Siwk created ')
+            if(comm.rank == 0):
+                sigma_mat = sigma_dga.get_siw(me_controller.n_fit)-sigma_dga.smom0 # subtract Hartree
+                sigma_mat = dga_config.lattice.k_grid.map_fbz2irrk(sigma_mat)
+            else:
+                sigma_mat = None
 
-        siw_cont = a_cont.mpi_ana_cont(sigma_mat, me_controller, mpi_dist, 'siwk_dga', logger = logger)
-        if(comm.rank == 0):
-            siw_cont = dga_config.lattice.k_grid.map_irrk2fbz(siw_cont) + sigma_dga.smom0  # add Hartree
-            a_cont.save_and_plot_cont_fermionic(siw_cont, me_controller.w, dga_config.lattice.k_grid, 'swk_dga', siw_cont_path)
-        logger.log_cpu_time(task=' MaxEnt Siwk ')
-        logger.log_memory_usage()
+            siw_cont = a_cont.mpi_ana_cont(sigma_mat, me_controller, mpi_dist, 'siwk_dga', logger = logger)
+            if(comm.rank == 0):
+                siw_cont = dga_config.lattice.k_grid.map_irrk2fbz(siw_cont) + sigma_dga.smom0  # add Hartree
+                a_cont.save_and_plot_cont_fermionic(siw_cont, me_controller.w, dga_config.lattice.k_grid, 'swk_dga', siw_cont_path)
+            logger.log_cpu_time(task=' MaxEnt Siwk ')
+            logger.log_memory_usage()
 
     # Continuation of the k-dependent Green's function
     if 'g_dga' in max_ent_config:
         cont_path = path + 'MaxEntGiwk'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
         me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config['g_dga'])
-        logger.log_cpu_time(task=' MaxEnt controller for Giwk created ')
-        if(comm.rank == 0):
-            mat = giwk_dga.g_full()
-            mat = dga_config.lattice.k_grid.map_fbz2irrk(mat)
-        else:
-            mat = None
+        if (me_controller.do_cont):
+            logger.log_cpu_time(task=' MaxEnt controller for Giwk created ')
+            if(comm.rank == 0):
+                mat = giwk_dga.g_full()
+                mat = dga_config.lattice.k_grid.map_fbz2irrk(mat)
+            else:
+                mat = None
 
-        cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'giwk_dga', logger = logger)
-        if(comm.rank == 0):
-            cont = dga_config.lattice.k_grid.map_irrk2fbz(cont)
-            a_cont.save_and_plot_cont_fermionic(cont, me_controller.w, dga_config.lattice.k_grid, 'gwk_dga', cont_path)
-        logger.log_cpu_time(task=' MaxEnt Giwk ')
-        logger.log_memory_usage()
+            cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'giwk_dga', logger = logger)
+            if(comm.rank == 0):
+                cont = dga_config.lattice.k_grid.map_irrk2fbz(cont)
+                a_cont.save_and_plot_cont_fermionic(cont, me_controller.w, dga_config.lattice.k_grid, 'gwk_dga', cont_path)
+            logger.log_cpu_time(task=' MaxEnt Giwk ')
+            logger.log_memory_usage()
 
     # Continuation of the q-dependent density lambda-susceptbility
     if 'chi_d' in max_ent_config:
         cont_path = path + 'MaxEntChiDens'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
         me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config['chi_d'])
-        logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
-        if(comm.rank == 0):
-            mat = np.load(path + 'chi_dens_lam.npy', allow_pickle=True)
-            mat = dga_config.lattice.q_grid.map_fbz2irrk(mat)
-        else:
-            mat = None
+        if (me_controller.do_cont):
+            logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
+            if(comm.rank == 0):
+                mat = np.load(path + 'chi_dens_lam.npy', allow_pickle=True)
+                mat = dga_config.lattice.q_grid.map_fbz2irrk(mat)
+            else:
+                mat = None
 
-        cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'chi_dens', logger = logger)
-        if(comm.rank == 0):
-            cont = dga_config.lattice.q_grid.map_irrk2fbz(cont)
-            a_cont.save_and_plot_cont_fermionic(cont, me_controller.w, dga_config.lattice.q_grid, 'chi_dens', cont_path)
-        logger.log_cpu_time(task=' MaxEnt Chi-dens ')
-        logger.log_memory_usage()
+            cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'chi_dens', logger = logger)
+            if(comm.rank == 0):
+                cont = dga_config.lattice.q_grid.map_irrk2fbz(cont)
+                a_cont.save_and_plot_cont_bosonic(cont, me_controller.w, dga_config.lattice.q_grid, 'chi_dens', cont_path)
+            logger.log_cpu_time(task=' MaxEnt Chi-dens ')
+            logger.log_memory_usage()
 
     # Continuation of the q-dependent magnetic lambda-susceptbility
     if 'chi_m' in max_ent_config:
         cont_path = path + 'MaxEntChiMagn'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
         me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config['chi_m'])
-        logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
-        if(comm.rank == 0):
-            mat = np.load(path + 'chi_magn_lam.npy', allow_pickle=True)
-            mat = dga_config.lattice.q_grid.map_fbz2irrk(mat)
-        else:
-            mat = None
+        if (me_controller.do_cont):
+            logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
+            if(comm.rank == 0):
+                mat = np.load(path + 'chi_magn_lam.npy', allow_pickle=True)
+                mat = dga_config.lattice.q_grid.map_fbz2irrk(mat)
+            else:
+                mat = None
 
-        cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'chi_magn', logger = logger)
-        if(comm.rank == 0):
-            cont = dga_config.lattice.q_grid.map_irrk2fbz(cont)
-            a_cont.save_and_plot_cont_bosonic(cont, me_controller.w, dga_config.lattice.q_grid, 'chi_magn', cont_path)
-        logger.log_cpu_time(task=' MaxEnt Chi-magn ')
-        logger.log_memory_usage()
+            cont = a_cont.mpi_ana_cont(mat, me_controller, mpi_dist, 'chi_magn', logger = logger)
+            if(comm.rank == 0):
+                cont = dga_config.lattice.q_grid.map_irrk2fbz(cont)
+                a_cont.save_and_plot_cont_bosonic(cont, me_controller.w, dga_config.lattice.q_grid, 'chi_magn', cont_path)
+            logger.log_cpu_time(task=' MaxEnt Chi-magn ')
+            logger.log_memory_usage()
 
     mpi_dist.delete_file()
-    # if me_conf.cont_g_nl:
-    #     me_conf.output_path_nl_g = dga_config.output_path + '/MaxEntGiwk/'
-    #     if (comm.rank == 0 and not os.path.exists(me_conf.output_path_nl_g)): os.mkdir(me_conf.output_path_nl_g)
-    #
-    #     for bw in me_conf.bw_dga:
-    #         a_cont.max_ent_irrk_bw_range_green(giwk_dga, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger,
-    #                                            name='Giwk_dga')
-    #     logger.log_cpu_time(task=' MaxEnt Giwk ')
-    #     logger.log_memory_usage()
-    #
-    # # Continue the susceptibility:
-    #
-    # if me_conf.cont_chi_d:
-    #     chi = np.load(path + 'chi_dens_lam.npy', allow_pickle=True)
-    #     output_path = dga_config.output_path + '/MaxEntChiDens/'
-    #     if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
-    #
-    #     for bw in me_conf.bw_dga:
-    #         a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='dens',
-    #                                          out_dir=output_path)
-    #     logger.log_cpu_time(task=' MaxEnt Chi-dens ')
-    #     logger.log_memory_usage()
-    #
-    # if me_conf.cont_chi_m:
-    #     chi = np.load(path + 'chi_magn_lam.npy', allow_pickle=True)
-    #     output_path = dga_config.output_path + '/MaxEntChiMagn/'
-    #     if (comm.rank == 0 and not os.path.exists(output_path)): os.mkdir(output_path)
-    #
-    #     for bw in me_conf.bw_chi:
-    #         a_cont.max_ent_irrk_bw_range_chi(chi, dga_config.lattice.k_grid, me_conf, comm, bw, logger=logger, name='magn',
-    #                                          out_dir=output_path)
-    #     logger.log_cpu_time(task=' MaxEnt Chi-magn ')
-    #     logger.log_memory_usage()
+
 
 
 if __name__ == '__main__':

@@ -114,6 +114,7 @@ class MaxEnt():
     def __init__(self, beta, kernel_mode,comm = None, config=None, **kwargs):
 
         # declare attributes:
+        self.do_cont = True
         self.mesh_type = None
         self.wmin = None
         self.wmax = None

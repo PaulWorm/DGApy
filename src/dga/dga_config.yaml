@@ -43,16 +43,21 @@ max_ent:
   n_fit: 60
 
   loc: # Perform continuation of the local Green's function
+    do_cont: False
 
   g_dga: # Perform continuation of the dga Green's function
+    do_cont: False
 
   s_dga: # Perform continuation of the dga self-energy
+    do_cont: False
 
   chi_d: # Perform continuation of the density susceptibility
+    do_cont: False
     bw: 0.0
     n_fit: 20
 
   chi_m: # Perform continuation of the magnetic susceptibility
+    do_cont: False
     bw: 0.0
     n_fit: 20
 
