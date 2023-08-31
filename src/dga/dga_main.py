@@ -521,6 +521,7 @@ if ('max_ent' in conf_file):
     import dga.dga_max_ent as dme
 
     logger.log_cpu_time(task=' Starting Max-Ent ')
+    logger.log_event('Path is:' + dga_config.output_path)
     dme.main(path=dga_config.output_path, comm=comm)
     logger.log_event('MaxEnt completed')
 
