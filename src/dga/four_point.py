@@ -139,7 +139,6 @@ def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
             chir[iq, iwn, ...] = np.linalg.inv(np.diag(1 / gchi0[iq, iwn]) + gammar.mat[iwn])
     return chir
 
-
 def get_gchir_aux_from_gammar_q(gammar: lfp.LocalFourPoint, gchi0, u):
     ''' chi_aux = (chi0^(-1) + Gamma/beta^2 - u/beta^2)^(-1) '''
     nq = np.shape(gchi0)[0]

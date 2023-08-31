@@ -14,13 +14,16 @@ import dga.bubble as bub
 # ---------------------------------------------- HIGH-LEVEL ROUTINES  --------------------------------------------------
 # ======================================================================================================================
 
-def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, giwk_dmft: twop.GreensFunction, dga_config,
+def local_sde_from_g2(g2_dens: lfp.LocalFourPoint, g2_magn: lfp.LocalFourPoint, giwk_dmft: twop.GreensFunction, dga_config:
+config.DgaConfig,
                       dmft_input, comm,logger=None, write_output=True):
     '''
         Perform the local Schwinger-Dyson equation starting with g2 as input
     '''
     gchi_dens = lfp.gchir_from_g2(g2_dens, giwk_dmft.g_loc)
     gchi_magn = lfp.gchir_from_g2(g2_magn, giwk_dmft.g_loc)
+    if(comm.rank == 0):
+        plotting.default_gchi_plots(gchi_dens,gchi_magn,dga_config.output_path)
 
     if(logger is not None): logger.log_cpu_time(task=' Data loading completed. ')
     if(logger is not None): logger.log_memory_usage()

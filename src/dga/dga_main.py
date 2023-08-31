@@ -156,7 +156,6 @@ chi0_q_urange = 1 / beta ** 2 * np.sum(gchi0_q_urange, axis=-1)
 gchi0_q_core = mf.cut_v(gchi0_q_urange, niv_cut=niv_core, axes=-1)
 chi0_q_core = 1 / beta ** 2 * np.sum(gchi0_q_core, axis=-1)
 chi0q_shell = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
-chi0q_shell_dc = bubble_gen.get_asymptotic_correction_q(niv_full, my_q_list)
 if (logger is not None): logger.log_cpu_time(task=' Bubbles constructed. ')
 
 # double-counting kernel:
@@ -211,7 +210,7 @@ chi_lad_magn = fp.chi_phys_asympt_q(chi_lad_urange, chi0_q_urange, chi0_q_urange
 
 u_r = fp.get_ur(u, gamma_magn.channel)
 # 1/beta**2 since we want F/beta**2
-kernel_dc += u_r / gamma_magn.beta * (1 - u_r * chi_magn[None, :, None]) * vrg_magn.mat[None, :, :] * chi0q_shell_dc[
+kernel_dc += u_r / gamma_magn.beta * (1 - u_r * chi_magn[None, :, None]) * vrg_magn.mat[None, :, :] * chi0q_shell[
                                                                                                       :, :, None]
 vrg_q_magn = fp.vrg_from_gchi_aux(gchiq_aux, gchi0_q_core, chi_lad_urange, chi_lad_magn, u, gamma_magn.channel)
 

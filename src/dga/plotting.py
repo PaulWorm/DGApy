@@ -82,6 +82,11 @@ def default_g2_plots(g2_dens, g2_magn, output_dir):
     g2_magn.plot(10, pdir=output_dir, name='G2_magn')
     g2_magn.plot(-10, pdir=output_dir, name='G2_magn')
 
+def default_gchi_plots(gchi_dens, gchi_magn, output_dir):
+    ''' Default plots for the two-particle Green's function'''
+    gchi_dens.plot(0, pdir=output_dir, name='Gchi_dens')
+    gchi_magn.plot(0, pdir=output_dir, name='Gchi_magn')
+
 
 def default_gamma_plots(gamma_dens, gamma_magn, output_dir, box_sizes, beta):
     ''' Default plots for Gamma. '''
