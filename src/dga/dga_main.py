@@ -60,6 +60,9 @@ def get_largest_vars(num=5):
 
 dga_config, conf_file = config.parse_config_file(comm=comm)
 
+if(comm.size > dga_config.lattice.k_grid.nk_irr):
+    raise ValueError('Number of processes may not be larger than points in the irreducible BZ for distribution.')
+
 # %%
 # --------------------------------------------------- LOAD THE INPUT -------------------------------------------------------------
 dmft_input = dga_io.load_1p_data(dga_config.input_type, dga_config.input_path, dga_config.fname_1p, dga_config.fname_2p)

@@ -2,6 +2,7 @@
 DGA is a python package for calculations using the lambda corrected dynamical vertex correction. 
 
 ## Installation
+Run "conda install Cython". This is needed as a prerequisite for ana_cont.
 Run "pip install -e ." in the root directory. This will provide the package dga and the console script dga_main.
 
 
