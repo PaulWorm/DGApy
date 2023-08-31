@@ -53,9 +53,17 @@ def lambda_correction(chi_lad_dens, chi_lad_magn, beta, chi_loc_dens, chi_loc_ma
         chi_lad_magn = use_lambda(chi_lad_magn, lambda_magn)
 
         return chi_lad_dens, chi_lad_magn, lambda_dens, lambda_magn
+    if(type=='sp'):
+        lambda_magn_start = get_lambda_start(chi_lad_magn)
+        chi_magn_loc_sum = 1 / beta * np.sum(chi_loc_magn+chi_loc_dens) - 1/beta * np.mean(np.sum(chi_lad_dens,-1))
+        lambda_magn = lambda_correction_single(beta, lambda_start=lambda_magn_start, chir=chi_lad_magn,
+                                                  chi_loc_sum=chi_magn_loc_sum,verbose=verbose)
+        chi_lad_magn = use_lambda(chi_lad_magn, lambda_magn)
+
+        return chi_lad_dens, chi_lad_magn, 0, lambda_magn
 
     else:
-        raise NotImplementedError('Only spch implemented')
+        raise NotImplementedError('Only spch and sp implemented')
 
 
 
