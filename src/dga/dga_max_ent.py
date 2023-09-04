@@ -71,7 +71,6 @@ def main(path='./', comm=None):
 
     # Create a mpi distributor:
     mpi_dist = mpi_aux.MpiDistributor(ntasks=dga_config.lattice.q_grid.nk_irr, comm=comm,
-                                          output_path=dga_config.output_path + '/',
                                           name='MaxEntIrrk')
 
 
