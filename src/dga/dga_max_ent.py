@@ -57,7 +57,7 @@ def main(path='./', comm=None):
     # Perform analytic continuation of local quantities:
     if comm.rank == 0 and 'loc' in max_ent_config:
         g_loc_dga = giwk_dga.g_loc
-        bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga', out_dir=loc_dir)
+        # bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga', out_dir=loc_dir)
 
         logger.log_cpu_time(task=' MaxEnt local ')
         logger.log_memory_usage()
@@ -65,7 +65,7 @@ def main(path='./', comm=None):
         bw_opt_dga = None
 
     # Broadcast bw_opt_dga
-    bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
+    # bw_opt_dga = comm.bcast(bw_opt_dga, root=0)
     # me_conf.bw_dga.append(bw_opt_dga)
 
 
