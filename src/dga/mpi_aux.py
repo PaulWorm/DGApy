@@ -98,7 +98,7 @@ class MpiDistributor():
         self._sizes = n_per_rank * np.ones(self.mpi_size, int)
 
         if n_excess:
-            self._sizes[:n_excess] += 1
+            self._sizes[-n_excess:] += 1
 
         slice_ends = self._sizes.cumsum()
         self._slices = list(map(slice, slice_ends - self._sizes, slice_ends))
@@ -136,7 +136,7 @@ class MpiDistributor():
         rank_shape = (self.my_size,) + rest_shape
         rank_data = np.empty(rank_shape, dtype=complex)
         other_dims = np.prod(rank_data.shape[1:])
-        self.comm.Scatterv([full_data,self.sizes * other_dims,None,mpi.COMPLEX],rank_data,root=root)
+        self.comm.Scatterv([full_data,self.sizes * other_dims],rank_data,root=root)
         return rank_data
 
     def bcast(self,data,root=0):

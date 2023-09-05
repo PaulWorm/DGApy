@@ -51,6 +51,7 @@ def schwinger_dyson_channel_q(vrg, chir_phys, channel, giwk, beta, u, q_list, q_
 
 def schwinger_dyson_full_q(vrg_dens, vrg_magn, chi_dens, chi_magn, kernel_dc, giwk, beta, u, q_list, wn, nqtot,
                            niv_shell=0, logger=None):
+    print(f'vrg-type: {vrg_dens.dtype}; chi-type: {chi_dens.dtype}')
     kernel = get_kernel(vrg_dens, chi_dens, u, 'dens')
     kernel += 3 * get_kernel(vrg_magn, chi_magn, u, 'magn')
     kernel -= kernel_dc  # minus because we subtract the double counting part
