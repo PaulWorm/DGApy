@@ -78,7 +78,7 @@ comm.barrier()
 logger = loggers.MpiLogger(logfile=dga_config.output_path + '/dga.log', comm=comm, output_path=dga_config.output_path)
 logger.log_message(f'Running on {comm.size} threads.')
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 logger.log_event(message=' Config Init and folder set up done!')
 comm.Barrier()
 
@@ -117,7 +117,7 @@ gamma_dens, gamma_magn, chi_dens, chi_magn, vrg_dens, vrg_magn, siw_sde_full = h
                                                                                                      dga_config, dmft_input, comm,
                                                                                                      logger=logger)
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 comm.Barrier()
 # ---------------------------------------------------------------------------------------------------------------------
 # --------------------------------------------- NON-LOCAL PART --------------------------------------------------------
@@ -242,7 +242,7 @@ del gamma_magn, gamma_dens, F_dc, vrg_magn, vrg_dens, gchiq_aux, chiq_aux
 gc.collect()
 logger.log_cpu_time(task=' Vrg and Chi-ladder completed. ')
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 
 # %% Collect the results from the different cores:
 chi_lad_dens = mpi_distributor.gather(rank_result=chi_lad_dens, root=0)
@@ -296,7 +296,7 @@ del chi_dens, chi_magn
 gc.collect()
 logger.log_cpu_time(task=' Lambda-correction done. ')
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 
 # %% Build the pairing vertex
 comm.Barrier()
@@ -393,7 +393,7 @@ gc.collect()
 
 logger.log_cpu_time(task=' Non-local SDE done. ')
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 
 # %%
 # Collect from the different cores:
@@ -454,7 +454,7 @@ logger.log_cpu_time(task=' Giwk build and plotted. ')
 mpi_distributor.delete_file()
 mpi_dist_fbz.delete_file()
 logger.log_memory_usage()
-print(get_largest_vars())
+#print(get_largest_vars())
 # --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
 
 # %%

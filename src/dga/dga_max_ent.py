@@ -32,7 +32,12 @@ def main(path='./', comm=None):
     dga_config = config.DgaConfig(conf_file, comm=comm)
     logger = loggers.MpiLogger(logfile=path + 'max_ent.log', comm=comm, output_path=path)
 
-    dmft_input = np.load(path + 'dmft_input.npy', allow_pickle=True).item()
+    fname_dmft = path + 'dmft_input.npy'
+    if(os.path.isfile(fname_dmft)):
+        dmft_input = np.load(path + 'dmft_input.npy', allow_pickle=True).item()
+    else:
+        raise ValueError(f'File: {fname_dmft} does not exist.')
+
     ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, dga_config.lattice.hr)
     dga_config.output_path = path
 
@@ -57,7 +62,7 @@ def main(path='./', comm=None):
     # Perform analytic continuation of local quantities:
     if comm.rank == 0 and 'loc' in max_ent_config:
         g_loc_dga = giwk_dga.g_loc
-        # bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga', out_dir=loc_dir)
+        bw_opt_dga = a_cont.max_ent_loc_bw_range(g_loc_dga, me_conf, name='dga', out_dir=loc_dir)
 
         logger.log_cpu_time(task=' MaxEnt local ')
         logger.log_memory_usage()
