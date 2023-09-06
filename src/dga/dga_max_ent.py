@@ -21,6 +21,7 @@ import dga.plot_specs
 
 
 def main(path='./', comm=None):
+    print('Starting MaxEnt at:' + path)
     # Define MPI communicator:
     if (comm is None): comm = mpi.COMM_WORLD
 
@@ -31,6 +32,7 @@ def main(path='./', comm=None):
     conf_file = comm.bcast(conf_file, root=0)
     dga_config = config.DgaConfig(conf_file, comm=comm)
     logger = loggers.MpiLogger(logfile=path + 'max_ent.log', comm=comm, output_path=path)
+    logger.log_event(f'Path is: {path}')
 
     fname_dmft = path + 'dmft_input.npy'
     if(os.path.isfile(fname_dmft)):
