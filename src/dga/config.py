@@ -112,7 +112,12 @@ class OutputConfig(ConfigBase):
 
     def set_output_path(self, base_name, comm=None):
         ''' comm is for mpi applications '''
-        self.output_path = util.uniquify(base_name)
+        if(comm is not None):
+            if(comm.rank == 0):
+                self.output_path = util.uniquify(base_name)
+            self.output_path = comm.bcast(self.output_path, root=0)
+        else:
+            self.output_path = util.uniquify(base_name)
 
         if (not os.path.exists(self.output_path)):
             if (comm is not None):
