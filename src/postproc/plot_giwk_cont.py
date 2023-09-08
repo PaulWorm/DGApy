@@ -13,19 +13,19 @@ from matplotlib import colors
 
 # Load data:
 base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90' \
-       '/LambdaDga_lc_spch_Nk19600_Nq19600_wcore30_vcore30_vshell500_2/'
+       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs200/'
 max_ent_dir = base_path + 'MaxEntGiwk/'
 max_ent_dir_s = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
 save_fig = True
-fname_conf = 'raw_config_file.yaml'
+fname_conf = 'dga_config.yaml'
 conf_file = YAML().load(open(base_path + fname_conf))
 
 dga_config = config.DgaConfig(conf_file)
 me_config = config.MaxEntConfig(1,12.5,conf_file)
 
-giwk_cont_file = 'gwk_Giwk_dga_cont_fbz_bw0.01.npy'
-siwk_cont_file = 'swk_siwk_dga_cont_fbz_bw0.01.npy'
+giwk_cont_file = 'gwk_dga_cont_fbz.npy'
+siwk_cont_file = 'swk_dga_cont_fbz.npy'
 
 gwk = np.load(max_ent_dir+giwk_cont_file,allow_pickle=True)
 swk = np.load(max_ent_dir_s+siwk_cont_file,allow_pickle=True)

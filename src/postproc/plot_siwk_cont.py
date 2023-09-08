@@ -12,18 +12,18 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 # Load data:
-base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90' \
-       '/LambdaDga_lc_spch_Nk19600_Nq19600_wcore30_vcore30_vshell500_2/'
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.70' \
+       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs200/'
 max_ent_dir = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
 save_fig = True 
 
-siwk_cont_file = 'swk_siwk_dga_cont_fbz_bw0.01.npy'
+siwk_cont_file = 'swk_dga_cont_fbz.npy'
 
 swk = np.load(max_ent_dir+siwk_cont_file,allow_pickle=True)
 cut_off = 0.04
 swk[np.abs(swk.imag) < cut_off] = swk[np.abs(swk.imag) < cut_off].real - 1j * cut_off
-fname_conf = 'raw_config_file.yaml'
+fname_conf = 'dga_config.yaml'
 conf_file = YAML().load(open(base_path + fname_conf))
 
 dga_config = config.DgaConfig(conf_file)

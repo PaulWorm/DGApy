@@ -17,6 +17,17 @@ KNOWN_K_POINTS = {
     'A': np.array([0.5, 0.5, 0.5])  # np.array([np.pi/2,np.pi/2,0])
 }
 
+LABELS = {
+    'Gamma': '$\Gamma$',
+    'X':'X',
+    'Y':'Y',
+    'M':'M',
+    'M2':'M/2',
+    'Z':'Z',
+    'R':'R',
+    'A':'A'
+}
+
 
 def get_extent(kgrid=None):
     return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
@@ -306,6 +317,25 @@ class KPath():
     def ckps(self):
         ''' Corner k-point strings'''
         return self.path.split(self.path_deliminator)
+
+    @property
+    def labels(self):
+        ''' Labels of the k-points for plotting'''
+        count = 0
+        ckps = self.ckps
+        l = []
+        for k_p in ckps:
+            if(k_p in KNOWN_K_POINTS):
+                l.append(LABELS[k_p])
+            else:
+                l.append(f'K{count}')
+            count += 1
+        return l
+
+    @property
+    def x_ticks(self):
+        ''' Return ticks values for plotting'''
+        return self.k_axis[self.cind]
 
     @property
     def cind(self):
