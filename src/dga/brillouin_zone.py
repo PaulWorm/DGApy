@@ -63,6 +63,9 @@ def two_dimensional_nematic_symmetries():
 def quasi_two_dimensional_square_symmetries():
     return ['x-inv', 'y-inv', 'z-inv', 'x-y-sym']
 
+def quasi_one_dimensional_square_symmetries():
+    return ['x-inv', 'y-inv']
+
 
 def inv_sym(mat, axis):
     '''in-place inversion symmetry applied to mat along dimension axis

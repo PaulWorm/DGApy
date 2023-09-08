@@ -208,6 +208,10 @@ class LatticeConfig(ConfigBase):
         ''' Set symmetries if known: '''
         if (self.symmetries == "two_dimensional_square"):
             self.symmetries = bz.two_dimensional_square_symmetries()
+        elif (self.symmetries == "quasi_one_dimensional_square"):
+            self.symmetries = bz.quasi_one_dimensional_square_symmetries()
+        else:
+            raise NotImplementedError(f'Symmetry {self.symmetries} is not yet implemented.')
 
     @property
     def nk_tot(self):

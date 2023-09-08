@@ -130,29 +130,7 @@ def read_Hk_w2k(fname, spin_sym = True):
 # ==================================================================================================================
 
 
-# ==================================================================================================================
-def read_Hr_w2k(fname):
-    '''
-        Load the H(R) LDA-Hamiltonian from a wien2k hr file.
-    '''
-    Hr_file = pd.read_csv(fname, header = None,names = np.arange(15), sep = '\s+', dtype = float, engine='python')
-    Nbands = Hr_file.values[0].astype(int)[0]
-    Nr = Hr_file.values[1].astype(int)[0]
 
-    tmp = np.reshape(Hr_file.values,(np.size(Hr_file.values),1))
-    tmp = tmp[~np.isnan(tmp)]
-
-    Rweights = tmp[2:2+Nr].astype(int)
-    Rweights = np.reshape(Rweights,(np.size(Rweights),1))
-    Ns = 7
-    Ntmp = np.size(tmp[2+Nr:]) // Ns
-    tmp = np.reshape(tmp[2+Nr:],(Ntmp,Ns))
-
-    Rgrid = np.reshape(tmp[:,0:3],(Nr,Nbands,Nbands,3))
-    orbs  = np.reshape(tmp[:,3:5],(Nr,Nbands,Nbands,2))
-    Hr = np.reshape(tmp[:, 5] + 1j * tmp[:, 6],(Nr,Nbands,Nbands))
-    return Hr, Rgrid, Rweights, orbs
-# ==================================================================================================================
 
 
 # ==================================================================================================================
