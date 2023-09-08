@@ -13,7 +13,7 @@ import dga.config as config
 import dga.loggers as loggers
 import dga.dga_io as dga_io
 import dga.two_point as twop
-import dga.hk as hamk
+import dga.wannier as wannier
 import dga.analytic_continuation as a_cont
 import dga.mpi_aux as mpi_aux
 import dga.plotting as plotting
@@ -40,7 +40,7 @@ def main(path='./', comm=None):
     else:
         raise ValueError(f'File: {fname_dmft} does not exist.')
 
-    ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, dga_config.lattice.hr)
+    ek = dga_config.lattice.hr.get_ek_one_band(dga_config.lattice.k_grid)
     dga_config.output_path = path
 
     max_ent_config = conf_file['max_ent']

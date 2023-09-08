@@ -12,7 +12,7 @@ import dga.brillouin_zone as bz
 import dga.omega_meshes as omesh
 import argparse
 from typing import List, Tuple
-import dga.hr as hamr
+import dga.wannier as wannier
 import matplotlib
 import dga.util as util
 import mpi4py.MPI as mpi
@@ -181,7 +181,7 @@ class LatticeConfig(ConfigBase):
         self.nk: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
         self.nq: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
         self.symmetries = []  # Lattice symmetries. Either string or tuple of strings
-        self.tb_params = None  # Tight binding parameter. Loading Hr will maybe be implemented later.
+        self.hr_input = None  # Tight binding parameter. Loading Hr will maybe be implemented later.
         self.type = None
 
         self.update_dict(**config_dict)  # forwards parameters from config
@@ -198,11 +198,11 @@ class LatticeConfig(ConfigBase):
         self.k_grid = bz.KGrid(self.nk, self.symmetries)
         self.q_grid = bz.KGrid(self.nq, self.symmetries)
 
-        if (self.tb_params is None):
-            raise ValueError('tb_params cannot be none. Tight-binding parameters must be supplied.')
+        if (self.type is None):
+            raise ValueError('Method of hr retrieval must be specified!')
 
         # Build the real-space Hamiltonian
-        self.hr = self.set_hr()
+        self.set_hr()
 
     def check_symmetries(self):
         ''' Set symmetries if known: '''
@@ -222,12 +222,19 @@ class LatticeConfig(ConfigBase):
         return np.prod(self.nq)
 
     def set_hr(self):
-        ''' Return the tight-binding hamiltonian.'''
-        if (self.tb_params is not None):
-            if (self.type == 't_tp_tpp'):
-                return hamr.one_band_2d_t_tp_tpp(*self.tb_params)
+        ''' Set the tight-binding hamiltonian.'''
+        self.hr : wannier.WannierHr # type declaration for nice autocompletes
+        if (self.type == 't_tp_tpp'):
+            self.hr = wannier.WannierHr(*wannier.wannier_one_band_2d_t_tp_tpp(*self.hr_input))
+        elif(self.type == 'from_wannier90'):
+            assert isinstance(self.hr_input,str)
+            self.hr = wannier.create_wannier_hr_from_file(self.hr_input)
         else:
             raise NotImplementedError('Currently only t_tp_tpp tight-binding model implemented.')
+
+    def get_ek(self):
+        ''' Return the k-space Hamiltonian '''
+        return self.hr.get_ek_one_band(self.k_grid)
 
 
 class Names(ConfigBase):
@@ -497,7 +504,7 @@ def get_default_config_dict():
         'lattice': {
             'symmetries': 'two_dimensional_square',
             'type': 't_tp_tpp',
-            'tb_params': [1.0, -0.2, 0.1],
+            'hr_input': [1.0, -0.2, 0.1],
             'nk': [24,24,1]
         },
         'dga': {

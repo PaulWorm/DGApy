@@ -1,11 +1,166 @@
-# ------------------------------------------------ COMMENTS ------------------------------------------------------------
-
-
-# -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
-
+'''
+    This module contains routines for wannier and tight-binding Hamiltonians.
+    It builds upon the brilloun_zone.py module.
+    Simple t-tp-tpp models as well as reading wannier90 Hr files is supported.
+'''
 import numpy as np
 import pandas as pd
+from warnings import warn
 
+import dga.brillouin_zone as bz
+
+
+class WannierHr():
+    '''
+        class to handle wannier Hamiltonians
+    '''
+    def __init__(self, hr, r_grid, r_weights, orbs):
+        self.hr = hr
+        self.r_grid = r_grid
+        self.r_weights = r_weights
+        self.orbs = orbs
+
+    def get_ek(self,k_grid: bz.KGrid):
+        ek = convham2(self.hr,self.r_grid,self.r_weights,k_grid.kmesh.reshape(3,-1))
+        n_orbs = ek.shape[-1]
+        return ek.reshape(*k_grid.nk,n_orbs,n_orbs)
+
+    def get_ek_one_band(self, k_grid: bz.KGrid):
+        return self.get_ek(k_grid)[:,:,:,0,0]
+
+    def save_hr(self,path,name='wannier_hr.dat'):
+        ''' save the Hamiltonian to file.'''
+        write_hr_w2k(path+name,self.hr,self.r_grid,self.r_weights,self.orbs)
+
+def create_wannier_hr_from_file(fname):
+    ''' Reads a wannier90 file and creates an instance of the Wannier90 class.'''
+    return WannierHr(*read_hr_w2k(fname))
+
+# --------------------------------------- CONSTRUCT REAL SPACE HAMILTONIANS --------------------------------------------
+
+def wannier_one_band_2d_t_tp_tpp(t,tp,tpp):
+    hr = -np.array([t,t,t,t,tp,tp,tp,tp,tpp,tpp,tpp,tpp])[:,None,None]
+    r_grid= np.array([[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],
+                     [1,1,0],[1,-1,0],[-1,1,0],[-1,-1,0],
+                     [2,0,0],[0,2,0],[-2,0,0],[0,-2,0]])[:,None,None,:]
+    r_weights = np.ones((12,1))
+    orbs = np.ones((12,1,1,2))
+    return hr, r_grid, r_weights, orbs
+
+def one_band_2d_t_tp_tpp(t=1.0, tp=0., tpp=0.):
+    return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
+
+
+def one_band_2d_quasi1D(tx=1.0, ty=0, tppx=0, tppy=0, tpxy=0):
+    return np.array([[tx, ty, 0], [tpxy, tpxy, 0.], [tppx, tppy, 0]])
+
+
+def one_band_2d_triangular_t_tp_tpp(t=1.0, tp=0, tpp=0):
+    return np.array([[t, t, 0], [tp, 0, 0.], [tpp, tpp, 0]])
+
+
+def standard_cuprates(t=1.0):
+    tp = -0.2 * t
+    tpp = 0.1 * t
+    return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
+
+
+def motoharu_nickelates(t=0.25):
+    tp = -0.25 * t
+    tpp = 0.12 * t
+    return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
+
+
+def unfrustrated_square(t=1.00):
+    tp = 0
+    tpp = 0
+    return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
+
+
+def Ba2CuO4_plane():
+    # Ba2CuO3.25 parameters
+    # tx = 0.018545
+    # ty = 0.470181
+    # tpxy = 0.006765
+    # tppx = 0.001255
+    # tppy = 0.084597
+    tx = 0.0185
+    ty = 0.47
+    tpxy = 0.0068
+    tppx = 0.0013
+    tppy = 0.085
+
+    return one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
+
+
+def Ba2CuO4_plane_2D_projection():
+    # Ba2CuO3.25 2D-projection parameters
+    tx = 0.0258
+    ty = 0.5181
+    tpxy = 0.0119
+    tppx = -0.0014
+    tppy = 0.0894
+    return one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
+
+
+# ==================================================================================================================
+
+
+
+def read_hr_w2k(fname):
+    '''
+        Load the H(R) LDA-Hamiltonian from a wien2k hr file.
+    '''
+    Hr_file = pd.read_csv(fname, skiprows=1, names=np.arange(15), sep='\s+', dtype=float, engine='python')
+    Nbands = Hr_file.values[0].astype(int)[0]
+    Nr = Hr_file.values[1].astype(int)[0]
+
+    tmp = np.reshape(Hr_file.values, (np.size(Hr_file.values), 1))
+    tmp = tmp[~np.isnan(tmp)]
+
+    r_weights = tmp[2:2 + Nr].astype(int)
+    r_weights = np.reshape(r_weights, (np.size(r_weights), 1))
+    Ns = 7
+    Ntmp = np.size(tmp[2 + Nr:]) // Ns
+    tmp = np.reshape(tmp[2 + Nr:], (Ntmp, Ns))
+
+    r_grid = np.reshape(tmp[:, 0:3], (Nr, Nbands, Nbands, 3))
+    orbs = np.reshape(tmp[:, 3:5], (Nr, Nbands, Nbands, 2))
+    hr = np.reshape(tmp[:, 5] + 1j * tmp[:, 6], (Nr, Nbands, Nbands))
+    # hr_dict = {
+    #     'hr': hr,
+    #     'r_grid': r_grid,
+    #     'r_weights': r_weights,
+    #     'orbs': orbs
+    # }
+    # return hr_dict
+    return hr, r_grid, r_weights, orbs
+
+
+# ==================================================================================================================
+
+def write_hr_w2k(fname, hr, r_grid, r_weights, orbs):
+    '''
+        Write a real-space Hamiltonian in the format of w2k to a file.
+    '''
+    n_columns = 15
+    n_r = hr.shape[0]
+    n_bands = hr.shape[-1]
+    file = open(fname, 'w')
+    file.write(f'# Written using the wannier module of the dga code\n')
+    file.write(f'{n_bands} \n')
+    file.write(f'{n_r} \n')
+
+    for i in range(0, len(r_weights), n_columns):
+        line = '    '.join(map(str, r_weights[i:i + n_columns, 0]))
+        file.write('    ' + line + '\n')
+    hr = hr.reshape(n_r * n_bands ** 2, 1)
+    r_grid = r_grid.reshape(n_r * n_bands ** 2, 3).astype(int)
+    orbs = orbs.reshape(n_r * n_bands ** 2, 2).astype(int)
+
+    for i in range(0, n_r * n_bands ** 2):
+        line = '{: 5d}{: 5d}{: 5d}{: 5d}{: 5d}{: 12.6f}{: 12.6f}'.format(*r_grid[i, :], *orbs[i, :], hr[i, 0].real, hr[i, 0].imag)
+        file.write(line + '\n')
 
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
@@ -157,7 +312,6 @@ def convham(Hr = None, Rgrid = None, Rweights = None, kmesh = None):
 def convham2(Hr = None, Rgrid = None, Rweights = None, kmesh = None):
     '''
         Builds the k-space LDA-Hamiltonian from the real-space one.
-        H(k) is constructed within the ir-BZ
         Hk (Nk,Nbands,Nbands)
     '''
 
@@ -183,3 +337,49 @@ def write_hk_wannier90(Hk, fname, kmesh, nk):
             np.savetxt(f, Hk[ik,...].view(float), fmt='%.12f',delimiter=' ', newline='\n', header='', footer='', comments='#')
 
     f.close()
+
+if __name__ == '__main__':
+    path = '../../test/TestHrAndHkFiles/'
+    # fname = '1Band_t_tp_tpp_hr.dat'
+    fname = '1onSTO-2orb_hr.dat'
+
+    # Hr_file = pd.read_csv(path+fname, skiprows=1, names=np.arange(15), sep='\s+', dtype=float, engine='python')
+    hr, r_grid, r_weights, orbs = read_hr_w2k(path+fname)
+
+    fname_write = fname.split(sep='.')[0] + '_rewrite.dat'
+    write_hr_w2k(path+fname_write,hr, r_grid, r_weights, orbs)
+
+    hr_2, r_grid_2, r_weights_2, orbs_2 = read_hr_w2k(path + fname)
+
+    assert np.allclose(hr,hr_2)
+    assert np.allclose(r_grid,r_grid_2)
+    assert np.allclose(r_weights,r_weights_2)
+    assert np.allclose(orbs,orbs_2)
+
+    path = '../../test/TestHrAndHkFiles/'
+    fname = '1Band_t_tp_tpp_hr.dat'
+
+    t,tp,tpp = 0.389093, -0.097869, 0.046592
+    e0 = 0.267672
+
+
+    nk = (16,16,1)
+    k_grid = bz.KGrid(nk=nk)
+    ham_r = create_wannier_hr_from_file(path+fname)
+    hk_from_hr = ham_r.get_ek_one_band(k_grid)
+
+    ham_r_tb = WannierHr(*wannier_one_band_2d_t_tp_tpp(t,tp,tpp))
+    hk_direct = ham_r_tb.get_ek_one_band(k_grid)
+
+    import matplotlib.pyplot as plt
+    import dga.plotting as plotting
+
+    fig, axes = plt.subplots(1, 3, dpi=251, figsize=(13, 5))
+    im = axes[0].imshow(hk_from_hr[:,:,0].real,cmap='RdBu')
+    plotting.insert_colorbar(axes[0],im)
+    im = axes[1].imshow(hk_direct[:,:,0].real,cmap='RdBu')
+    plotting.insert_colorbar(axes[1],im)
+    im = axes[2].imshow(hk_from_hr[:,:,0].real-hk_direct[:,:,0].real,cmap='RdBu')
+    plotting.insert_colorbar(axes[2],im)
+    plt.tight_layout()
+    plt.show()
