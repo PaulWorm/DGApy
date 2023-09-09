@@ -26,7 +26,7 @@ import dga.plotting as plotting
 import dga.lambda_correction as lc
 import dga.two_point as twop
 import dga.bubble as bub
-import dga.hk as hamk
+import dga.wannier as wannier
 import dga.mpi_aux as mpi_aux
 import dga.pairing_vertex as pv
 import dga.eliashberg_equation as eq
@@ -77,6 +77,7 @@ comm.barrier()
 # Create the DGA logger:
 logger = loggers.MpiLogger(logfile=dga_config.output_path + '/dga.log', comm=comm, output_path=dga_config.output_path)
 logger.log_message(f'Running on {comm.size} threads.')
+logger.log_message(f'There are {dga_config.lattice.k_grid.nk_irr} points in the irreducible BZ.')
 logger.log_memory_usage()
 #print(get_largest_vars())
 logger.log_event(message=' Config Init and folder set up done!')
@@ -85,6 +86,8 @@ comm.Barrier()
 # Save dmft input to output folder
 if (comm.rank == 0): dga_config.save_data(dmft_input, 'dmft_input')
 
+if (comm.rank == 0): dga_config.lattice.hr.save_hr(dga_config.output_path)
+
 # Save the full config to yaml file:
 if (comm.rank == 0): config.save_config_file(conf_file, dga_config.output_path)
 
@@ -92,7 +95,7 @@ if (comm.rank == 0): config.save_config_file(conf_file, dga_config.output_path)
 if (comm.rank == 0): plotting.default_g2_plots(g2_dens, g2_magn, dga_config.output_path)
 
 # Build the DMFT Green's function:
-ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, dga_config.lattice.hr)
+ek = dga_config.lattice.hr.get_ek_one_band(dga_config.lattice.k_grid)
 
 siwk_dmft = twop.SelfEnergy(sigma=dmft_input['siw'][None, None, None, :], beta=dmft_input['beta'])
 giwk_dmft = twop.GreensFunction(siwk_dmft, ek, mu=dmft_input['mu_dmft'], niv_asympt=dga_config.box_sizes.niv_asympt)

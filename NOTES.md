@@ -14,7 +14,7 @@ Convergence with number of frequencies is generally quite slow.
 
 # Heuristics: 
 
-Emperically niv_core = niw_core = 2 \beta + 10 seems to be a good tradeoff between frequency convergence, qmc error and 
+Emperically, if t=1,  niv_core = niw_core = 2 \beta + 10 seems to be a good tradeoff between frequency convergence, qmc error and 
 computational cost for sampling G2. 
 
 # Performance: 

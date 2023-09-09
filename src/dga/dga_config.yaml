@@ -7,20 +7,21 @@ box_sizes:
 # Specify the lattice: [mandatory]
 lattice:
   symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
-  type: "t_tp_tpp" # Specify type of lattice
-  tb_params: [1, -0.2, 0.1] # tight-binding parameters. Alternative to load an Hr file will follow later.
+  type: "from_wannier90" # Specify type of lattice ['t_tp_tpp', 'from_wannier90']
+  hr_input: "hr_file.dat" # tight-binding parameters as list or sting for the filename (plus path) of the hr file that should
+  #be loaded.
   nk: [16, 16, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
 
 # Sepcify DGA settings and details:
 dga:
-  lambda_corr: "spch" # Type of lambda correction, i.e. which channels are renormalized. Available: ['spch']
+  lambda_corr: "spch" # Type of lambda correction, i.e. which channels are renormalized. Available: ['spch','sp']
   gui: False # Specify whether a gui exists. Relevant for plotting.
 
 
 # Specify dmft input:
 dmft_input:
   type: "w2dyn"     # Input format; available: w2dyn, EDFermion
-  input_path: "../../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/"        # Location of the files; default: "./"
+  input_path: "./"        # Location of the files; default: "./"
   fname_1p: '1p-data.hdf5' # Name of the one-particle DMFT calculation; default: 1p-data.hdf5
   fname_2p: 'g4iw_sym.hdf5' # Name of the two-particle DMFT calculation; default: g4iw_sym.hdf5
 
@@ -43,7 +44,7 @@ max_ent:
   n_fit: 60
 
   loc: # Perform continuation of the local Green's function
-    do_cont: False
+    do_cont: False # this does not yet do anything
 
   g_dga: # Perform continuation of the dga Green's function
     do_cont: False

@@ -3,8 +3,7 @@ import numpy as np
 from ruamel.yaml import YAML
 import dga.config as config
 import real_frequency_two_point as rtp
-import dga.hr as hamr
-import dga.hk as hamk
+import dga.wannier as wannier
 import dga.brillouin_zone as bz
 import util
 import matplotlib
@@ -12,8 +11,9 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 # Load data:
-base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.70' \
-       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs200/'
+
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.70' \
+       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs400/'
 max_ent_dir = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
 save_fig = True 
@@ -31,9 +31,9 @@ me_config = config.MaxEntConfig(1,12.5,conf_file)
 
 # Build the Green's function on the Real-frequency axis:
 mu0 = np.loadtxt(base_path+'mu.txt')[0]
-n_target = 0.90
-hr = dga_config.lattice.set_hr()
-ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, hr)
+dmft_input = np.load(base_path+'dmft_input.npy',allow_pickle=True).item()
+n_target = dmft_input['n']
+ek = dga_config.lattice.get_ek()
 ek_shift = dga_config.lattice.k_grid.shift_mat_by_pi(ek)
 mu = rtp.adjust_mu(mu0,n_target,swk,me_config.mesh,ek)
 mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)
@@ -139,7 +139,7 @@ def plot_fermi_crossings(axes1,axes2,fermi_crossings,k_path,colors):
 
 def plot_kpath(ax,k_path):
     ax.pcolormesh(k_path.k_axis,me_config.mesh,-1/np.pi * gwk_shift[k_path.ikx,k_path.iky,0,:].imag.T, cmap = 'magma', vmax=vmax)
-    ax.plot(k_path.k_axis,ek_shift[k_path.ikx,k_path.iky,0]-mu_lda,lw=lw,color='w',alpha=alpha)
+    ax.plot(k_path.k_axis,ek_shift[k_path.ikx,k_path.iky,0]-mu_lda,lw=lw,color='w',alpha=alpha,ms=0)
     # ax.plot(k_path.k_axis,np.min(np.abs((1/gwk)[k_path.ikx,k_path.iky,0].real),axis=1),lw=lw,color='w',alpha=alpha)
     # ax.plot(np.min(np.abs((1/gwk)[k_path.ikx,k_path.iky,0].real),axis=0),me_config.mesh,lw=lw,color='w',alpha=alpha)
     ax.set_ylim(-2,2)
