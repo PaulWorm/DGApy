@@ -417,13 +417,14 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(siwk_dga_shift[..., 0, dga_config.box_sizes.niv_full], kx_shift, ky_shift, pdir=dga_config.output_path,
                         name='Siwk_dga_kz0')
     siw_dga_loc = np.mean(siwk_dga_shift, axis=(0, 1, 2))
-    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc],
-                              ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
+    siw_dga_loc_raw = np.mean(sigma_dga.sigma, axis=(0, 1, 2))
+    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw],
+                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
                               dga_config.output_path, verbose=False, do_plot=True, name='dga_loc',
                               xmax=dga_config.box_sizes.niv_full)
 
-    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc],
-                              ['SDE-loc', 'DGA-loc', 'DC-loc', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
+    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw],
+                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
                               dga_config.output_path, verbose=False, do_plot=True, name='dga_loc_core',
                               xmax=dga_config.box_sizes.niv_core)
 
