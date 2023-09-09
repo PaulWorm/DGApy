@@ -377,9 +377,9 @@ class EliashbergConfig(OutputConfig):
 
     def set_gap0_sing(self):
         if (self.k_sym == 'd-wave'):
-            v_sym = 'odd'
-        else:
             v_sym = 'even'
+        else:
+            v_sym = 'odd'
         self.gap0_sing = {
             'k': self.k_sym,
             'v': v_sym

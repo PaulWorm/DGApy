@@ -9,7 +9,7 @@ import dga.plot_specs
 
 
 #%% Load Data
-path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.85/LDGA_spch_Nk10000_Nq10000_wc30_vc30_vs300' \
+path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.70/LDGA_spch_Nk19600_Nq19600_wc40_vc40_vs200' \
        '/MaxEntChiMagn/'
 fname = 'chi_magn_cont_fbz.npy'
 
