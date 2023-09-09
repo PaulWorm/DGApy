@@ -64,7 +64,7 @@ class SelfEnergy():
 
     niv_core_min = 20
 
-    def __init__(self, sigma, beta, pos=False, smom0=None, smom1=None, err=1e-4):
+    def __init__(self, sigma, beta, pos=False, smom0=None, smom1=None, err=1e-4, niv_core='estimate'):
         '''
 
         :param sigma:
@@ -73,6 +73,7 @@ class SelfEnergy():
         :param smom0:
         :param smom1:
         :param err:
+        :param niv_core: number of frequencies which are not treated in asymptotic approximation
         '''
         assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
 
@@ -101,7 +102,10 @@ class SelfEnergy():
             self.smom1 = smom1
 
         # estimate when the asymptotic behavior is sufficient:
-        self.niv_core = self.estimate_niv_core()
+        if(niv_core == 'estimate'):
+            self.niv_core = self.estimate_niv_core()
+        else:
+            self.niv_core = niv_core
 
     @property
     def niv(self):
@@ -162,7 +166,7 @@ def create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft: SelfEnergy, niv_she
     siwk_shell = np.ones(nk)[:, :, :, None] * \
                  mf.inv_cut_v(siwk_shell, niv_core=niv_core, niv_shell=niv_shell, axes=-1)[0, 0, 0, :][None, None, None, :]
     siwk_dga = mf.concatenate_core_asmypt(siwk_dga, siwk_shell)
-    return SelfEnergy(siwk_dga, siwk_dmft.beta)
+    return SelfEnergy(siwk_dga, siwk_dmft.beta, smom0=siwk_dmft.smom0, smom1=siwk_dmft.smom1, niv_core=niv_full)
 
 
 # -------------------------------------------- GREENSFUNCTION ----------------------------------------------------------

@@ -407,7 +407,7 @@ hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 siwk_dga += hartree
 # %%
 # Build the DGA Self-energy with Sigma_DMFT as asymptotic
-sigma_dga = twop.create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft,dga_config.box_sizes.niv_full)
+sigma_dga = twop.create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft,dga_config.box_sizes.niv_shell)
 if (comm.rank == 0):
     siwk_dga_shift = sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=True)
     kx_shift = np.linspace(-np.pi, np.pi, dga_config.lattice.nk[0], endpoint=False)

@@ -32,3 +32,8 @@ nwr = 501
 beta = 12.5 
 
 Using also the eliashberg part of the code, it takes 8 minutes to complete the same dataset, but with 80x80x1 k-points instead.
+
+# Memory limit: 
+
+Currently on the VSC5 the memory limit is reached for core = 80 / shell = 500 and nk = nq = 100x100x1 on the normal 512 GiB 
+nodes. 
