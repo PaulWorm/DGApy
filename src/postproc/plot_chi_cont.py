@@ -1,21 +1,15 @@
-import sys, os
+'''
+       Simple post-processing plotscript to plot the magnon dispersion from the continued magnetic susceptibility.
+'''
 import numpy as np
-from ruamel.yaml import YAML
-import dga.config as config
-import real_frequency_two_point as rtp
-import dga.hr as hamr
-import dga.hk as hamk
 import dga.brillouin_zone as bz
-import util
-import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib import colors
 import dga.plot_specs
 
 
 
 #%% Load Data
-path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs200' \
+path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.85/LDGA_spch_Nk10000_Nq10000_wc30_vc30_vs300' \
        '/MaxEntChiMagn/'
 fname = 'chi_magn_cont_fbz.npy'
 

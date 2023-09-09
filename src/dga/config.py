@@ -230,7 +230,8 @@ class LatticeConfig(ConfigBase):
             assert isinstance(self.hr_input,str)
             self.hr = wannier.create_wannier_hr_from_file(self.hr_input)
         else:
-            raise NotImplementedError('Currently only t_tp_tpp tight-binding model implemented.')
+            raise NotImplementedError(f'Input type {self.type} is not supported. Currently "t_tp_tpp" and "from_wannier90" are '
+                                      f'supported.')
 
     def get_ek(self):
         ''' Return the k-space Hamiltonian '''

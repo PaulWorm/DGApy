@@ -3,8 +3,7 @@ import numpy as np
 from ruamel.yaml import YAML
 import dga.config as config
 import real_frequency_two_point as rtp
-import dga.hr as hamr
-import dga.hk as hamk
+import dga.wannier as wannier
 import dga.brillouin_zone as bz
 import util
 import matplotlib
@@ -12,8 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 
 # Load data:
-base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.70' \
-       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs200/'
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.85' \
+       '/LDGA_spch_Nk10000_Nq10000_wc30_vc30_vs300/'
 max_ent_dir = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
 save_fig = True 
@@ -32,8 +31,7 @@ me_config = config.MaxEntConfig(1,12.5,conf_file)
 # Build the Green's function on the Real-frequency axis:
 mu0 = np.loadtxt(base_path+'mu.txt')[0]
 n_target = 0.90
-hr = dga_config.lattice.set_hr()
-ek = hamk.ek_3d(dga_config.lattice.k_grid.grid, hr)
+ek = dga_config.lattice.get_ek()
 ek_shift = dga_config.lattice.k_grid.shift_mat_by_pi(ek)
 mu = rtp.adjust_mu(mu0,n_target,swk,me_config.mesh,ek)
 mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)

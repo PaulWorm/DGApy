@@ -77,6 +77,7 @@ comm.barrier()
 # Create the DGA logger:
 logger = loggers.MpiLogger(logfile=dga_config.output_path + '/dga.log', comm=comm, output_path=dga_config.output_path)
 logger.log_message(f'Running on {comm.size} threads.')
+logger.log_message(f'There are {dga_config.lattice.k_grid.nk_irr} points in the irreducible BZ.')
 logger.log_memory_usage()
 #print(get_largest_vars())
 logger.log_event(message=' Config Init and folder set up done!')
