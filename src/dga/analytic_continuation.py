@@ -90,6 +90,19 @@ def tan_w_mesh(wmin, wmax, n_points):
     w = wmin + (wmax - wmin) * (w - w[0]) / (w[-1] - w[0])
     return w
 
+def get_w_mesh(mesh_type,wmin,wmax,nwr,cut=None):
+    if (mesh_type == 'lorentzian'):
+        assert cut is not None, 'For Lorentzian mesh cut has to be provided.'
+        return lorentzian_w_mesh(wmin, wmax, nwr, cut)
+    elif mesh_type == 'hyperbolic':
+        return hyperbolic_w_mesh(wmin, wmax, nwr)
+    elif mesh_type == 'linear':
+        return linear_w_mesh(wmin, wmax, nwr)
+    elif mesh_type == 'tan':
+        return tan_w_mesh(wmin, wmax, nwr)
+    else:
+        raise ValueError('Unknown omega mesh type.')
+
 # ---------------------------------------------- Class to handle MaxEnt ---------------------------------------------------------
 
 MAX_ENT_DEFAULT_SETTINGS = {
@@ -141,7 +154,7 @@ class MaxEnt():
         self.__dict__.update(kwargs)
 
 
-        self.w = self.set_w_mesh()
+        self.set_w_mesh()
 
 
     @property
@@ -152,16 +165,8 @@ class MaxEnt():
             return True
 
     def set_w_mesh(self):
-        if (self.mesh_type == 'lorentzian'):
-            return lorentzian_w_mesh(self.wmin,self.wmax,self.nwr,self.cut)
-        elif self.mesh_type == 'hyperbolic':
-            return hyperbolic_w_mesh(self.wmin,self.wmax,self.nwr)
-        elif self.mesh_type == 'linear':
-            return linear_w_mesh(self.wmin,self.wmax,self.nwr)
-        elif self.mesh_type == 'tan':
-            return tan_w_mesh(self.wmin,self.wmax,self.nwr)
-        else:
-            raise ValueError('Unknown omega mesh type.')
+        ''' Set the real-frequency mesh. '''
+        self.w =  get_w_mesh(self.mesh_type,self.wmin,self.wmax,self.nwr,self.cut)
 
     def get_im_freq(self):
         if(self.kernel_mode == 'freq_fermionic'):

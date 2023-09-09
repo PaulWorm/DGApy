@@ -9,7 +9,6 @@ import warnings
 import numpy as np
 import dga.matsubara_frequencies as mf
 import dga.brillouin_zone as bz
-import dga.omega_meshes as omesh
 import argparse
 from typing import List, Tuple
 import dga.wannier as wannier
@@ -326,16 +325,8 @@ class MaxEntConfig(OutputConfig):
         self.mesh = self.get_omega_mesh()
 
     def get_omega_mesh(self):
-        if (self.mesh_type == 'lorentzian'):
-            return omesh.LorentzianOmegaMesh(omega_min=-self.wmax, omega_max=self.wmax, n_points=self.nwr, cut=self.cut)
-        elif self.mesh_type == 'hyperbolic':
-            return omesh.HyperbolicOmegaMesh(omega_min=-self.wmax, omega_max=self.wmax, n_points=self.nwr)
-        elif self.mesh_type == 'linear':
-            return np.linspace(-self.wmax, self.wmax, self.nwr)
-        elif self.mesh_type == 'tan':
-            return np.tan(np.linspace(-np.pi / 2.5, np.pi / 2.5, num=self.nwr, endpoint=True)) * self.wmax / np.tan(np.pi / 2.5)
-        else:
-            raise ValueError('Unknown omega mesh type.')
+        import dga.analytic_continuation as a_cont
+        return a_cont.get_w_mesh(self.mesh_type,-self.wmax,self.wmax,self.nwr,self.cut)
 
     def get_n_fit_opt(self, n_fit_min=None, n_fit_max=None):
         ''' Returns an estimate for the optimal value for n_fit  '''

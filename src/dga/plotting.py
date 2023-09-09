@@ -38,6 +38,22 @@ class MidpointNormalize(colors.Normalize):
 
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
+def get_zero_contour(data):
+    indx = np.arange(0,np.shape(data)[1])
+    indy = np.arange(0,np.shape(data)[0])
+    fig1 = plt.figure()
+    cs1 = plt.contour(indx,indy, data, cmap='RdBu', levels=[0, ])
+    path = cs1.collections[0].get_paths()
+    plt.close(fig1)
+    for i in range(len(path)):
+        if (i == 0):
+            indices_x = np.array(np.round(path[i].vertices[:, 0], 0).astype(int))
+            indices_y = np.array(np.round(path[i].vertices[:, 1], 0).astype(int))
+        else:
+            indices_x = np.concatenate((indices_x,np.array(np.round(path[i].vertices[:, 0], 0).astype(int))),axis=0)
+            indices_y = np.concatenate((indices_y,np.array(np.round(path[i].vertices[:, 1], 0).astype(int))),axis=0)
+    return indices_x,indices_y
+
 def default_vrg_plots(vrg_q_dens, vrg_q_magn, vrg_dens, vrg_magn, dga_config: config.DgaConfig):
     ''' Default plot for the spin-fermion vertex.'''
     niw_core = dga_config.box_sizes.niw_core
