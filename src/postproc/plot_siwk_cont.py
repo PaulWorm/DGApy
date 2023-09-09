@@ -12,8 +12,12 @@ from matplotlib import colors
 
 # Load data:
 
-base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.70' \
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.925' \
        '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs400/'
+base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.85' \
+       '/LDGA_spch_Nk10000_Nq10000_wc40_vc40_vs10/'
+# base_path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta22.5_n0.70' \
+#        '/LDGA_spch_Nk10000_Nq10000_wc70_vc70_vs100/'
 max_ent_dir = base_path + 'MaxEntSiwk/'
 pdir = max_ent_dir
 save_fig = True 
