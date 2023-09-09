@@ -376,10 +376,10 @@ class EliashbergConfig(OutputConfig):
         self.set_gap0_trip()
 
     def set_gap0_sing(self):
-        if (self.k_sym != 'p-wave'):
-            v_sym = 'even'
-        else:
+        if (self.k_sym == 'd-wave'):
             v_sym = 'odd'
+        else:
+            v_sym = 'even'
         self.gap0_sing = {
             'k': self.k_sym,
             'v': v_sym

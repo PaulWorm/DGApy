@@ -106,7 +106,7 @@ def get_gap_start(shape=None, k_type=None, v_type=None, k_grid=None):
         gap0[..., niv:] = np.repeat(d_wave(k_grid)[:, :, :, None], niv, axis=3)
     elif (k_type == 'p-wave-y'):
         gap0[..., niv:] = np.repeat(p_wave_y(k_grid)[:, :, :, None], niv, axis=3)
-    elif (k_type == 'p-wave-y'):
+    elif (k_type == 'p-wave-x'):
         gap0[..., niv:] = np.repeat(p_wave_x(k_grid)[:, :, :, None], niv, axis=3)
     else:
         gap0 = np.random.random_sample(shape)
