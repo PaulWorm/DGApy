@@ -407,8 +407,7 @@ hartree = twop.get_smom0(dmft_input['u'], dmft_input['n'])
 siwk_dga += hartree
 # %%
 # Build the DGA Self-energy with Sigma_DMFT as asymptotic
-sigma_dga = twop.create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft,
-                                                     2*dga_config.box_sizes.niv_core+dga_config.box_sizes.niv_shell*2)
+sigma_dga = twop.create_dga_siwk_with_dmft_as_asympt(siwk_dga, siwk_dmft,dga_config.box_sizes.niv_full)
 if (comm.rank == 0):
     siwk_dga_shift = sigma_dga.get_siw(dga_config.box_sizes.niv_full, pi_shift=True)
     kx_shift = np.linspace(-np.pi, np.pi, dga_config.lattice.nk[0], endpoint=False)
@@ -417,14 +416,16 @@ if (comm.rank == 0):
     plotting.plot_kx_ky(siwk_dga_shift[..., 0, dga_config.box_sizes.niv_full], kx_shift, ky_shift, pdir=dga_config.output_path,
                         name='Siwk_dga_kz0')
     siw_dga_loc = np.mean(siwk_dga_shift, axis=(0, 1, 2))
-    siw_dga_loc_raw = np.mean(sigma_dga.sigma, axis=(0, 1, 2))
-    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw],
-                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
+    siw_dga_loc_raw = np.mean(mf.fermionic_full_nu_range(sigma_dga.sigma), axis=(0, 1, 2))
+    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw,
+                               siwk_dmft.get_siw(dga_config.box_sizes.niv_full)[0,0,0,:]],
+                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'DMFT-input', 'Magn-loc'], dmft_input['beta'],
                               dga_config.output_path, verbose=False, do_plot=True, name='dga_loc',
                               xmax=dga_config.box_sizes.niv_full)
 
-    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw],
-                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'Dens-loc', 'Magn-loc'], dmft_input['beta'],
+    plotting.sigma_loc_checks([siw_sde_full, siw_dga_loc, siw_dga_loc_raw,
+                               siwk_dmft.get_siw(dga_config.box_sizes.niv_full)[0,0,0,:]],
+                              ['SDE-loc', 'DGA-loc', 'DGA-loc-raw', 'DMFT-input', 'Magn-loc'], dmft_input['beta'],
                               dga_config.output_path, verbose=False, do_plot=True, name='dga_loc_core',
                               xmax=dga_config.box_sizes.niv_core)
 
