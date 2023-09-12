@@ -23,6 +23,9 @@ from ruamel.yaml import YAML
 DGA_OUPUT_PATH = '/LDGA_{}_Nk{}_Nq{}_wc{}_vc{}_vs{}'
 
 
+def get_dga_output_folder_name(lambda_corr, nk_tot, nq_tot, niw_core, niv_core, niv_shell):
+    return DGA_OUPUT_PATH.format(lambda_corr, nk_tot, nq_tot, niw_core, niv_core, niv_shell)
+
 def create_dga_argparser(name='dga_config.yaml', path=os.getcwd() + '/'):
     ''' Set up an argument parser for the DGA code. '''
     parser = argparse.ArgumentParser()
@@ -466,7 +469,7 @@ class DgaConfig(OutputConfig):
 
     def create_dga_ouput_folder(self, comm=None):
         ''' Create the name of the dga output directory and create it '''
-        base_name = self.input_path + DGA_OUPUT_PATH.format(self.lambda_corr, self.lattice.nk_tot,
+        base_name = self.input_path + get_dga_output_folder_name(self.lambda_corr, self.lattice.nk_tot,
                                                             self.lattice.nq_tot, self.box_sizes.niw_core,
                                                             self.box_sizes.niv_core, self.box_sizes.niv_shell)
         self.set_output_path(base_name, comm=comm)

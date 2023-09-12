@@ -11,6 +11,7 @@ import dga.plot_specs
 #%% Load Data
 path = '/mnt/d/Research/HoleDopedCuprates/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.70/LDGA_spch_Nk19600_Nq19600_wc40_vc40_vs200' \
        '/MaxEntChiMagn/'
+path = '/mnt/d/Research/From_Simone/PrNiO2/12.1_GPa_d_0.18_beta_100/LDGA_spch_Nk6400_Nq6400_wc100_vc100_vs400_1/MaxEntChiMagn/'
 fname = 'chi_magn_cont_fbz.npy'
 
 chi = np.load(path+fname, allow_pickle=True)

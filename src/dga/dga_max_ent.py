@@ -86,7 +86,8 @@ def main(path='./', comm=None):
     if 's_dga' in max_ent_config:
         siw_cont_path = path + 'MaxEntSiwk'
         siw_cont_path = dga_io.set_output_path(siw_cont_path,comm=comm)
-        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config['s_dga'])
+        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config,**max_ent_config[
+            's_dga'])
         if(me_controller.do_cont):
             logger.log_cpu_time(task=' MaxEnt controller for Siwk created ')
             if(comm.rank == 0):
@@ -106,7 +107,8 @@ def main(path='./', comm=None):
     if 'g_dga' in max_ent_config:
         cont_path = path + 'MaxEntGiwk'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
-        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config['g_dga'])
+        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_fermionic',comm=comm,config=max_ent_config,
+                                      **max_ent_config['g_dga'])
         if (me_controller.do_cont):
             logger.log_cpu_time(task=' MaxEnt controller for Giwk created ')
             if(comm.rank == 0):
@@ -126,7 +128,8 @@ def main(path='./', comm=None):
     if 'chi_d' in max_ent_config:
         cont_path = path + 'MaxEntChiDens'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
-        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config['chi_d'])
+        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config,**max_ent_config[
+            'chi_d'])
         if (me_controller.do_cont):
             logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
             if(comm.rank == 0):
@@ -146,7 +149,8 @@ def main(path='./', comm=None):
     if 'chi_m' in max_ent_config:
         cont_path = path + 'MaxEntChiMagn'
         cont_path = dga_io.set_output_path(cont_path,comm=comm)
-        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config['chi_m'])
+        me_controller = a_cont.MaxEnt(dmft_input['beta'],'freq_bosonic',comm=comm,config=max_ent_config,**max_ent_config[
+            'chi_m'])
         if (me_controller.do_cont):
             logger.log_cpu_time(task=' MaxEnt controller for Chi-dens created ')
             if(comm.rank == 0):
