@@ -379,6 +379,10 @@ class KPath():
 
         return ckp
 
+    def map_to_kpath(self,mat):
+        ''' Map mat [kx,ky,kz,...] onto the k-path'''
+        return mat[self.ikx,self.iky,self.ikz,...]
+
     def build_k_path(self):
         k_path = []
         nkp = []
