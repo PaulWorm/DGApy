@@ -25,6 +25,8 @@ stages:          # List of stages for jobs, and their order of execution
 #  PYTHON_VERSION: "3.8"  # You can change this to your desired Python version
 #
 before_script:
+  - apt --fix-broken install
+  - apt install mpich
   - pip install -e .
 
 #build-job:       # This job runs in the build stage, which runs first.
