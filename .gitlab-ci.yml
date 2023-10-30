@@ -34,6 +34,8 @@ unit-test-job:   # This job runs in the test stage.
   stage: test    # It only starts when the job in the build stage completes successfully.
   image: python:3.8
   script:
+    - apt update
+    - apt-get install -y libmpich-dev
     - python ./test/test_brillouin_zone.py
 
 lint-test-job:   # This job also runs in the test stage.
