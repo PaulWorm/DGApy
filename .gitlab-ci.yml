@@ -19,12 +19,12 @@
 stages:          # List of stages for jobs, and their order of execution
   - test
 
-variables:
-  PYTHON_VERSION: "3.8"  # You can change this to your desired Python version
-
-before_script:
-  - python3 -V
-  - pip3 install -r requirements.txt
+#variables:
+#  PYTHON_VERSION: "3.8"  # You can change this to your desired Python version
+#
+#before_script:
+#  - python3 -V
+#  - pip3 install -r requirements.txt
 
 #build-job:       # This job runs in the build stage, which runs first.
 #  stage: build
@@ -33,6 +33,7 @@ before_script:
 
 unit-test-job:   # This job runs in the test stage.
   stage: test    # It only starts when the job in the build stage completes successfully.
+  image: python:3.8
   script:
     - python ./test/test_brillouin_zone.py
 
