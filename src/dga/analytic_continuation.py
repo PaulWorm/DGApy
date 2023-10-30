@@ -4,16 +4,13 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import mpi4py.MPI
 import numpy as np
-import ana_cont.continuation as cont
+import ana_cont as cont
 import dga.matsubara_frequencies as mf
 import gc
 import dga.config as config
 import dga.plotting as plotting
-import dga.brillouin_zone as bz
-import dga.two_point as twop
 import scipy.optimize as opt
 import dga.mpi_aux as mpi_aux
-import dga.dga_io as dga_io
 
 
 # -------------------------------------------- Matsubara Fit ----------------------------------------------------------

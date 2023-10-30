@@ -15,8 +15,8 @@ import dga.config as config
 import socket
 import dga.plot_specs as ps
 
-if (socket.gethostname() != 'DESKTOP-OEHIPTV'):
-    matplotlib.use('agg')  # non GUI backend since VSC has no display
+# if (socket.gethostname() != 'DESKTOP-OEHIPTV'):
+matplotlib.use('agg')  # non GUI backend since VSC has no display
 
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
