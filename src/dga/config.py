@@ -183,7 +183,7 @@ class LatticeConfig(ConfigBase):
         self.nk: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for fermionic quantities
         self.nq: Tuple[int, int, int] = (16, 16, 1)  # (nkx,nky,nkz) tuple of linear momenta. Used for bosonic quantities
         self.symmetries = []  # Lattice symmetries. Either string or tuple of strings
-        self.hr_input = None  # Tight binding parameter. Loading Hr will maybe be implemented later.
+        self.hr_input = None  # Tight binding parameter.
         self.type = None
 
         self.update_dict(**config_dict)  # forwards parameters from config
