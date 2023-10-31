@@ -140,7 +140,7 @@ class LocalFourPoint():
     def contract_legs_centered(self, niv_sum):
         return mf.vn_centered_sum(self.mat, self.wn, self.beta, niv_sum=niv_sum)
 
-    def plot(self, iwn=0, pdir='./', name=None, do_save=True, niv=-1, verbose=False):
+    def plot(self, iwn=0, pdir='./', name='', do_save=True, niv=-1, verbose=False):
         assert iwn in self.wn, 'omega index not in dataset.'
         iwn_lin = self.wn_lin[self.wn == iwn][0]
         data = mf.cut_v(self.mat[iwn_lin], niv_cut=niv,axes=(-2,-1))

@@ -1,6 +1,7 @@
+import os
 import numpy as np
 import dga.w2dyn_aux_dga as w2dyn_aux_dga
-import dga.hr as hamr
+import dga.wannier as wannier
 import h5py
 import dga.matsubara_frequencies as mf
 import dga.local_four_point as lfp
@@ -70,39 +71,39 @@ def get_data_set_1(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta17.5_n0.90/'
     file = '1p-data.hdf5'
     g2_file = 'g4iw_sym.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,hr=hr)
 
 def get_data_set_2(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.25_tpp0.12_beta12.5_n0.85/'
     file = '1p-data.hdf5'
     g2_file = 'g4iw_sym.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.25, 0.12)# Motoharus data
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.25, 0.12)# Motoharus data
     return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,hr=hr)
 
 def get_data_set_3(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta22.5_n0.90/'
     file = '1p-data.hdf5'
     g2_file = 'g4iw_sym.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)# Motoharus data
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)# Motoharus data
     return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,hr=hr)
 
 def get_data_set_4(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta5_n0.90/'
     file = 'EDFermion_GreenFunctions_nbath_3.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr)
 
 def get_data_set_5(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta2_n0.90/'
     file = 'EDFermion_1p-data.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr)
 
 def get_data_set_6(load_g2=False,load_chi=False):
     path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
     file = 'EDFermion_1p-data.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     chi_file = 'EDFermion_chi.hdf5'
     g2_file = 'EDFermion_g4iw_sym.hdf5'
     return load_edfermion_data_set(path,file,load_g2=load_g2,hr=hr,load_chi=load_chi,chi_file=chi_file,g2_file=g2_file)
@@ -110,13 +111,13 @@ def get_data_set_6(load_g2=False,load_chi=False):
 def get_data_set_7(load_g2=False):
     path = '../test/2DSquare_U2_tp-0.0_tpp0.0_beta15_mu1/'
     file = '1p-data.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.0, 0.0)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.0, 0.0)
     return load_w2dyn_data_set(path,file,load_g2=load_g2,hr=hr)
 
 def get_data_set_8(load_g2=False):
     path = '../test/2DSquare_U8_tp-0.25_tpp0.12_beta75_n0.85/'
     file = '1p-data.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(0.25, -0.0625, 0.03)
+    hr = wannier.one_band_2d_t_tp_tpp(0.25, -0.0625, 0.03)
     return load_w2dyn_data_set(path,file,load_g2=load_g2,hr=hr)
 
 def get_data_set_9(load_g2=False,load_chi=False):
@@ -124,5 +125,13 @@ def get_data_set_9(load_g2=False,load_chi=False):
     file = '1p-data.hdf5'
     g2_file = 'g4iw_sym.hdf5'
     chi_file = 'chi.hdf5'
-    hr = hamr.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
+    hr = wannier.one_band_2d_t_tp_tpp(1, -0.2, 0.1)
     return load_w2dyn_data_set(path,file,g2_file=g2_file,load_g2=load_g2,load_chi=load_chi,chi_file = chi_file,hr=hr)
+
+def load_minimal_dataset():
+    # path = '../test/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+    path = '/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
+    path = os.path.dirname(__file__) + path
+    dmft_data = np.load(path + 'minimal_dataset.npy',allow_pickle=True).item()
+    hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
+    return dmft_data, hr
