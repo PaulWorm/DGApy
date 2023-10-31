@@ -39,7 +39,9 @@ unit-test-job:   # This job runs in the test stage.
   script:
     - apt update
     - apt-get install -y libmpich-dev
+    - python ./test/test_matsubara_frequencies.py
     - python ./test/test_brillouin_zone.py
+    - python ./test/test_eliashberg.py
 
 #lint-test-job:   # This job also runs in the test stage.
 #  stage: test    # It can run at the same time as unit-test-job (in parallel).
