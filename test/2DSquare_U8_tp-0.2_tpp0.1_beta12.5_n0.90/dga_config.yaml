@@ -1,0 +1,65 @@
+# Set Boxsizes:
+box_sizes:
+  niw_core: 50      # Number of bosonic frequencies used from F(w,v,v'); default: -1 (all)
+  niv_core: 50      # Number of fermionic frequenices used from F(w, v, v'); default: -1 (all)
+  niv_shell: 200    # Number of frequencies used for explicit asymptotics, like u-range; default: 0
+
+# Specify the lattice: [mandatory]
+lattice:
+  symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
+  type: "from_wannier90" # Specify type of lattice
+  hr_input: 'wannier_hr.dat' # tight-binding parameters. Alternative to load an Hr file will follow later.
+  nk: [12, 12, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
+
+# Sepcify DGA settings and details:
+dga:
+  lambda_corr: "sp" # Type of lambda correction, i.e. which channels are renormalized. Available: ['spch']
+  gui: False # Specify whether a gui exists. Relevant for plotting.
+
+
+# Specify dmft input:
+dmft_input:
+  type: "w2dyn"     # Input format; available: w2dyn, EDFermion
+  input_path: "./"        # Location of the files; default: "./"
+  fname_1p: '1p-data.hdf5' # Name of the one-particle DMFT calculation; default: 1p-data.hdf5
+  fname_2p: 'g4iw_sym.hdf5' # Name of the two-particle DMFT calculation; default: g4iw_sym.hdf5
+
+# Specify poly-fitting parameters: [optional]
+poly_fitting:
+  n_fit: 4          # Number of Matsubara frequencies used for fit; default: 4
+  o_fit: 3          # Polynomial order used for the fit; default: 3
+
+# MaxEnt parameters: [optional]
+# Uses the ana_cont package of Josef Kaufmann (https://doi.org/10.1016/j.cpc.2022.108519)
+
+max_ent:
+  # Change default values
+  nwr: 501
+  wmax: 15
+  wmin: -15
+  mesh_type: 'tan'
+  alpha_det_method: 'chi2kink'
+  bw: 0.01
+  n_fit: 60
+
+  loc: # Perform continuation of the local Green's function
+
+  g_dga: # Perform continuation of the dga Green's function
+
+  s_dga: # Perform continuation of the dga self-energy
+
+  chi_d: # Perform continuation of the density susceptibility
+    bw: 0.0
+    n_fit: 20
+
+  chi_m: # Perform continuation of the magnetic susceptibility
+    bw: 0.0
+    n_fit: 20
+
+
+# Parameters for the Eliashberg calculations concerning superconductivity. [optional]
+pairing: # For the pairing part nk == nq is required.
+  do_pairing_vertex: True # Construct the pairing vertex; default: False
+  do_eliash: True  # Perform the elishberg equation.; default: False
+
+
