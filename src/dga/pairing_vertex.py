@@ -19,6 +19,14 @@ def ladder_vertex_from_chi_aux(gchi_aux=None, vrg=None, chir=None, gchi0=None, b
     return f
 
 def ladder_vertex_from_chi_aux_components(gchi_aux=None, vrg=None, gchi0=None, beta=None, u_r=None):
+    '''
+        Look in supplemental of Phys. Rev. B 99, 041115(R) (S.5).
+        F(v,vp) = f1 + (1-u_r chi_r(v)) f2
+        = (gchi0(v))^(-1) [\delta(v,vp) - chi_aux(v,vp) gchi0(v)^(-1)] + u_r (1-u_r chi_r(v)) vrg(v) vrg(vp)
+        beta**2 originates from units:
+        [F]:eV = [beta^2]:1/eV^2 [1/gchi0]:eV^3 [1 - [gchi_aux]:1/eV^3 [1/gchi0]:eV^3 ]
+        + [u_r]:eV [1-[u_r]:eV [chi_r]:1/eV]) [vrg]:1 [vrg]:1
+     '''
     f1 = beta**2*1. / gchi0[...,:,None] * (np.eye(gchi0.shape[-1]) - gchi_aux * 1. / gchi0[...,None,:])
     f2 =  u_r * vrg[...,:,None] * vrg[...,None,:]
     return f1, f2
@@ -45,9 +53,12 @@ def ph_to_pp_notation(mat_ph=None,wn=0):
     return mat_pp
 
 def get_pp_slice_4pt(mat=None, condition=None, niv_pp=None):
-    mat = np.flip(mat,axis=-1)
+    '''
+        mat: (iw,v,vp) slice of 4pt function at given iw with v,vp as axis
+    '''
+    mat = np.flip(mat,axis=-1) # flip to get mat(v,-vp)
     mat_cut = mf.cut_v(arr=mat,niv_cut=niv_pp,axes=(-2,-1))
-    slice = mat_cut[condition].flatten()
+    slice = mat_cut[condition].flatten() # Take mat(v-v'[from condition],v,-v'); use only v,v' where v-v' = w
     return slice
 
 def reshape_chi(chi=None, niv_pp=None):
@@ -95,6 +106,10 @@ def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=Non
     return f1_magn, f2_magn, f1_dens, f2_dens
 
 def get_omega_condition(niv_pp=None):
+    '''
+        Look in supplemental of Phys. Rev. B 99, 041115(R) (S.8 - S.10). This takes care of the index shift for
+        \Gamma(q=0,k,kp) = F(k-kp,v-vp,v,-vp)
+     '''
     ivn = np.arange(-niv_pp, niv_pp)
     omega = np.zeros((2 * niv_pp, 2 * niv_pp))
     for i, vi in enumerate(ivn):

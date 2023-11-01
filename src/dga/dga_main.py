@@ -188,8 +188,9 @@ if (dga_config.eliash.do_pairing_vertex):
     for i, iq in enumerate(mpi_distributor.my_tasks):
         for j, iw in enumerate(dga_config.box_sizes.wn):
             if np.abs(iw) < 2 * niv_pp:
-                condition = omega == iw
+                condition = omega == iw # only take v,v' where v-v' = w is satisfied
 
+                # @Juray: the function below returns the ladder vertex, which you need for optical conductivity stuff
                 f1_slice, f2_slice = pv.ladder_vertex_from_chi_aux_components(gchi_aux=gchiq_aux[i, j],
                                                                               vrg=vrg_q_dens[i, j],
                                                                               gchi0=gchi0_q_core[i, j],

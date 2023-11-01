@@ -8,6 +8,7 @@ box_sizes:
 lattice:
   symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
   type: "from_wannier90" # Specify type of lattice
+#  type: "t_tp_tpp" # Specify type of lattice
   hr_input: 'wannier_hr.dat' # tight-binding parameters. Alternative to load an Hr file will follow later.
   nk: [12, 12, 1]   # Number of momenta in k-mesh; default: [16, 16, 1]
 

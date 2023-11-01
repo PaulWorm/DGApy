@@ -77,7 +77,6 @@ def quasi_two_dimensional_square_symmetries():
 def quasi_one_dimensional_square_symmetries():
     return ['x-inv', 'y-inv']
 
-
 def inv_sym(mat, axis):
     '''in-place inversion symmetry applied to mat along dimension axis
         assumes that the grid is from [0,2pi), hence 0 does not map.

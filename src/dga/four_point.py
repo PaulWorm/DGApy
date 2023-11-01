@@ -141,7 +141,10 @@ def get_gchir_from_gamma_loc_q(gammar: lfp.LocalFourPoint = None, gchi0=None):
     return chir
 
 def get_gchir_aux_from_gammar_q(gammar: lfp.LocalFourPoint, gchi0, u):
-    ''' chi_aux = (chi0^(-1) + Gamma/beta^2 - u/beta^2)^(-1) '''
+    '''
+        gchi_aux = (gchi0^(-1) + Gamma/beta^2 - u/beta^2)^(-1)
+        [chi_aux]:eV^(-3) = [[gchi0^(-1)]:eV^3 + [Gamma]:eV[1/beta^2]:eV^2 - [u]:eV [1/beta^2]:eV^2]^(-1):eV^(-3)
+    '''
     nq = np.shape(gchi0)[0]
     nw = np.shape(gchi0)[1]
     chir_aux = np.zeros([nq, *gammar.mat.shape], dtype=complex)
@@ -165,7 +168,9 @@ def chi_phys_asympt_q(chir_urange, chi0_urange, chi0_asympt):
 
 
 def vrg_from_gchi_aux(gchir_aux, gchi0_core, chir_urange, chir_asympt, u, channel):
-    '''Note: 1/beta is here included in vrg compared to the old code'''
+    '''Note: 1/beta is here included in vrg compared to the old code
+        [vrg]:1 = [1/gchi0]:eV^3 [chi_aux]:1/eV^3 *[...]:1
+    '''
     u_r = get_ur(u, channel=channel)
     nq = np.shape(gchir_aux)[0]
     niw = np.shape(gchir_aux)[1]
