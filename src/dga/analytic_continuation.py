@@ -4,7 +4,7 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import mpi4py.MPI
 import numpy as np
-import ana_cont as cont
+import ana_cont.continuation as cont
 import dga.matsubara_frequencies as mf
 import gc
 import dga.config as config

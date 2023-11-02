@@ -62,13 +62,18 @@ def get_pp_slice_4pt(mat=None, condition=None, niv_pp=None):
     return slice
 
 def reshape_chi(chi=None, niv_pp=None):
+    '''
+        Index transformation: chi(iw) -> chi(v-vp) needed for F(v-vp,v,-vp) = ... (1 - u_r chi(v-vp)) ...
+        (See PHYSICAL REVIEW B 99, 041115(R) (2019) S.5 in combination with S.8 - S.10)
+    '''
+
     iv = np.arange(-niv_pp,niv_pp)
     niw = np.shape(chi)[-1] // 2
     chi_pp = np.zeros(chi.shape[:-1]+(niv_pp*2,niv_pp*2), dtype=complex)
     for i, ivn in enumerate(iv):
         for j, ivnp in enumerate(iv):
             wn = ivn - ivnp + niw
-            chi_pp[:,:,:,i,j] = chi[:,:,:,wn]
+            chi_pp[:,:,:,i,j] = chi[:,:,:,wn] # [kx,ky,kz,iw = v-vp] -> [kx,ky,kz,v,vp]
     return chi_pp
 
 
@@ -90,14 +95,17 @@ def load_pairing_vertex_from_rank_files(output_path=None,name=None, mpi_size=Non
             # extract the q indizes from the group name!
             irrq = np.array(re.findall("\d+", key1), dtype=int)[0]
             condition = file_in.file[key1 + '/condition/'][()]
-            f1_magn[irrq, condition] = file_in.file[key1 + '/f1_magn/'][()]
-            f1_magn[irrq, condition.T] = file_in.file[key1 + '/f1_magn/'][()]
-            f2_magn[irrq, condition] = file_in.file[key1 + '/f2_magn/'][()]
-            f2_magn[irrq, condition.T] = file_in.file[key1 + '/f2_magn/'][()]
-            f1_dens[irrq, condition] = file_in.file[key1 + '/f1_dens/'][()]
-            f1_dens[irrq, condition.T] = file_in.file[key1 + '/f1_dens/'][()]
-            f2_dens[irrq, condition] = file_in.file[key1 + '/f2_dens/'][()]
-            f2_dens[irrq, condition.T] = file_in.file[key1 + '/f2_dens/'][()]
+            f1_magn[irrq, condition] += 0.5*file_in.file[key1 + '/f1_magn/'][()]
+            f2_dens[irrq, condition] += 0.5*file_in.file[key1 + '/f2_dens/'][()]
+            f1_dens[irrq, condition] += 0.5*file_in.file[key1 + '/f1_dens/'][()]
+            f2_magn[irrq, condition] += 0.5*file_in.file[key1 + '/f2_magn/'][()]
+
+            # transpose condition to get vp-v = w instead of v-vp = w
+            # this is a symmetrization with respect to v-vp
+            f1_magn[irrq, condition.T] += 0.5*np.conj(file_in.file[key1 + '/f1_magn/'][()])
+            f2_magn[irrq, condition.T] += 0.5*np.conj(file_in.file[key1 + '/f2_magn/'][()])
+            f1_dens[irrq, condition.T] += 0.5*np.conj(file_in.file[key1 + '/f1_dens/'][()])
+            f2_dens[irrq, condition.T] += 0.5*np.conj(file_in.file[key1 + '/f2_dens/'][()])
 
         file_in.close()
 
