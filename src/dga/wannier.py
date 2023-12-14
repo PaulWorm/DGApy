@@ -7,52 +7,208 @@ import numpy as np
 import pandas as pd
 from warnings import warn
 
-import dga.brillouin_zone as bz
+from dga import brillouin_zone as bz
 
 
 class WannierHr():
     '''
         class to handle wannier Hamiltonians
     '''
+
     def __init__(self, hr, r_grid, r_weights, orbs):
         self.hr = hr
         self.r_grid = r_grid
         self.r_weights = r_weights
         self.orbs = orbs
 
-    def get_ek(self,k_grid: bz.KGrid):
-        ek = convham2(self.hr,self.r_grid,self.r_weights,k_grid.kmesh.reshape(3,-1))
+    def get_ek(self, k_grid: bz.KGrid, one_band=True):
+        ek = convham(self.hr, self.r_grid, self.r_weights, k_grid.kmesh.reshape(3, -1))
         n_orbs = ek.shape[-1]
-        return ek.reshape(*k_grid.nk,n_orbs,n_orbs)
+        if one_band:
+            return ek.reshape(*k_grid.nk, n_orbs, n_orbs)[:, :, :, 0, 0]
+        else:
+            return ek.reshape(*k_grid.nk, n_orbs, n_orbs)
 
-    def get_ek_one_band(self, k_grid: bz.KGrid):
-        return self.get_ek(k_grid)[:,:,:,0,0]
+    def get_light_vertex(self, k_grid: bz.KGrid, der=0, one_band=True):
+        lv = light_vertex(self.hr, self.r_grid, self.r_weights, k_grid.kmesh.reshape(3, -1), der=der)
+        n_orbs = lv.shape[-1]
+        if one_band:
+            return lv.reshape(*k_grid.nk, n_orbs, n_orbs)[:, :, :, 0, 0]
+        else:
+            return lv.reshape(*k_grid.nk, n_orbs, n_orbs)
 
-    def save_hr(self,path,name='wannier_hr.dat'):
+    def save_hr(self, path, name='wannier_hr.dat'):
         ''' save the Hamiltonian to file.'''
-        write_hr_w2k(path+name,self.hr,self.r_grid,self.r_weights,self.orbs)
+        write_hr_w2k(path + name, self.hr, self.r_grid, self.r_weights, self.orbs)
+
+    def save_hk(self, k_grid: bz.KGrid, path, name='wannier.hk'):
+        ''' save the Hamiltonian to file.'''
+        ek = self.get_ek(k_grid, one_band=False)
+        kmesh = k_grid.kmesh_list
+        ek = k_grid.map_fbz_mesh2list(ek)
+        write_hk_wannier90(ek, path + name, kmesh, k_grid.nk)
+
 
 def create_wannier_hr_from_file(fname):
     ''' Reads a wannier90 file and creates an instance of the Wannier90 class.'''
     return WannierHr(*read_hr_w2k(fname))
 
+
 # --------------------------------------- CONSTRUCT REAL SPACE HAMILTONIANS --------------------------------------------
 
-def wannier_one_band_2d_t_tp_tpp(t,tp,tpp):
-    hr = -np.array([t,t,t,t,tp,tp,tp,tp,tpp,tpp,tpp,tpp])[:,None,None]
-    r_grid= np.array([[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],
-                     [1,1,0],[1,-1,0],[-1,1,0],[-1,-1,0],
-                     [2,0,0],[0,2,0],[-2,0,0],[0,-2,0]])[:,None,None,:]
-    r_weights = np.ones((12,1))
-    orbs = np.ones((12,1,1,2))
+def create_r_grid(r2ind, n_orbs):
+    ''' Create the real-space grid from a dictionary r2ind.'''
+    n_rp = len(r2ind)
+    r_grid = np.zeros((n_rp, n_orbs, n_orbs, 3))
+    for r_vec in r2ind.keys():
+        r_grid[r2ind[r_vec], :, :, :] = r_vec
+    return r_grid
+
+
+def create_orbs(n_rp, n_orbs):
+    ''' Create the orbital matricies for the real-space Hamiltonian.'''
+    orbs = np.zeros((n_rp, n_orbs, n_orbs, 2))
+    for io1 in range(n_orbs):
+        for io2 in range(n_orbs):
+            orbs[io1, io2, :] = np.array([io1 + 1, io2 + 1])
+    return orbs
+
+
+def insert_hr_elemend(hr_mat, r2ind, r_vec, orb1, orb2, hr_elem):
+    orb1 = orb1 - 1
+    orb2 = orb2 - 1
+    r_ind = r2ind[r_vec]
+    hr_mat[r_ind, orb1, orb2] = hr_elem
+
+
+def emery_model_ek(k_grid: bz.KGrid, ed, ep, tpd, tpp, tpp_p):
+    ''' Create the momentum-space Hamiltonian for the Emery model.
+        This is primarily inteded for testing purposes.
+    '''
+
+    def hk_single_k(kx, ky, ed, ep, tpp, tpd, tpp_p):
+        h = np.array([[ed, tpd * (1 - np.exp(-1j * kx)), tpd * (1 - np.exp(-1j * ky))]
+                         , [tpd * (1 - np.exp(1j * kx)), ep + 2 * tpp_p * np.cos(kx),
+                            tpp * (1 - np.exp(1j * kx)) * (1 - np.exp(-1j * ky))],
+                      [tpd * (1 - np.exp(1j * ky)), tpp * (1 - np.exp(-1j * kx)) * (1 - np.exp(1j * ky)),
+                       ep + 2 * tpp_p * np.cos(ky)]])
+        return h
+
+    hk_kspace = []
+    for kx, ky, _ in k_grid.kmesh_list.T:
+        hk_kspace.append(hk_single_k(kx, ky, ed, ep, tpp, tpd, tpp_p))
+    n_orbs = 3
+    hk_kspace = np.array(hk_kspace).reshape(k_grid.nk + (n_orbs, n_orbs))
+    return hk_kspace
+
+
+def wannier_emery_model(ed, ep, tpd, tpp, tpp_p):
+    ''' Create the real-space Hamiltonian for the Emery model.'''
+    n_orbs = 3
+    r2ind = {(0, 0, 0): 0, (1, 0, 0): 1, (0, 1, 0): 2, (-1, 0, 0): 3, (0, -1, 0): 4, (1, -1, 0): 5, (-1, 1, 0): 6}
+    n_rp = len(r2ind)
+    r_grid = create_r_grid(r2ind, n_orbs)
+    hr = np.zeros((n_rp, n_orbs, n_orbs))
+    orbs = create_orbs(n_rp, n_orbs)
+    r_weights = np.ones(n_rp)[:, None]
+    hr = np.zeros((n_rp, n_orbs, n_orbs))
+
+    # Build the real-space Hamiltonian:
+
+    # on-site energies:
+    r_vec = (0, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 1, 1, ed)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 2, ep)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 3, ep)
+
+    # tpd hopping:
+    r_vec = (0, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 1, 2, tpd)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 1, tpd)
+    insert_hr_elemend(hr, r2ind, r_vec, 1, 3, tpd)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 1, tpd)
+
+    r_vec = (-1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 1, 2, -tpd)
+
+    r_vec = (0, -1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 1, 3, -tpd)
+
+    r_vec = (1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 1, -tpd)
+
+    r_vec = (0, 1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 1, -tpd)
+
+    # tpp hopping:
+    r_vec = (0, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 3, tpp)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 2, tpp)
+
+    r_vec = (1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 3, -tpp)
+
+    r_vec = (0, 1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 2, -tpp)
+
+    r_vec = (-1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 2, -tpp)
+
+    r_vec = (0, -1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 3, -tpp)
+
+    r_vec = (-1, 1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 2, tpp)
+
+    r_vec = (1, -1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 3, tpp)
+
+    # tpp' hopping:
+    r_vec = (1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 2, tpp_p)
+
+    r_vec = (0, 1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 3, tpp_p)
+
+    r_vec = (-1, 0, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 2, 2, tpp_p)
+
+    r_vec = (0, -1, 0)
+    insert_hr_elemend(hr, r2ind, r_vec, 3, 3, tpp_p)
+
     return hr, r_grid, r_weights, orbs
+
+
+def wannier_one_band_2d_t_tp_tpp(t, tp, tpp):
+    hr = -np.array([t, t, t, t, tp, tp, tp, tp, tpp, tpp, tpp, tpp])[:, None, None]
+    r_grid = np.array([[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0],
+                       [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0],
+                       [2, 0, 0], [0, 2, 0], [-2, 0, 0], [0, -2, 0]])[:, None, None, :]
+    r_weights = np.ones((12, 1))
+    orbs = np.ones((12, 1, 1, 2))
+    return hr, r_grid, r_weights, orbs
+
 
 def one_band_2d_t_tp_tpp(t=1.0, tp=0., tpp=0.):
     return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
 
 
-def one_band_2d_quasi1D(tx=1.0, ty=0, tppx=0, tppy=0, tpxy=0):
+def one_band_2d_quasi1d(tx=1.0, ty=0, tppx=0, tppy=0, tpxy=0):
     return np.array([[tx, ty, 0], [tpxy, tpxy, 0.], [tppx, tppy, 0]])
+
+
+def one_band_2d_nematic(tx=1.0, ty=0, tppx=0, tppy=0, tpxy=0):
+    return np.array([[tx, ty, 0], [tpxy, tpxy, 0.], [tppx, tppy, 0]])
+
+
+def wannier_one_band_2d_nematic(tx, ty, tppx, tppy, tpxy):
+    hr = -np.array([tx, ty, tx, ty, tpxy, tpxy, tpxy, tpxy, tppx, tppy, tppx, tppy])[:, None, None]
+    r_grid = np.array([[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0],
+                       [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0],
+                       [2, 0, 0], [0, 2, 0], [-2, 0, 0], [0, -2, 0]])[:, None, None, :]
+    r_weights = np.ones((12, 1))
+    orbs = np.ones((12, 1, 1, 2))
+    return hr, r_grid, r_weights, orbs
 
 
 def one_band_2d_triangular_t_tp_tpp(t=1.0, tp=0, tpp=0):
@@ -77,6 +233,7 @@ def unfrustrated_square(t=1.00):
     return np.array([[t, t, 0], [tp, tp, 0.], [tpp, tpp, 0]])
 
 
+# pylint: disable=invalid-name
 def Ba2CuO4_plane():
     # Ba2CuO3.25 parameters
     # tx = 0.018545
@@ -90,43 +247,44 @@ def Ba2CuO4_plane():
     tppx = 0.0013
     tppy = 0.085
 
-    return one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
+    return one_band_2d_quasi1d(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
 
 
-def Ba2CuO4_plane_2D_projection():
+def Ba2CuO4_plane_2d_projection():
     # Ba2CuO3.25 2D-projection parameters
     tx = 0.0258
     ty = 0.5181
     tpxy = 0.0119
     tppx = -0.0014
     tppy = 0.0894
-    return one_band_2d_quasi1D(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
+    return one_band_2d_quasi1d(tx=tx, ty=ty, tppx=tppx, tppy=tppy, tpxy=tpxy)
 
+
+# pylint: enable=invalid-name
 
 # ==================================================================================================================
-
 
 
 def read_hr_w2k(fname):
     '''
         Load the H(R) LDA-Hamiltonian from a wien2k hr file.
     '''
-    Hr_file = pd.read_csv(fname, skiprows=1, names=np.arange(15), sep='\s+', dtype=float, engine='python')
-    Nbands = Hr_file.values[0].astype(int)[0]
-    Nr = Hr_file.values[1].astype(int)[0]
+    hr_file = pd.read_csv(fname, skiprows=1, names=np.arange(15), sep=r'\s+', dtype=float, engine='python')
+    n_bands = hr_file.values[0][0].astype(int)
+    nr = hr_file.values[1][0].astype(int)
 
-    tmp = np.reshape(Hr_file.values, (np.size(Hr_file.values), 1))
+    tmp = np.reshape(hr_file.values, (np.size(hr_file.values), 1))
     tmp = tmp[~np.isnan(tmp)]
 
-    r_weights = tmp[2:2 + Nr].astype(int)
+    r_weights = tmp[2:2 + nr].astype(int)
     r_weights = np.reshape(r_weights, (np.size(r_weights), 1))
-    Ns = 7
-    Ntmp = np.size(tmp[2 + Nr:]) // Ns
-    tmp = np.reshape(tmp[2 + Nr:], (Ntmp, Ns))
+    ns = 7
+    n_tmp = np.size(tmp[2 + nr:]) // ns
+    tmp = np.reshape(tmp[2 + nr:], (n_tmp, ns))
 
-    r_grid = np.reshape(tmp[:, 0:3], (Nr, Nbands, Nbands, 3))
-    orbs = np.reshape(tmp[:, 3:5], (Nr, Nbands, Nbands, 2))
-    hr = np.reshape(tmp[:, 5] + 1j * tmp[:, 6], (Nr, Nbands, Nbands))
+    r_grid = np.reshape(tmp[:, 0:3], (nr, n_bands, n_bands, 3))
+    orbs = np.reshape(tmp[:, 3:5], (nr, n_bands, n_bands, 2))
+    hr = np.reshape(tmp[:, 5] + 1j * tmp[:, 6], (nr, n_bands, n_bands))
     # hr_dict = {
     #     'hr': hr,
     #     'r_grid': r_grid,
@@ -138,7 +296,7 @@ def read_hr_w2k(fname):
 
 
 # ==================================================================================================================
-
+# pylint: disable=C0209
 def write_hr_w2k(fname, hr, r_grid, r_weights, orbs):
     '''
         Write a real-space Hamiltonian in the format of w2k to a file.
@@ -146,8 +304,8 @@ def write_hr_w2k(fname, hr, r_grid, r_weights, orbs):
     n_columns = 15
     n_r = hr.shape[0]
     n_bands = hr.shape[-1]
-    file = open(fname, 'w')
-    file.write(f'# Written using the wannier module of the dga code\n')
+    file = open(fname, 'w', encoding='utf-8')
+    file.write('# Written using the wannier module of the dga code\n')
     file.write(f'{n_bands} \n')
     file.write(f'{n_r} \n')
 
@@ -162,11 +320,19 @@ def write_hr_w2k(fname, hr, r_grid, r_weights, orbs):
         line = '{: 5d}{: 5d}{: 5d}{: 5d}{: 5d}{: 12.6f}{: 12.6f}'.format(*r_grid[i, :], *orbs[i, :], hr[i, 0].real, hr[i, 0].imag)
         file.write(line + '\n')
 
+
+# pylint: enable=C0209
+
 # ------------------------------------------------ OBJECTS -------------------------------------------------------------
 
 def ek_square(kx=None, ky=None, t=1.0, tp=0.0, tpp=0.0):
     return - 2. * t * (np.cos(kx) + np.cos(ky)) - 4. * tp * np.cos(kx) * np.cos(ky) \
            - 2. * tpp * (np.cos(2. * kx) + np.cos(2. * ky))
+
+
+def del_ek_del_kx_square(kx=None, ky=None, t=1.0, tp=0.0, tpp=0.0):
+    return - 2. * t * (-np.sin(kx)) + 4. * tp * np.sin(kx) * np.cos(ky) \
+           - 2. * tpp * (-2 * np.sin(2. * kx))
 
 
 def ekpq_3d(kx=None, ky=None, kz=None, qx=0, qy=0, qz=0, t_mat=None):
@@ -190,9 +356,9 @@ def ek_3d(kgrid=None, hr=None):
 
 
 def ek_3d_klist(kgrid=None, hr=None):
-    kx = kgrid[:,0]
-    ky = kgrid[:,1]
-    kz = kgrid[:,2]
+    kx = kgrid[:, 0]
+    ky = kgrid[:, 1]
+    kz = kgrid[:, 2]
     ek = - 2.0 * (hr[0, 0] * np.cos(kx) + hr[0, 1] * np.cos(ky) + hr[0, 2] * np.cos(kz))
     ek = ek - 2.0 * (hr[1, 0] * np.cos(kx + ky) + hr[1, 1] * np.cos(kx - ky))
     ek = ek - 2.0 * (hr[2, 0] * np.cos(2. * kx) + hr[2, 1] * np.cos(2. * ky) + hr[2, 2] * np.cos(kz))
@@ -200,7 +366,7 @@ def ek_3d_klist(kgrid=None, hr=None):
 
 
 # ==================================================================================================================
-def read_Hk_w2k(fname, spin_sym = True):
+def read_hk_w2k(fname, spin_sym=True):
     """ Reads a Hamiltonian f$ H_{bb'}(k) f$ from a text file.
 
     Expects a text file with white-space separated values in the syntax as
@@ -220,8 +386,9 @@ def read_Hk_w2k(fname, spin_sym = True):
      - kpoints  two-dimensional real array, which contains the
                 components (x,y,z) of the different kpoints.
     """
-    hk_file = open(fname,'r')
+    hk_file = open(fname, 'r', encoding='utf-8')
     spin_orbit = not spin_sym
+
     def nextline():
         line = hk_file.readline()
         return line[:line.find('#')].split()
@@ -229,13 +396,13 @@ def read_Hk_w2k(fname, spin_sym = True):
     # parse header
     header = nextline()
     if header[0] == 'VERSION':
-        warn("Version 2 headers are obsolete (specify in input file!)")
+        warn('Version 2 headers are obsolete (specify in input file!)')
         nkpoints, natoms = map(int, nextline())
         lines = np.array([nextline() for _ in range(natoms)], np.int)
         nbands = np.sum(lines[:, :2])
         del lines, natoms
     elif len(header) != 3:
-        warn("Version 1 headers are obsolete (specify in input file!)")
+        warn('Version 1 headers are obsolete (specify in input file!)')
         header = list(map(int, header))
         nkpoints = header[0]
         nbands = header[1] * (header[2] + header[3])
@@ -246,7 +413,7 @@ def read_Hk_w2k(fname, spin_sym = True):
     # nspins is the spin dimension for H(k); G(iw), Sigma(iw) etc. will always
     # be spin-dependent
     if spin_orbit:
-        if nbands % 2: raise RuntimeError("Spin-structure of Hamiltonian!")
+        if nbands % 2: raise RuntimeError('Spin-structure of Hamiltonian!')
         nbands //= 2
         nspins = 2
     else:
@@ -258,128 +425,99 @@ def read_Hk_w2k(fname, spin_sym = True):
     hk_file.flush()
 
     # parse data
-    hk = np.fromfile(hk_file, sep=" ")
+    hk = np.fromfile(hk_file, sep=' ')
     hk = hk.reshape(-1, 3 + 2 * nbands ** 2 * nspins ** 2)
     kpoints_file = hk.shape[0]
     if kpoints_file > nkpoints:
-        warn("truncating Hk points")
+        warn('truncating Hk points')
     elif kpoints_file < nkpoints:
-        raise ValueError("problem! %d < %d" % (kpoints_file, nkpoints))
+        raise ValueError(f'problem! {kpoints_file} < {nkpoints}')
     kpoints = hk[:nkpoints, :3]
 
-    # TODO: check with Martin if this the actual spin structure ...
     hk = hk[:nkpoints, 3:].reshape(nkpoints, nspins, nbands, nspins, nbands, 2)
     hk = hk[..., 0] + 1j * hk[..., 1]
     if not np.allclose(hk, hk.transpose(0, 3, 4, 1, 2).conj()):
-        warn("Hermiticity violation detected in Hk file")
+        warn('Hermiticity violation detected in Hk file')
 
     # go from wannier90/convert_Hamiltonian structure to our Green's function
     # convention
     hk = hk.transpose(0, 2, 1, 4, 3)
     hk_file.close()
 
-    Hk = np.squeeze(hk)
-    kmesh = np.concatenate((kpoints,np.ones((np.shape(kpoints)[0],1))),1)
+    hk = np.squeeze(hk)
 
-    return Hk, kmesh
-# ==================================================================================================================
-
-
-
+    return hk, kpoints.T
 
 
 # ==================================================================================================================
-def convham(Hr = None, Rgrid = None, Rweights = None, kmesh = None):
+
+
+# ==================================================================================================================
+def convham2(hr=None, r_grid=None, r_weights=None, kmesh=None):
     '''
         Builds the k-space LDA-Hamiltonian from the real-space one.
         H(k) is constructed within the ir-BZ
-        Hk (Nk,Nbands,Nbands)
+        hk (nk,Nbands,Nbands)
     '''
 
-    Nk = np.size(kmesh,1)
-    Nband = np.size(Hr,1)
-    Hk = np.zeros((Nk, Nband, Nband), dtype = complex)
-    Rweights = np.squeeze(Rweights)
-    for ib2 in range(Nband):
-        for ib1 in range(Nband):
-            for ik in range(Nk):
-                FFTGrid = np.exp(1j * np.dot(np.squeeze(Rgrid[:,ib1,ib2,:]),kmesh[0:3,ik])) / Rweights
-                Hk[ik,ib1,ib2] = np.sum(FFTGrid * Hr[:,ib1,ib2])
-    return Hk
+    nk = np.size(kmesh, 1)
+    n_band = np.size(hr, 1)
+    hk = np.zeros((nk, n_band, n_band), dtype=complex)
+    r_weights = np.squeeze(r_weights)
+    for ib2 in range(n_band):
+        for ib1 in range(n_band):
+            for ik in range(nk):
+                fft_grid = np.exp(1j * np.dot(np.squeeze(r_grid[:, ib1, ib2, :]), kmesh[0:3, ik])) / r_weights
+                hk[ik, ib1, ib2] = np.sum(fft_grid * hr[:, ib1, ib2])
+    return hk
+
+
 # ==================================================================================================================
 
 # ==================================================================================================================
-def convham2(Hr = None, Rgrid = None, Rweights = None, kmesh = None):
+def convham(hr=None, r_grid=None, r_weights=None, kmesh=None):
     '''
         Builds the k-space LDA-Hamiltonian from the real-space one.
-        Hk (Nk,Nbands,Nbands)
+        hk (Nk,Nbands,Nbands)
     '''
 
-    FFTGrid = np.exp(1j * np.matmul(Rgrid,kmesh)) / Rweights[:,None,None]
-    Hk = np.transpose(np.sum(FFTGrid * Hr[...,None], axis=0),axes=(2,0,1))
-    return Hk
-# ==================================================================================================================
+    fft_grid = np.exp(1j * np.matmul(r_grid, kmesh)) / r_weights[:, None, None]
+    hk = np.transpose(np.sum(fft_grid * hr[..., None], axis=0), axes=(2, 0, 1))
+    return hk
+
 
 # ==================================================================================================================
-def write_hk_wannier90(Hk, fname, kmesh, nk):
+
+def light_vertex(hr=None, r_grid=None, r_weights=None, kmesh=None, der=0):
+    '''
+        Builds the light vertex del e_k/del k from the real-space Hamiltonian.
+    '''
+
+    fft_grid = np.exp(1j * np.matmul(r_grid, kmesh)) / r_weights[:, None, None] * 1j * r_grid[:, :, :, der][:, :, :, None]
+    hk = np.transpose(np.sum(fft_grid * hr[..., None], axis=0), axes=(2, 0, 1))
+    return hk
+
+
+# ==================================================================================================================
+
+def write_hk_wannier90(hk, fname, kmesh, nk):
     '''
         Writes a Hamiltonian to a text file in wannier90 style.
     '''
 
     # .reshape(nk)
     # write hamiltonian in the wannier90 format to file
-    f = open(fname, 'w')
-    n_orb = np.shape(Hk)[-1]
+    f = open(fname, 'w', encoding='utf-8')
+    n_orb = np.shape(hk)[-1]
     # header: no. of k-points, no. of wannier functions(bands), no. of bands (ignored)
     print(np.prod(nk), n_orb, n_orb, file=f)
     for ik in range(np.prod(nk)):
-            print(kmesh[0, ik], kmesh[1, ik], kmesh[2, ik], file=f)
-            np.savetxt(f, Hk[ik,...].view(float), fmt='%.12f',delimiter=' ', newline='\n', header='', footer='', comments='#')
+        print(kmesh[0, ik], kmesh[1, ik], kmesh[2, ik], file=f)
+        hk_slice = np.copy(hk[ik, ...])
+        np.savetxt(f, hk_slice.view(float), fmt='%.12f', delimiter=' ', newline='\n', header='', footer='', comments='#')
 
     f.close()
 
+
 if __name__ == '__main__':
-    path = '../../test/TestHrAndHkFiles/'
-    # fname = '1Band_t_tp_tpp_hr.dat'
-    fname = '1onSTO-2orb_hr.dat'
-
-    # Hr_file = pd.read_csv(path+fname, skiprows=1, names=np.arange(15), sep='\s+', dtype=float, engine='python')
-    hr, r_grid, r_weights, orbs = read_hr_w2k(path+fname)
-
-    fname_write = fname.split(sep='.')[0] + '_rewrite.dat'
-    write_hr_w2k(path+fname_write,hr, r_grid, r_weights, orbs)
-
-    hr_2, r_grid_2, r_weights_2, orbs_2 = read_hr_w2k(path + fname)
-
-    assert np.allclose(hr,hr_2)
-    assert np.allclose(r_grid,r_grid_2)
-    assert np.allclose(r_weights,r_weights_2)
-    assert np.allclose(orbs,orbs_2)
-
-    path = '../../test/TestHrAndHkFiles/'
-    fname = '1Band_t_tp_tpp_hr.dat'
-
-    t,tp,tpp = 0.389093, -0.097869, 0.046592
-    e0 = 0.267672
-
-
-    nk = (16,16,1)
-    k_grid = bz.KGrid(nk=nk)
-    ham_r = create_wannier_hr_from_file(path+fname)
-    hk_from_hr = ham_r.get_ek_one_band(k_grid)
-
-    ham_r_tb = WannierHr(*wannier_one_band_2d_t_tp_tpp(t,tp,tpp))
-    hk_direct = ham_r_tb.get_ek_one_band(k_grid)
-
-    import matplotlib.pyplot as plt
-    import dga.plotting as plotting
-
-    fig, axes = plt.subplots(1, 3, dpi=251, figsize=(13, 5))
-    im = axes[0].imshow(hk_from_hr[:,:,0].real,cmap='RdBu')
-    plotting.insert_colorbar(axes[0],im)
-    im = axes[1].imshow(hk_direct[:,:,0].real,cmap='RdBu')
-    plotting.insert_colorbar(axes[1],im)
-    im = axes[2].imshow(hk_from_hr[:,:,0].real-hk_direct[:,:,0].real,cmap='RdBu')
-    plotting.insert_colorbar(axes[2],im)
-    plt.tight_layout()
-    plt.show()
+    pass

@@ -1,10 +1,12 @@
 '''
  Module to handle operations within the (irreduzible) Brilloun zone.
 '''
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
 
-KNOWN_SYMMETRIES = ['x-inv', 'y-inv', 'z-inv', 'x-y-sym']
+KNOWN_SYMMETRIES = ['x-inv', 'y-inv', 'z-inv', 'x-y-sym', 'x-y-inv']
 
 KNOWN_K_POINTS = {
     'Gamma': np.array([0, 0, 0]),
@@ -18,22 +20,24 @@ KNOWN_K_POINTS = {
 }
 
 LABELS = {
-    'Gamma': '$\Gamma$',
-    'X':'X',
-    'Y':'Y',
-    'M':'M',
-    'M2':'M/2',
-    'Z':'Z',
-    'R':'R',
-    'A':'A'
+    'Gamma': r'$\Gamma$',
+    'X': 'X',
+    'Y': 'Y',
+    'M': 'M',
+    'M2': 'M/2',
+    'Z': 'Z',
+    'R': 'R',
+    'A': 'A'
 }
 
 
 def get_extent(kgrid=None):
     return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
 
+
 def get_extent_pi_shift(kgrid=None):
     return [kgrid.kx[0] - np.pi, kgrid.kx[-1] - np.pi, kgrid.ky[0] - np.pi, kgrid.ky[-1] - np.pi]
+
 
 def shift_mat_by_pi(mat, nk=None):
     if nk is None:
@@ -44,7 +48,6 @@ def shift_mat_by_pi(mat, nk=None):
     return mat_shift
 
 
-
 def find_zeros(mat):
     ''' Finds the zero crossings of a 2D matrix.
         Not sure if this should be transfered to the Plotting module.
@@ -52,7 +55,7 @@ def find_zeros(mat):
     ind_x = np.arange(mat.shape[0])
     ind_y = np.arange(mat.shape[1])
 
-    cs1 = plt.contour(ind_x, ind_y, mat.real, cmap='RdBu', levels=[0, ])
+    cs1 = plt.contour(ind_x, ind_y, mat.T.real, cmap='RdBu', levels=[0, ])
     paths = cs1.collections[0].get_paths()
     plt.close()
     paths = np.atleast_1d(paths)
@@ -74,44 +77,59 @@ def two_dimensional_nematic_symmetries():
 def quasi_two_dimensional_square_symmetries():
     return ['x-inv', 'y-inv', 'z-inv', 'x-y-sym']
 
+
 def quasi_one_dimensional_square_symmetries():
     return ['x-inv', 'y-inv']
+
+
+def simultaneous_x_y_inversion():
+    return ['x-y-inv', ]
+
 
 def inv_sym(mat, axis):
     '''in-place inversion symmetry applied to mat along dimension axis
         assumes that the grid is from [0,2pi), hence 0 does not map.
     '''
-    assert axis in [0, 1, 2], f'axix = {axis} but must be in [1,2,3]'
-    assert len(np.shape(mat)) == 3, f'dim(mat) = {len(np.shape(mat))} but must be 3 dimensional'
+    assert axis in [0, 1, 2], f'axix = {axis} but must be in [0,1,2]'
+    assert len(np.shape(mat)) >= 3, f'dim(mat) = {len(np.shape(mat))} but must be at least 3 dimensional'
     len_ax = np.shape(mat)[axis] // 2
     mod_2 = np.shape(mat)[axis] % 2
-    if (axis == 0): mat[len_ax + 1:, :, :] = mat[1:len_ax + mod_2, :, :][::-1]
-    if (axis == 1): mat[:, len_ax + 1:, :] = mat[:, 1:len_ax + mod_2, :][:, ::-1]
-    if (axis == 2): mat[:, :, len_ax + 1:] = mat[:, :, 1:len_ax + mod_2][:, :, :-1]
+    if axis == 0: mat[len_ax + 1:, :, :, ...] = mat[1:len_ax + mod_2, :, :, ...][::-1]
+    if axis == 1: mat[:, len_ax + 1:, :, ...] = mat[:, 1:len_ax + mod_2, :, ...][:, ::-1]
+    if axis == 2: mat[:, :, len_ax + 1:, ...] = mat[:, :, 1:len_ax + mod_2, ...][:, :, ::-1]
 
 
 def x_y_sym(mat):
     '''in-place x-y symmetry applied to mat'''
-    assert len(np.shape(mat)) == 3, f'dim(mat) = {len(np.shape(mat))} but must be 3 dimensional'
-    if (mat.shape[0] == mat.shape[1]):
-        mat[:, :, :] = np.minimum(mat, np.transpose(mat, axes=(1, 0, 2)))
+    assert len(np.shape(mat)) >= 3, f'dim(mat) = {len(np.shape(mat))} but must be at least 3 dimensional'
+    if mat.shape[0] == mat.shape[1]:
+        mat[:, :, :, ...] = np.minimum(mat, np.transpose(mat, axes=(1, 0, 2, *range(3, mat.ndim))))
     else:
-        Warning('Matrix not square. Doing nothing.')
+        warnings.warn('Matrix not square. Doing nothing.')
+
+
+def x_y_inv(mat):
+    ''' simultaneous inversion in x and y direction'''
+    assert len(np.shape(mat)) >= 3, f'dim(mat) = {len(np.shape(mat))} but must be at least 3 dimensional'
+    len_ax_x = np.shape(mat)[0] // 2
+    mod_2_x = np.shape(mat)[0] % 2
+    mat[len_ax_x + 1:, 1:, :, ...] = mat[1:len_ax_x + mod_2_x, 1:, :][::-1, ::-1, :, ...]
 
 
 def apply_symmetry(mat, sym):
     '''apply a single symmetry to matrix'''
     assert sym in KNOWN_SYMMETRIES, f'sym = {sym} not in known symmetries {KNOWN_SYMMETRIES}.'
-    if (sym == 'x-inv'): inv_sym(mat, 0)
-    if (sym == 'y-inv'): inv_sym(mat, 1)
-    if (sym == 'z-inv'): inv_sym(mat, 2)
-    if (sym == 'x-y-sym'): x_y_sym(mat)
+    if sym == 'x-inv': inv_sym(mat, 0)
+    if sym == 'y-inv': inv_sym(mat, 1)
+    if sym == 'z-inv': inv_sym(mat, 2)
+    if sym == 'x-y-sym': x_y_sym(mat)
+    if sym == 'x-y-inv': x_y_inv(mat)
 
 
 def apply_symmetries(mat, symmetries):
     '''apply symmetries to matrix inplace'''
-    assert len(np.shape(mat)) == 3, f'dim(mat) = {len(np.shape(mat))} but must be 3 dimensional'
-    if (not symmetries):
+    assert len(np.shape(mat)) >= 3, f'dim(mat) = {len(np.shape(mat))} but must at least 3 dimensional'
+    if not symmetries:
         return
     for sym in symmetries:
         apply_symmetry(mat, sym)
@@ -154,6 +172,18 @@ class KGrid():
         self.irr_kmesh = np.array([self.kmesh[ax].flatten()[self.irrk_ind] for ax in range(len(self.nk))])
 
     @property
+    def kx_shift(self):
+        return self.kx - np.pi
+
+    @property
+    def ky_shift(self):
+        return self.ky - np.pi
+
+    @property
+    def kz_shift(self):
+        return self.kz - np.pi
+
+    @property
     def grid(self):
         return (self.kx, self.ky, self.kz)
 
@@ -180,14 +210,25 @@ class KGrid():
     @property
     def kmesh(self):
         ''' meshgrid of {kx,ky,kz}'''
-        return np.array(np.meshgrid(self.kx, self.ky, self.kz))
+        return np.array(np.meshgrid(self.kx, self.ky, self.kz, indexing='ij'))
+
+    @property
+    def kmesh_list(self):
+        '''
+            list of {kx,ky,kz}
+        '''
+        return self.kmesh.reshape((3, -1))
 
     @property
     def kmesh_ind(self):
-        ''' indizes of {kx,ky,kz}
+        '''
+            indizes of {kx,ky,kz}
             Only works for meshes that go from 0 to 2pi
         '''
-        return np.array(np.meshgrid(np.arange(0, self.nk[0]), np.arange(0, self.nk[1]), np.arange(0, self.nk[2])))
+        ind_x = np.arange(0, self.nk[0])
+        ind_y = np.arange(0, self.nk[1])
+        ind_z = np.arange(0, self.nk[2])
+        return np.array(np.meshgrid(ind_x, ind_y, ind_z, indexing='ij'))
 
     @property
     def irrk_mesh_ind(self):
@@ -207,27 +248,43 @@ class KGrid():
     def map_irrk2fbz(self, mat, shape='mesh'):
         ''' First dimenstion has to be irrk'''
         old_shape = np.shape(mat)
-        if (shape == 'mesh'):
+        if shape == 'mesh':
             return mat[self.irrk_inv, ...].reshape(self.nk + old_shape[1:])
-        elif (shape == 'list'):
+        elif shape == 'list':
             return mat[self.irrk_inv, ...].reshape((self.nk_tot, *old_shape[1:]))
         else:
             raise ValueError('shape has to be "mesh" or "list"')
 
-    def k_mean(self, mat, type='irrk'):
+    def get_q_list(self):
+        ''' Return list of all q-point indizes in the BZ'''
+        return np.array([self.kmesh_ind[i].flatten() for i in range(3)]).T
+
+    def get_irrq_list(self):
+        ''' Return list of all q-point indizes in the irreduzible BZ '''
+        return np.array([self.kmesh_ind[i].flatten()[self.irrk_ind] for i in range(3)]).T
+
+    def k_mean(self, mat, shape='irrk'):
         ''' Performs summation over the k-mesh'''
-        if (type == 'fbz-mesh'):
+        if shape == 'fbz-mesh' or shape == 'mesh':
             return np.mean(mat, axis=(0, 1, 2))
-        elif (type == 'fbz-list'):
+        elif shape == 'fbz-list' or shape == 'list':
             return np.mean(mat, axis=(0,))
-        elif (type == 'irrk'):
+        elif shape == 'irrk':
             return 1 / (self.nk_tot) * np.dot(np.moveaxis(mat, 0, -1), self.irrk_count)
         else:
             raise ValueError('type has to be "fbz-mesh", "fbz-list" or "irrk"')
 
-    def map_fbz2irrk(self, mat):
-        '''[kx,ky,kz,...]'''
-        return mat.reshape((-1, *np.shape(mat)[3:]))[self.irrk_ind, ...]
+    def map_fbz2irrk(self, mat, shape='mesh'):
+        '''
+            mesh: [kx,ky,kz,...]
+            list: [k,...]
+        '''
+        if shape == 'mesh':
+            return mat.reshape((-1, *np.shape(mat)[3:]))[self.irrk_ind, ...]
+        elif shape == 'list':
+            return mat.reshape((self.nk_tot, *np.shape(mat)[1:]))[self.irrk_ind, ...]
+        else:
+            raise ValueError('type has to be "mesh" or "list"')
 
     def map_fbz_mesh2list(self, mat):
         ''' [kx,ky,kz,...] -> [k,...] '''
@@ -246,9 +303,11 @@ class KGrid():
             reduced[i, ...] = np.mean(mat_reshape[self.fbz2irrk == self.irrk_ind[i], ...], axis=0)
         return self.map_irrk2fbz(mat=reduced)
 
-    def shift_mat_by_pi(self, mat):
-        mat_shift = np.roll(mat, self.nk[0] // 2, 0)
-        mat_shift = np.roll(mat_shift, self.nk[1] // 2, 1)
+    def shift_mat_by_pi(self, mat, axes=(0, 1, 2)):
+        mat_shift = mat
+        for ax in axes:
+            shift = np.shape(mat_shift)[ax] // 2
+            mat_shift = np.roll(mat_shift, shift, ax)
         return mat_shift
 
     def shift_mat_by_q(self, mat, q=(0, 0, 0)):
@@ -268,11 +327,28 @@ class KGrid():
         return ind
 
     def add_q_to_kgrid(self, q=(0, 0, 0)):
-        assert (len(self.grid) == np.size(q)), 'Kgrid and q have different dimensions.'
+        assert len(self.grid) == np.size(q), 'Kgrid and q have different dimensions.'
         kgrid = []
         for i in range(np.size(q)):
             kgrid.append(self.grid[i] - q[i])
         return kgrid
+
+    def get_k_slice(self, mat, k_slice_dim=0, k_slice_val=0):
+        '''
+            Return the slice along k_slice_dim at k_slice_val
+        '''
+        assert k_slice_dim >= 0 and k_slice_dim < 3, 'k_slice_dim has to be in [0,1,2]'
+        assert mat.shape[:3] == self.nk, 'mat has to be of shape [nkx,nky,nkz,...]'
+
+        if k_slice_dim == 0:
+            k_ind = np.argmin(np.abs(self.kx - k_slice_val))
+            return mat[k_ind, :, :, ...]
+        elif k_slice_dim == 1:
+            k_ind = np.argmin(np.abs(self.ky - k_slice_val))
+            return mat[:, k_ind, :, ...]
+        else:
+            k_ind = np.argmin(np.abs(self.kz - k_slice_val))
+            return mat[:, :, k_ind, ...]
 
 
 class KPath():
@@ -306,7 +382,7 @@ class KPath():
         return k
 
     def set_kgrid(self, k_in, nk):
-        if (k_in is None):
+        if k_in is None:
             k = np.linspace(0, np.pi * 2, nk, endpoint=False)
         else:
             k = k_in
@@ -324,7 +400,7 @@ class KPath():
         ckps = self.ckps
         l = []
         for k_p in ckps:
-            if(k_p in KNOWN_K_POINTS):
+            if k_p in KNOWN_K_POINTS:
                 l.append(LABELS[k_p])
             else:
                 l.append(f'K{count}')
@@ -371,16 +447,16 @@ class KPath():
         ckps = self.ckps
         ckp = np.zeros((np.size(ckps), 3))
         for i, kps in enumerate(ckps):
-            if (kps in KNOWN_K_POINTS.keys()):
+            if kps in KNOWN_K_POINTS:
                 ckp[i, :] = KNOWN_K_POINTS[kps]
             else:
                 ckp[i, :] = get_k_point_from_string(kps)
 
         return ckp
 
-    def map_to_kpath(self,mat):
+    def map_to_kpath(self, mat):
         ''' Map mat [kx,ky,kz,...] onto the k-path'''
-        return mat[self.ikx,self.iky,self.ikz,...]
+        return mat[self.ikx, self.iky, self.ikz, ...]
 
     def build_k_path(self):
         k_path = []
@@ -389,23 +465,50 @@ class KPath():
         for i in range(nckp - 1):
             segment, nkps = kpath_segment(self.ckp[i], self.ckp[i + 1], self.nk)
             nkp.append(nkps)
-            if (i == 0):
+            if i == 0:
                 k_path = segment
             else:
                 k_path = np.concatenate((k_path, segment))
         return k_path, nkp
 
-    def plot(self, fname=None):
-        fig = plt.figure()
+    def plot_kpoints(self, fname=None):
+        plt.figure()
         plt.plot(self.kpts[:, 0], color='cornflowerblue', label='$k_x$')
         plt.plot(self.kpts[:, 1], color='firebrick', label='$k_y$')
         plt.plot(self.kpts[:, 2], color='seagreen', label='$k_z$')
         plt.legend()
         plt.xlabel('Path-index')
         plt.ylabel('k-index')
-        if (fname is not None):
+        if fname is not None:
             plt.savefig(fname + '_q_path.png', dpi=300)
         plt.show()
+
+    def plot_kpath(self, mat, verbose=False, do_save=True, pdir='./', name='k_path', ylabel='Energy [t]'):
+        '''
+            mat: [kx,ky,kz]
+        '''
+        plt.figure()
+        plt.xticks(self.x_ticks, self.labels)
+        plt.vlines(self.x_ticks, np.min(mat), np.max(mat), ls='-', color='grey', alpha=0.8)
+        plt.hlines(0, self.k_axis[0], self.k_axis[-1], ls='--', color='grey', alpha=0.8)
+        plt.plot(self.k_axis, self.map_to_kpath(mat), '-k')
+        plt.ylabel(ylabel)
+        plt.xlim(self.k_axis[0], self.k_axis[-1])
+        plt.ylim(np.min(mat), np.max(mat))
+        if do_save:
+            plt.savefig(pdir + '/' + name + '.png', dpi=300)
+        if verbose:
+            plt.show()
+        plt.close()
+
+    def get_bands(self, ek):
+        ''' Return the bands along the k-path '''
+        ek_kpath = self.map_to_kpath(ek)
+        bands = np.zeros((ek_kpath.shape[:-1]))
+        for i, eki in enumerate(ek_kpath):
+            val, _ = np.linalg.eig(eki)
+            bands[i, :] = np.sort(val)
+        return bands
 
 
 def kpath_segment(k_start, k_end, nk):
@@ -420,7 +523,7 @@ def kpath_segment(k_start, k_end, nk):
 
 def get_k_point_from_string(string):
     scoords = string.split(' ')
-    coords = np.array([eval(sc) for sc in scoords])
+    coords = np.array([float(sc) for sc in scoords])
     return coords
 
 
@@ -442,68 +545,4 @@ def shift_mat_by_ind(mat, ind=(0, 0, 0)):
 
 
 if __name__ == '__main__':
-    nk = (16, 16, 1)
-    kx = np.linspace(0, 2 * np.pi, nk[0])
-    ky = np.linspace(0, 2 * np.pi, nk[1])
-    kz = np.linspace(0, 2 * np.pi, nk[2])
-
-    fbz2irrk = np.reshape(np.arange(0, np.prod(nk)), nk)
-
-
-    def x_inv_sym(mat):
-        len_x = np.shape(mat)[0] // 2
-        mod_2 = np.shape(mat)[0] % 2
-        mat[len_x + mod_2:, ...] = mat[:len_x, ...][::-1]
-
-
-    def y_inv_sym(mat):
-        len_y = np.shape(mat)[1] // 2
-        mod_2 = np.shape(mat)[1] % 2
-        mat[:, len_y + mod_2:, ...] = mat[:, :len_y, ...][:, ::-1]
-
-
-    def z_inv_sym(mat):
-        len_z = np.shape(mat)[1] // 2
-        mod_2 = np.shape(mat)[1] % 2
-        mat[:, :, len_z + mod_2:, ...] = mat[:, :, :len_z, ...][:, :, :-1]
-
-
-    # inv_sym(fbz2irrk,0)
-    # inv_sym(fbz2irrk,1)
-    ind_upper = np.triu_indices(nk[0], 1, nk[1])
-    ind_lower = np.tril_indices(nk[0], 0, nk[1])
-    tmp = fbz2irrk[:, :, 0]
-    print(tmp[ind_upper].shape)
-    print(tmp[ind_lower].shape)
-
-    inv_sym(fbz2irrk, 0)
-    inv_sym(fbz2irrk, 1)
-    x_y_sym(fbz2irrk)
-
-    print(fbz2irrk[:, :, 0])
-
-    plt.pcolormesh(fbz2irrk[..., 0], cmap='terrain')
-    plt.show()
-
-    k_grid = KGrid(nk, symmetries=two_dimensional_square_symmetries())
-
-    plt.pcolormesh(k_grid.fbz2irrk[..., 0], cmap='terrain')
-    plt.show()
-    # nk = 8
-    # _k_grid = KGrid(nk=(nk,nk,1))
-    #
-    # ek = np.cos(_k_grid.kx[:,None,None]) + np.cos(_k_grid.ky[None,:,None])
-    #
-    # import matplotlib.pyplot as plt
-    # plt.imshow(ek[:,:,0], cmap='RdBu', origin='lower')
-    # plt.show()
-    #
-    # ek_shift = _k_grid.shift_mat_by_q(mat=ek,q=(np.pi,np.pi,0))
-    # ek_shift_2 = _k_grid.shift_mat_by_pi(mat=ek)
-    #
-    # plt.imshow(ek_shift[:,:,0], cmap='RdBu', origin='lower')
-    # plt.show()
-    #
-    # plt.imshow(ek_shift_2[:,:,0], cmap='RdBu', origin='lower')
-    # plt.show()
-    # mat = _k_grid.add_q_to_kgrid(q=(0,0,0))
+    pass

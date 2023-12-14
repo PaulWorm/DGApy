@@ -7,16 +7,16 @@ import matplotlib
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.patches import Polygon
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import dga.matsubara_frequencies as mf
 import dga.ornstein_zernicke_function as ozfunc
 import dga.brillouin_zone as bz
 import dga.config as config
 import socket
+from matplotlib.cm import ScalarMappable
 import dga.plot_specs as ps
-
-# if (socket.gethostname() != 'DESKTOP-OEHIPTV'):
-matplotlib.use('agg')  # non GUI backend since VSC has no display
 
 # -------------------------------------- DEFINE MODULE WIDE VARIABLES --------------------------------------------------
 
@@ -39,10 +39,10 @@ class MidpointNormalize(colors.Normalize):
 # ----------------------------------------------- FUNCTIONS ------------------------------------------------------------
 
 def get_zero_contour(data):
-    indx = np.arange(0,np.shape(data)[1])
-    indy = np.arange(0,np.shape(data)[0])
+    indx = np.arange(0, np.shape(data)[1])
+    indy = np.arange(0, np.shape(data)[0])
     fig1 = plt.figure()
-    cs1 = plt.contour(indx,indy, data, cmap='RdBu', levels=[0, ])
+    cs1 = plt.contour(indx, indy, data, cmap='RdBu', levels=[0, ])
     path = cs1.collections[0].get_paths()
     plt.close(fig1)
     for i in range(len(path)):
@@ -50,45 +50,9 @@ def get_zero_contour(data):
             indices_x = np.array(np.round(path[i].vertices[:, 0], 0).astype(int))
             indices_y = np.array(np.round(path[i].vertices[:, 1], 0).astype(int))
         else:
-            indices_x = np.concatenate((indices_x,np.array(np.round(path[i].vertices[:, 0], 0).astype(int))),axis=0)
-            indices_y = np.concatenate((indices_y,np.array(np.round(path[i].vertices[:, 1], 0).astype(int))),axis=0)
-    return indices_x,indices_y
-
-def default_vrg_plots(vrg_q_dens, vrg_q_magn, vrg_dens, vrg_magn, dga_config: config.DgaConfig):
-    ''' Default plot for the spin-fermion vertex.'''
-    niw_core = dga_config.box_sizes.niw_core
-    niv_core = dga_config.box_sizes.niv_core
-    output_dir = dga_config.output_path
-
-    vrg_q_dens_sum = np.mean(vrg_q_dens, axis=0)
-    vrg_q_magn_sum = np.mean(vrg_q_magn, axis=0)
-    plot_kx_ky(vrg_q_dens.reshape(dga_config.lattice.q_grid.nk + vrg_q_dens.shape[1:])[:, :, 0, niw_core, niv_core],
-               dga_config.lattice.q_grid.kx, dga_config.lattice.q_grid.ky,
-               pdir=output_dir, name='Vrg_dens_w0')
-    plot_kx_ky(vrg_q_magn.reshape(dga_config.lattice.q_grid.nk + vrg_q_magn.shape[1:])[:, :, 0, niw_core, niv_core],
-               dga_config.lattice.q_grid.kx, dga_config.lattice.q_grid.ky,
-               pdir=output_dir, name='Vrg_magn_w0')
-
-    iwn_plot = niv_core
-    vn_core = mf.vn(niv_core)
-    fig, axes = plt.subplots(2, 2, dpi=500, figsize=(8, 8))
-    axes = axes.flatten()
-    axes[0].plot(vn_core, vrg_q_dens_sum[iwn_plot].real)
-    axes[0].plot(vn_core, vrg_dens.mat[iwn_plot].real)
-
-    axes[1].plot(vn_core, vrg_q_dens_sum[iwn_plot].imag)
-    axes[1].plot(vn_core, vrg_dens.mat[iwn_plot].imag)
-
-    axes[2].plot(vn_core, vrg_q_magn_sum[iwn_plot].real)
-    axes[2].plot(vn_core, vrg_magn.mat[iwn_plot].real)
-
-    axes[3].plot(vn_core, vrg_q_magn_sum[iwn_plot].imag)
-    axes[3].plot(vn_core, vrg_magn.mat[iwn_plot].imag)
-    for ax in axes:
-        ax.set_xlim(0, None)
-    plt.legend()
-    plt.savefig(output_dir + f'/TestVrg_loc_wn{iwn_plot}.png')
-    plt.close()
+            indices_x = np.concatenate((indices_x, np.array(np.round(path[i].vertices[:, 0], 0).astype(int))), axis=0)
+            indices_y = np.concatenate((indices_y, np.array(np.round(path[i].vertices[:, 1], 0).astype(int))), axis=0)
+    return indices_x, indices_y
 
 
 def default_g2_plots(g2_dens, g2_magn, output_dir):
@@ -97,6 +61,7 @@ def default_g2_plots(g2_dens, g2_magn, output_dir):
     g2_magn.plot(0, pdir=output_dir, name='G2_magn')
     g2_magn.plot(10, pdir=output_dir, name='G2_magn')
     g2_magn.plot(-10, pdir=output_dir, name='G2_magn')
+
 
 def default_gchi_plots(gchi_dens, gchi_magn, output_dir):
     ''' Default plots for the two-particle Green's function'''
@@ -158,15 +123,15 @@ def plot_kx_ky(mat, kx, ky, do_save=True, pdir='./', name='', cmap='RdBu', figsi
     '''
     fig, axes = plt.subplots(ncols=2, figsize=figsize, dpi=500)
     axes = axes.flatten()
-    im1 = axes[0].pcolormesh(kx, ky, mat.real, cmap=cmap)
-    im2 = axes[1].pcolormesh(kx, ky, mat.imag, cmap=cmap)
+    im1 = axes[0].pcolormesh(kx, ky, mat.T.real, cmap=cmap)
+    im2 = axes[1].pcolormesh(kx, ky, mat.T.imag, cmap=cmap)
     axes[0].set_title('$\Re$')
     axes[1].set_title('$\Im$')
     for ax in axes:
         ax.set_xlabel(r'$k_x$')
         ax.set_ylabel(r'$k_y$')
         ax.set_aspect('equal')
-        add_afzb(ax=ax, kx=kx, ky=ky, lw=1.0, shift_pi=False, marker='')
+        add_afzb(ax=ax, kx=kx, ky=ky, lw=1.0, marker='')
     fig.suptitle(name)
     fig.colorbar(im1, ax=(axes[0]), aspect=15, fraction=0.08, location='right',
                  pad=0.05)
@@ -204,15 +169,15 @@ def chi_checks(chi_dens, chi_magn, labels, green, plot_dir, verbose=False, do_pl
 
     for i, cd in enumerate(chi_dens):
         axes[2].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i], ms=0)
-    axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (1j*mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2,
+    axes[2].loglog(mf.wn(niw_chi_input), np.real(1 / (1j * mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2,
                    ls='--', label='Asympt', ms=0)
     axes[2].set_ylabel('$\Re \chi(i\omega_n)_{dens}$')
     axes[2].legend()
 
     for i, cd in enumerate(chi_magn):
         axes[3].loglog(mf.wn(len(cd) // 2), cd.real, label=labels[i], ms=0)
-    axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (1j*mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, \
-    '--',
+    axes[3].loglog(mf.wn(niw_chi_input), np.real(1 / (1j * mf.wn(green.beta, niw_chi_input) + 0.000001) ** 2 * green.e_kin) * 2, \
+                   '--',
                    label='Asympt', ms=0)
     axes[3].set_ylabel('$\Re \chi(i\omega_n)_{magn}$')
     axes[3].legend()
@@ -325,31 +290,47 @@ def plot_fourpoint_nu_nup(mat, vn, do_save=True, pdir='./', name='NoName', cmap=
     plt.show()
 
 
-def add_afzb(ax=None, kx=None, ky=None, lw=1.0, shift_pi=True,marker=''):
+def add_afzb(ax=None, kx=None, ky=None, lw=1.0, marker=''):
     '''
         Add visual lines to mark the antiferromagnetic zone-boundary to existing axis.
     '''
-    if (shift_pi):
-        kx = kx - np.pi
-        ky = ky - np.pi
-        ax.plot(-ky, ky - np.pi, '--k', lw=lw, marker=marker)
-        ax.plot(ky, ky - np.pi, '--k', lw=lw, marker=marker)
+    if (np.any(kx < 0)):
+        ax.plot(np.linspace(-np.pi, 0, 101), np.linspace(0, np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(-np.pi, 0, 101), np.linspace(0, -np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(0, np.pi, 101), np.linspace(-np.pi, 0, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(0, np.pi, 101), np.linspace(np.pi, 0, 101), '--k', lw=lw, marker=marker)
+        ax.plot(kx, 0 * kx, '-k', lw=lw, marker=marker)
+        ax.plot(0 * ky, ky, '-k', lw=lw, marker=marker)
     else:
-        ax.plot(ky, np.pi - ky, '--k', lw=lw, marker=marker)
-        ax.plot(ky, ky - np.pi, '--k', lw=lw, marker=marker)
-    ax.plot(kx, 0 * kx, '-k', lw=lw, marker=marker)
-    ax.plot(0 * ky, ky, '-k', lw=lw, marker=marker)
+        ax.plot(np.linspace(0, np.pi, 101), np.linspace(np.pi, 2 * np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(np.pi, 0, 101), np.linspace(0, np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(np.pi, 2 * np.pi, 101), np.linspace(0, np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(np.linspace(np.pi, 2 * np.pi, 101), np.linspace(np.pi * 2, np.pi, 101), '--k', lw=lw, marker=marker)
+        ax.plot(kx, np.pi * np.ones_like(kx), '-k', lw=lw, marker=marker)
+        ax.plot(np.pi * np.ones_like(ky), ky, '-k', lw=lw, marker=marker)
+    #
+    # nump = 100
+    # nump2 = nump//2
+    # del_kx = kx[1] - kx[0]
+    # del_ky = ky[1] - ky[0]
+    # kx2 = np.linspace(kx[0],kx[-1]+del_kx,nump)
+    # ky2 = np.linspace(ky[0],ky[-1]+del_ky,nump)
+    # ax.plot(kx2[:nump2],ky2[nump2:], '--r', lw=lw, marker=marker)
+    # ax.plot(kx2[:nump2],ky2[:nump2][::-1], '--k', lw=lw, marker=marker)
+    # ax.plot(kx2[nump2:],ky2[nump2:][::-1], '--k', lw=lw, marker=marker)
+    # ax.plot(kx2[nump2:],ky2[:nump2], '--k', lw=lw, marker=marker)
 
     ax.set_xlim(kx[0], kx[-1])
     ax.set_ylim(ky[0], ky[-1])
-    ax.set_xlabel('$k_y$')
-    ax.set_ylabel('$k_x$')
+    ax.set_xlabel('$k_x$')
+    ax.set_ylabel('$k_y$')
 
 
 def insert_colorbar(ax=None, im=None):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     plt.colorbar(im, cax=cax, orientation='vertical')
+
 
 def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fits=None, output_path=None, name=None):
     '''
@@ -366,7 +347,6 @@ def plot_bw_fit(bw_opt=None, bw=None, chi2=None, fits=None, output_path=None, na
     plt.tight_layout()
     plt.savefig(output_path + '{}.png'.format(name))
     plt.close()
-
 
 
 def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None, name=None, n_map=7, wplot=1):
@@ -414,33 +394,36 @@ def plot_cont_edc_maps(v_real=None, gk_cont=None, k_grid=None, output_path=None,
     plt.close()
 
 
-def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_Z=None, output_path=None, name='', k_grid: bz.KGrid=None, lw=1,
-                     verbose=False):
-    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+def plot_siwk_extrap(siwk_re_fs=None, siwk_im_fs=None, siwk_z=None, output_path='./', name='PolyFit', k_grid: bz.KGrid = None,
+                     lw=1, verbose=False, do_save=True):
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(16, 5))
     siwk_re_fs = np.squeeze(siwk_re_fs)
     siwk_im_fs = np.squeeze(siwk_im_fs)
-    siwk_Z = np.squeeze(siwk_Z)
+    siwk_z = np.squeeze(siwk_z)
 
     norm = MidpointNormalize(midpoint=0, vmin=siwk_re_fs.min(), vmax=siwk_re_fs.max())
-    im = ax[0].imshow(siwk_re_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    im = ax[0].pcolormesh(k_grid.kx_shift, k_grid.ky_shift, k_grid.shift_mat_by_pi(siwk_re_fs, axes=(0, 1)).T, cmap='RdBu_r',
+                          norm=norm)
     insert_colorbar(ax=ax[0], im=im)
     ax[0].set_title(r'$\Re \Sigma(k,\nu=0)$')
     norm = MidpointNormalize(midpoint=0, vmin=siwk_im_fs.min(), vmax=siwk_im_fs.max())
-    im = ax[1].imshow(siwk_im_fs, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    im = ax[1].pcolormesh(k_grid.kx_shift, k_grid.ky_shift, k_grid.shift_mat_by_pi(siwk_im_fs, axes=(0, 1)).T, cmap='RdBu_r',
+                          norm=norm)
     insert_colorbar(ax=ax[1], im=im)
     ax[1].set_title(r'$\Im \Sigma(k,\nu=0)$')
-    norm = MidpointNormalize(midpoint=0, vmin=siwk_Z.min(), vmax=siwk_Z.max())
-    im = ax[2].imshow(siwk_Z, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    norm = MidpointNormalize(midpoint=0, vmin=siwk_z.min(), vmax=siwk_z.max())
+    im = ax[2].pcolormesh(k_grid.kx_shift, k_grid.ky_shift, k_grid.shift_mat_by_pi(siwk_z, axes=(0, 1)).T, cmap='RdBu_r',
+                          norm=norm)
     insert_colorbar(ax=ax[2], im=im)
     ax[2].set_title('Z(k)')
 
-    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    for a in ax:
+        add_afzb(ax=a, kx=k_grid.kx_shift, ky=k_grid.ky_shift, lw=lw)
+        # a.set_aspect('equal')
 
     plt.tight_layout()
     fig.suptitle(name)
-    plt.savefig(output_path + '{}.png'.format(name))
+    if (do_save): plt.savefig(output_path + '{}.png'.format(name))
     if (verbose): plt.show()
     plt.close()
 
@@ -459,26 +442,27 @@ def plot_cont_fs(output_path=None, name='', mat=None, v_real=None, k_grid=None, 
     gk_real = np.squeeze(bz.shift_mat_by_pi(mat=mat_fs.real, nk=k_grid.nk))
     v0 = np.argmin(np.abs(v_real))
     qdp = np.squeeze(bz.shift_mat_by_pi(mat=(1. / mat)[:, :, 0, v0].real, nk=k_grid.nk))
-    im = ax[0].imshow(awk_fs, cmap='RdBu_r', extent=bz.get_extent_pi_shift(kgrid=k_grid), origin='lower')
+    im = ax[0].pcolormesh(k_grid.kx_shift,k_grid.ky_shift,awk_fs.T, cmap='RdBu_r')
     insert_colorbar(ax=ax[0], im=im)
     ax[0].set_title('$-1/pi \Im (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=gk_real.min(), vmax=gk_real.max())
-    im = ax[1].imshow(gk_real, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    im = ax[1].pcolormesh(k_grid.kx_shift, k_grid.ky_shift, gk_real.T, cmap='RdBu')
     insert_colorbar(ax=ax[1], im=im)
     ax[1].set_title('$\Re (k,\omega={})$'.format(w_plot))
     norm = MidpointNormalize(midpoint=0, vmin=qdp.min(), vmax=qdp.max())
-    im = ax[2].imshow(qdp, cmap='RdBu', extent=bz.get_extent_pi_shift(kgrid=k_grid), norm=norm, origin='lower')
+    im = ax[2].pcolormesh(k_grid.kx_shift, k_grid.ky_shift, qdp.T, cmap='RdBu')
     insert_colorbar(ax=ax[2], im=im)
     ax[2].set_title('QPD $(1/(\Re (k, \omega = {})$'.format(w_plot))
 
-    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
-    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[0], kx=k_grid.kx_shift, ky=k_grid.ky_shift, lw=lw)
+    add_afzb(ax=ax[1], kx=k_grid.kx_shift, ky=k_grid.ky_shift, lw=lw)
+    add_afzb(ax=ax[2], kx=k_grid.kx_shift, ky=k_grid.ky_shift, lw=lw)
 
     plt.tight_layout()
     fig.suptitle(name)
-    plt.savefig(output_path + '{}_at_w{}.png'.format(name,w_plot))
+    plt.savefig(output_path + '{}_at_w{}.png'.format(name, w_plot))
     plt.close()
+
 
 def plot_cont_fs_no_shift(output_path=None, name='', mat=None, v_real=None, k_grid=None, w_int=None, w_plot=None, lw=1.0):
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
@@ -506,13 +490,13 @@ def plot_cont_fs_no_shift(output_path=None, name='', mat=None, v_real=None, k_gr
     insert_colorbar(ax=ax[2], im=im)
     ax[2].set_title('QPD $(1/(\Re (k, \omega = {})$'.format(w_plot))
 
-    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
-    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
-    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw,shift_pi=False)
+    add_afzb(ax=ax[0], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[1], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
+    add_afzb(ax=ax[2], kx=k_grid.kx, ky=k_grid.kx, lw=lw)
 
     plt.tight_layout()
     fig.suptitle(name)
-    plt.savefig(output_path + '{}_at_w{}.png'.format(name,w_plot))
+    plt.savefig(output_path + '{}_at_w{}.png'.format(name, w_plot))
     plt.close()
 
 
@@ -522,7 +506,7 @@ def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
     '''
     oz = ozfunc.oz_spin_w0(qgrid, oz_coeff[0], oz_coeff[1]).reshape(qgrid.nk)
 
-    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 10))
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(16, 6))
     ax[0].plot(qgrid.kx, chi_w0[:, qgrid.nk[1] // 2, 0].real, 'o', label='$\chi$')
     ax[0].plot(qgrid.kx, oz[:, qgrid.nk[1] // 2, 0].real, '-', label='oz-fit')
     ax[0].legend()
@@ -530,15 +514,25 @@ def plot_oz_fit(chi_w0=None, oz_coeff=None, qgrid=None, pdir=None, name=''):
     ax[0].set_xlabel('$q_x$')
     ax[0].set_ylabel('$\chi$')
 
-    mask = qgrid.kmesh[0] == qgrid.kmesh[1]
-    ax[1].plot(qgrid.kx, chi_w0[mask].real, 'o', label='$\chi$')
-    ax[1].plot(qgrid.kx, oz[mask].real, '-', label='oz-fit')
+    ax[1].plot(qgrid.ky, chi_w0[qgrid.nk[0] // 2, :, 0].real, 'o', label='$\chi$')
+    ax[1].plot(qgrid.ky, oz[qgrid.nk[0] // 2, :, 0].real, '-', label='oz-fit')
     ax[1].legend()
-    ax[1].set_title('$q_y = q_x$')
-    ax[1].set_xlabel('$q_x$')
+    ax[1].set_title('$q_x = \pi$')
+    ax[1].set_xlabel('$q_y$')
     ax[1].set_ylabel('$\chi$')
+
+    mask = qgrid.kmesh[0] == qgrid.kmesh[1]
+    x_axis = np.linspace(0,2*np.pi,len(chi_w0[mask]))
+    x_axis2 = np.linspace(0,2*np.pi,len(oz[mask]))
+    ax[2].plot(x_axis, chi_w0[mask].real, 'o', label='$\chi$')
+    ax[2].plot(x_axis2, oz[mask].real, '-', label='oz-fit')
+    ax[2].legend()
+    ax[2].set_title('$q_y = q_x$')
+    ax[2].set_xlabel('$q$')
+    ax[2].set_ylabel('$\chi$')
     plt.savefig(pdir + name + '.png')
     plt.close()
+
 
 def plot_aw_loc(v_real=None, gloc=None, output_path=None, name='', xlim=(None, None)):
     ''' Plot the local continued Green's function. '''
@@ -554,51 +548,52 @@ def plot_aw_loc(v_real=None, gloc=None, output_path=None, name='', xlim=(None, N
     plt.close()
 
 
-
-
 def get_extent(kgrid=None):
     return [kgrid.kx[0], kgrid.kx[-1], kgrid.ky[0], kgrid.ky[-1]]
 
 
-def plot_gap_function(delta=None, pdir=None, name='', kgrid=None, do_shift=False):
-    niv = np.shape(delta)[-1] // 2
-    kx = kgrid.kx
-    ky = kgrid.ky
-
-    delta_plot = np.copy(delta)
-    if (do_shift):
-        delta_plot = np.roll(delta_plot, kgrid.nk[0] // 2, 0)
-        delta_plot = np.roll(delta_plot, kgrid.nk[1] // 2, 1)
-        kx = kx - np.pi
-        ky = ky - np.pi
-
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-
-    # First positive Matsubara frequency:
-
-    im = ax[0].imshow(delta_plot[:, :, 0, niv].real, cmap='RdBu', origin='lower', extent=[kx[0], kx[-1], ky[0], ky[-1]])
-    divider = make_axes_locatable(ax[0])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    # First negative Matsubara frequency:
-    im = ax[1].imshow(delta_plot[:, :, 0, niv - 1].real, cmap='RdBu', origin='lower',
-                      extent=[kx[0], kx[-1], ky[0], ky[-1]])
-    divider = make_axes_locatable(ax[1])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax, orientation='vertical')
-
-    ax[0].set_xlabel(r'$k_x$')
-    ax[0].set_ylabel(r'$k_y$')
-    ax[0].set_title(r'$\nu_{n=0}$')
-
-    ax[1].set_xlabel(r'$k_x$')
-    ax[1].set_ylabel(r'$k_y$')
-    ax[1].set_title(r'$\nu_{n=-1}$')
-
+def plot_gap_function_kx_ky(mat, kx, ky, do_save=True, pdir='./', name='', cmap='RdBu', figsize=ps.FIGSIZE, verbose=False,
+                      scatter=None):
+    '''
+        mat: [nkx,nky]; object in the Brillouin zone.
+    '''
+    fig, axes = plt.subplots(ncols=2, figsize=figsize, dpi=500)
+    axes = axes.flatten()
+    im1 = axes[0].pcolormesh(kx, ky, mat[...,0].T.real, cmap=cmap)
+    im2 = axes[1].pcolormesh(kx, ky, mat[...,1].T.real, cmap=cmap)
+    axes[0].set_title(r'$\nu_{n=0}$')
+    axes[1].set_title(r'$\nu_{n=-1}$')
+    for ax in axes:
+        ax.set_xlabel(r'$k_x$')
+        ax.set_ylabel(r'$k_y$')
+        ax.set_aspect('equal')
+        add_afzb(ax=ax, kx=kx, ky=ky, lw=1.0, marker='')
+    fig.suptitle(name)
+    fig.colorbar(im1, ax=(axes[0]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    fig.colorbar(im2, ax=(axes[1]), aspect=15, fraction=0.08, location='right',
+                 pad=0.05)
+    if (scatter is not None):
+        for ax in axes:
+            colours = plt.cm.get_cmap(cmap)(np.linspace(0, 1, np.shape(scatter)[0]))
+            ax.scatter(scatter[:, 0], scatter[:, 1], marker='o', c=colours)
     plt.tight_layout()
-    plt.savefig(pdir + 'GapFunction_{}.png'.format(name))
-    plt.close()
+    if (do_save): plt.savefig(pdir + '/GapFunction_' + name + '.png')
+    if (verbose):
+        plt.show()
+    else:
+        plt.close()
 
+def gradient_fill(x, y, colours, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    xmin, xmax, ymin, ymax = x.min(), x.max(), y.min(), y.max()
+    im = ax.imshow(colours, aspect='auto', extent=[xmin, xmax, ymin, ymax],
+                   origin='lower')
+    xy = np.column_stack([x, y])
+    clip_path = Polygon(xy, facecolor='none', edgecolor='none', closed=True)
+    ax.add_patch(clip_path)
+    im.set_clip_path(clip_path)
 
-
+    ax.autoscale(True)
+    return im

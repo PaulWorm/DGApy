@@ -54,13 +54,16 @@ max_ent:
 
   chi_d: # Perform continuation of the density susceptibility
     do_cont: False
-    bw: 0.0
     n_fit: 20
 
   chi_m: # Perform continuation of the magnetic susceptibility
     do_cont: False
-    bw: 0.0
     n_fit: 20
+
+# Parameters for the optical conductivity calculations. [optional]
+optics:
+  do_bubble: True # Compute the bubble contribution to the conductivity; default: False
+  do_vertex: True # Compute the vertex contribution to the conductivity; default: False
 
 
 # Parameters for the Eliashberg calculations concerning superconductivity. [optional]

@@ -29,7 +29,7 @@ def main(base_path='./',max_ent_dir='MaxEntSiwk/'):
 
     dmft_input = np.load(base_path+'dmft_input.npy',allow_pickle=True).item()
     dga_config = config.DgaConfig(conf_file)
-    me_config = config.MaxEntConfig(1,dmft_input['beta'],conf_file)
+    w = np.load(max_ent_dir+'w.npy',allow_pickle=True)
 
     # Build the Green's function on the Real-frequency axis:
     mu0 = np.loadtxt(base_path+'mu.txt')[0]
@@ -37,12 +37,12 @@ def main(base_path='./',max_ent_dir='MaxEntSiwk/'):
     n_target = dmft_input['n']
     ek = dga_config.lattice.get_ek()
     ek_shift = dga_config.lattice.k_grid.shift_mat_by_pi(ek)
-    mu = rtp.adjust_mu(mu0,n_target,swk,me_config.mesh,ek)
-    mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,me_config.mesh,ek)
+    mu = rtp.adjust_mu(mu0,n_target,swk,w,ek)
+    mu_lda = rtp.adjust_mu(mu0,n_target,0*swk,w,ek)
 
 
-    gwk = rtp.get_giwk(mu,swk,me_config.mesh,ek)
-    gwk0 = rtp.get_giwk(mu,swk*0,me_config.mesh,ek)
+    gwk = rtp.get_giwk(mu,swk,w,ek)
+    gwk0 = rtp.get_giwk(mu,swk*0,w,ek)
 
     np.save(pdir+'gwk_cont.npy',gwk,allow_pickle=True)
     np.savetxt(pdir+'mu_dga.txt',[mu,mu_lda],header='mu_dga mu_lda')
@@ -50,7 +50,7 @@ def main(base_path='./',max_ent_dir='MaxEntSiwk/'):
     swk_shift = dga_config.lattice.k_grid.shift_mat_by_pi(swk)
     #%%
     nk = dga_config.lattice.nk
-    nw0 = np.argmin(np.abs(me_config.mesh))
+    nw0 = np.argmin(np.abs(w))
     kx_shift = np.linspace(-np.pi,np.pi,nk[0], endpoint=True)
     # Create k-path cuts:
     bz_kpath1 = '0.5 0.5 0.|0.99 0.5 0.|0.99 0.99 0.|0.5 0.5 0.'
@@ -140,10 +140,10 @@ def main(base_path='./',max_ent_dir='MaxEntSiwk/'):
     # axes[0].set_ylim(0,np.pi)
 
     def plot_kpath(ax,k_path):
-        ax.pcolormesh(k_path.k_axis,me_config.mesh,-1/np.pi * gwk_shift[k_path.ikx,k_path.iky,0,:].imag.T, cmap = 'magma', vmax=vmax)
+        ax.pcolormesh(k_path.k_axis,w,-1/np.pi * gwk_shift[k_path.ikx,k_path.iky,0,:].imag.T, cmap = 'magma', vmax=vmax)
         ax.plot(k_path.k_axis,ek_shift[k_path.ikx,k_path.iky,0]-mu_lda,lw=lw,color='w',alpha=alpha,ms=0)
         # ax.plot(k_path.k_axis,np.min(np.abs((1/gwk)[k_path.ikx,k_path.iky,0].real),axis=1),lw=lw,color='w',alpha=alpha)
-        # ax.plot(np.min(np.abs((1/gwk)[k_path.ikx,k_path.iky,0].real),axis=0),me_config.mesh,lw=lw,color='w',alpha=alpha)
+        # ax.plot(np.min(np.abs((1/gwk)[k_path.ikx,k_path.iky,0].real),axis=0),w,lw=lw,color='w',alpha=alpha)
         ax.set_ylim(-2,2)
         ax.get_yaxis().set_visible(False)
         ax.hlines(0,0,1,ls='--',colors='w',lw=lw)
@@ -161,10 +161,10 @@ def main(base_path='./',max_ent_dir='MaxEntSiwk/'):
     axes[5].set_xlim(-1,1)
     axes[6].set_xlim(-1,1)
     def plot_fc_2(axes1,axes2,k_path,fermi_crossing,colors):
-        ind = np.logical_and(me_config.mesh > -1, me_config.mesh < 1)
+        ind = np.logical_and(w > -1, w < 1)
         for i, fc in enumerate(fermi_crossing):
-            axes1.plot(me_config.mesh[ind],-1/np.pi * gwk_shift[k_path.ikx[fc],k_path.iky[fc],0,ind].imag,'-',color=colors[i],alpha=alpha,ms=ms)
-            axes2.plot(me_config.mesh[ind],swk_shift[k_path.ikx[fc],k_path.iky[fc],0,ind].imag,'-',color=colors[i],alpha=alpha,ms=ms)
+            axes1.plot(w[ind],-1/np.pi * gwk_shift[k_path.ikx[fc],k_path.iky[fc],0,ind].imag,'-',color=colors[i],alpha=alpha,ms=ms)
+            axes2.plot(w[ind],swk_shift[k_path.ikx[fc],k_path.iky[fc],0,ind].imag,'-',color=colors[i],alpha=alpha,ms=ms)
 
     plot_fc_2(axes[5],axes[6],k_path1,fermi_crossing_1[1:],colors=['tab:orange','goldenrod'])
     plot_fc_2(axes[5],axes[6],k_path2,fermi_crossing_2,colors=['cornflowerblue',])

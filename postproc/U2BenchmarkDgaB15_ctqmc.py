@@ -215,12 +215,12 @@ plt.show()
 
 
 # fig = plt.figure()
-# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box']['niv_urange']].imag,cmap='RdBu')
 # plt.colorbar()
 # plt.show()
 #
 #
 # fig = plt.figure()
-# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box']['niv_urange']].imag,cmap='RdBu')
 # plt.colorbar()
 # plt.show()

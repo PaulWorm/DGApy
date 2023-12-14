@@ -5,17 +5,22 @@
 # Short description: Contains auxilliary routines to read from w2dynamics file
 # ----------------------------------------------------------------------------------------------------------------------
 
+'''
+    Contains auxilliary routines to read from w2dynamics file
+'''
+
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 
 import numpy as np
 import h5py
-import dga.indizes as ind
+from dga import matsubara_frequencies as mf
+
 
 # ======================================================================================================================
 # ----------------------------------------------- w2dyn CLASS ----------------------------------------------------------
 # ======================================================================================================================
 
-class w2dyn_file:
+class W2dynFile:
     '''Class for w2dynamics file handling.
     '''
 
@@ -42,7 +47,7 @@ class w2dyn_file:
 
     # ==================================================================================================================
     def atom_group(self, dmft_iter='dmft-last', atom=1):
-        return dmft_iter + '/ineq-{:03}'.format(atom)
+        return dmft_iter + f'/ineq-{atom:03}'
 
     # ==================================================================================================================
 
@@ -54,7 +59,7 @@ class w2dyn_file:
 
     # ==================================================================================================================
     def get_nd(self, atom=1):
-        return self._file['.config'].attrs['atoms.{:1}.nd'.format(atom)]
+        return self._file['.config'].attrs[f'atoms.{atom:1}.nd']
 
     # ==================================================================================================================
 
@@ -94,7 +99,7 @@ class w2dyn_file:
 
     # ==================================================================================================================
     def get_udd(self, atom=1):
-        return self._file['.config'].attrs['atoms.{:1}.udd'.format(atom)]
+        return self._file['.config'].attrs[f'atoms.{atom:1}.udd']
 
     # ==================================================================================================================
 
@@ -149,6 +154,13 @@ class w2dyn_file:
     # ==================================================================================================================
     def get_dc(self, dmft_iter='dmft-last', atom=1):
         return self._file[self.atom_group(dmft_iter=dmft_iter, atom=atom) + '/dc/value'][()]
+
+    # ==================================================================================================================
+
+    # ==================================================================================================================
+    def get_occ(self, dmft_iter='dmft-last', atom=1):
+        return self._file[self.atom_group(dmft_iter=dmft_iter, atom=atom) + '/occ/value'][()]
+
     # ==================================================================================================================
 
     # ==================================================================================================================
@@ -157,13 +169,13 @@ class w2dyn_file:
         chi_updown = self._file[self.atom_group(dmft_iter=dmft_iter, atom=atom) + '/p2iw-worm/00002/value'][()]
         n = self.get_totdens()
         beta = self.get_beta()
-        if(channel=='dens'):
-            niw = np.size(chi_upup)//2
-            wn = np.arange(-niw,niw+1)
+        if channel == 'dens':
+            niw = np.size(chi_upup) // 2
+            wn = np.arange(-niw, niw + 1)
             chi_dens = chi_upup + chi_updown
-            chi_dens[wn == 0] -= (n/2 - 1)**2 * beta * 2
-            return  chi_dens
-        elif(channel == 'magn'):
+            chi_dens[wn == 0] -= (n / 2 - 1) ** 2 * beta * 2
+            return chi_dens
+        elif channel == 'magn':
             return chi_upup - chi_updown
         else:
             raise ValueError(f'Provided channel ({channel}) is unknown. Channel must be dens/magn.')
@@ -180,35 +192,36 @@ class w2dyn_file:
 
         try:
             gloc = 0.5 * np.sum(self.get_giw_full(), axis=(0, 1, 2, 3))
-        except:
+        except:  # pylint: disable=bare-except
             gloc = 0.5 * np.sum(self.get_giw(), axis=(0, 1))
 
         try:
             sloc = 0.5 * np.sum(self.get_siw_full(), axis=(0, 1, 2, 3))
-        except:
+        except:  # pylint: disable=bare-except
             sloc = 0.5 * np.sum(self.get_siw(), axis=(0, 1))
 
-        #smom = np.squeeze(np.diagonal(0.5 * np.trace(self.get_smom_full(),axis2=1,axis1=3),axis2=1,axis1=0))
+        # smom = np.squeeze(np.diagonal(0.5 * np.trace(self.get_smom_full(),axis2=1,axis1=3),axis2=1,axis1=0))
 
         dmft1p = {
-            "beta": beta,
-            "u": u,
-            "mu": mu_dmft,
-            "n": totdens,
-            "niv": sloc.shape[0] // 2,
-            "gloc": gloc,
-            "sloc": sloc,
-            'hartree': totdens*u/2.0
+            'beta': beta,
+            'u': u,
+            'mu': mu_dmft,
+            'n': totdens,
+            'niv': sloc.shape[0] // 2,
+            'gloc': gloc,
+            'sloc': sloc,
+            'hartree': totdens * u / 2.0
         }
 
         return dmft1p
     # ==================================================================================================================
 
+
 # ======================================================================================================================
 # ----------------------------------------------- g4iw_sym CLASS -------------------------------------------------------
 # ======================================================================================================================
 
-class g4iw_file:
+class W2dynG4iwFile:
     '''Class for g4iw_sym file handling. g4iw_sym contains the symmetrized two-particle Green's function as constructed
         from w2dyn worm-sampling output and obeying the abinitioDGA frequency convention.
     '''
@@ -240,7 +253,7 @@ class g4iw_file:
 
         for wn in range(2 * niw + 1):
             g2[wn, :, :] = \
-                self._file['/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband)][()].T
+                self._file[f'/ineq-{ineq:03}/' + channel + f'/{wn:05}/{spinband:05}/value'][()].T
 
         return g2
 
@@ -251,37 +264,38 @@ class g4iw_file:
         group_exists = True
         g2 = []
         wn = 0
-        while (group_exists):
+        while group_exists:
             try:
                 g2.append(
-                    self._file['/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband)][()].T)
+                    self._file[f'/ineq-{ineq:03}/' + channel + f'/{wn:05}/{spinband:05}/value'][()].T)
                 wn += 1
-            except:
+            except:  # pylint: disable=bare-except
                 group_exists = False
         g2 = np.array(g2)
         return g2
+
     # ==================================================================================================================
 
     # ==================================================================================================================
-    def read_g2_iw(self, ineq=1, channel=None, spinband=1, iw = None):
+    def read_g2_iw(self, ineq=1, channel=None, spinband=1, iw=None):
         niw = self.get_niw(ineq=ineq, channel=channel, spinband=spinband)
-        iw_lin = ind.cen2lin(iw, -niw)
+        iw_lin = mf.cen2lin(iw, -niw)
         g2 = []
         for wn in iw_lin:
-            g2.append(self._file['/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband)][()].T)
+            g2.append(self._file[f'/ineq-{ineq:03}/' + channel + f'/{wn:05}/{spinband:05}/value'][()].T)
         g2 = np.array(g2)
         return g2
+
     # ==================================================================================================================
 
     # ==================================================================================================================
     def get_niw(self, ineq=1, channel=None, spinband=1):
         wn = 0
-        while ('/ineq-{:03}/'.format(ineq) + channel + '/{:05}/{:05}/value'.format(wn, spinband) in self._file):
+        while f'/ineq-{ineq:03}/' + channel + f'/{wn:05}/{spinband:05}/value' in self._file:
             wn += 1
         niw = wn // 2
         return niw
     # ==================================================================================================================
-
 
 
 # ======================================================================================================================
@@ -289,7 +303,7 @@ class g4iw_file:
 # ======================================================================================================================
 
 
-class three_leg():
+class W2dynThreeLeg():
     '''Class for a three-leg vertex calculation.
     '''
 
@@ -317,7 +331,10 @@ class three_leg():
     # ==================================================================================================================
     def read_fermi_bose(self, sampling_method='worm', ineq=1, spinband=1):
         fermi_bose = self._file[
-            '/' + sampling_method + '-001' + '/ineq-{:03}/'.format(ineq) + 'p3iw-worm' + '/{:05}/value'.format(
-                spinband)][()].T
+            '/' + sampling_method + '-001' + f'/ineq-{ineq:03}/' + 'p3iw-worm' + f'/{spinband:05}/value'][()].T
         return fermi_bose
     # ==================================================================================================================
+
+
+if __name__ == '__main__':
+    pass
