@@ -1,14 +1,17 @@
-# ------------------------------------------------ COMMENTS ------------------------------------------------------------
-# Classes to handle self-energies and Green's functions.
-# For the self-energy tail fitting and asymptotic extrapolation is supported.
-# The Green's function routine can estimate the chemical potential and also support asymptotic extrapolation.
+'''
+   Classes to handle self-energies and Green's functions.
+   SelfEnergy: For the self-energy tail fitting and asymptotic extrapolation is supported.
+   GreenFunction: The Green's function routine can estimate the chemical potential and also support asymptotic extrapolation.
+   RealFrequencyGF: Green's function in real frequency.
+'''
 
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
-import dga.matsubara_frequencies as mf
-import scipy.linalg
-import scipy.optimize
-import dga.brillouin_zone as bz
+from scipy import optimize as opt
+
+from dga import matsubara_frequencies as mf
+from dga import brillouin_zone as bz
+from dga import plotting
 
 
 # -------------------------------------------- SELF ENERGY ----------------------------------------------------------
@@ -47,8 +50,9 @@ def fit_smom(iv=None, siwk=None):
     fitdata = s_loc[niv - n_freq_fit:]
 
     mom0 = np.mean(fitdata.real)
+    # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
     mom1 = np.mean(
-        fitdata.imag * iwfit.imag)  # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
+        fitdata.imag * iwfit.imag)
 
     return mom0, mom1
 
@@ -75,34 +79,39 @@ class SelfEnergy():
         :param err:
         :param niv_core: number of frequencies which are not treated in asymptotic approximation
         '''
-        assert len(np.shape(sigma)) == 4, 'Currently only single-band SU(2) supported with [kx,ky,kz,v]'
+        if len(np.shape(sigma)) == 1:
+            sigma = sigma[None, None, None, :] # assuming local self-energy
+        elif len(np.shape(sigma)) == 4:
+            pass
+        else:
+            raise ValueError('Sigma must be either local [v] or momentum dependent [kx,ky,kz,v].')
 
         # Cut negative Matsubara frequencies if not provided:
-        if (not pos):
+        if not pos:
             niv = sigma.shape[-1] // 2
             sigma = sigma[..., niv:]
 
         self.sigma = sigma
-        self.beta = beta
-        iv_fit = 1j * mf.vn(beta, self.niv, pos=True)
+        self.beta = float(beta)
+        iv_fit = 1j * mf.vn(self.beta, self.niv, pos=True)
         fit_mom0, fit_mom1 = fit_smom(iv_fit, sigma)  # Currently moment fitting is local. Non-local parts
         # should decay quickly enough to be negligible.
 
         self.err = err
 
         # Set the moments for the asymptotic behaviour:
-        if (smom0 is None):
+        if smom0 is None:
             self.smom0 = fit_mom0
         else:
             self.smom0 = smom0
 
-        if (smom1 is None):
+        if smom1 is None:
             self.smom1 = fit_mom1
         else:
             self.smom1 = smom1
 
         # estimate when the asymptotic behavior is sufficient:
-        if(niv_core == 'estimate'):
+        if niv_core == 'estimate':
             self.niv_core = self.estimate_niv_core()
         else:
             self.niv_core = niv_core
@@ -128,18 +137,18 @@ class SelfEnergy():
         ind_real = np.argmax(np.abs(self.k_mean().real - asympt.real) < self.err)
         ind_imag = np.argmax(np.abs(self.k_mean().imag - asympt.imag) < self.err)
         niv_core = max(ind_real, ind_imag)
-        if (niv_core < self.niv_core_min):
+        if niv_core < self.niv_core_min:
             return self.niv_core_min
         else:
             return niv_core
 
     def get_siw(self, niv=-1, pi_shift=False):
-        if (niv == -1):
+        if niv == -1:
             niv = self.niv
-        if (niv <= self.niv_core):
+        if niv <= self.niv_core:
             sigma = mf.fermionic_full_nu_range(self.sigma[..., :niv])
         else:
-            niv_shell = niv-self.niv_core
+            niv_shell = niv - self.niv_core
             iv_asympt = 1j * mf.vn(self.beta, niv_shell, shift=self.niv_core, pos=True)
             asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
             sigma_asympt = np.concatenate((self.sigma[..., :self.niv_core], asympt), axis=-1)
@@ -148,11 +157,11 @@ class SelfEnergy():
         return sigma if not pi_shift else bz.shift_mat_by_pi(sigma)
 
     def get_asympt(self, niv_asympt, n_min=None, pos=True):
-        if (n_min is None):
+        if n_min is None:
             n_min = self.niv_core
         iv_asympt = 1j * mf.vn(self.beta, niv_asympt, shift=n_min, pos=True)
         asympt = (self.smom0 - 1 / iv_asympt * self.smom1)[None, None, None, :] * np.ones(self.nk)[:, :, :, None]
-        if (pos):
+        if pos:
             return asympt
         else:
             return mf.fermionic_full_nu_range(asympt)
@@ -207,11 +216,11 @@ def get_fill_primitive(g_loc, beta, verbose=False):
     giwk: [kx,ky,kz,iv] - currently no easy extension to multi-orbital
     '''
     n = (1 / beta * np.sum(g_loc) + 0.5) * 2
-    if (verbose): print('n = ', n)
+    if verbose: print('n = ', n)
     return n
 
 
-def root_fun_primitive(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, verbose=False):
+def root_fun_primitive(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, verbose=False):
     """Auxiliary function for the root finding"""
     g_loc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
     return get_fill_primitive(g_loc, beta, verbose)[0] - target_filling
@@ -222,17 +231,17 @@ def update_mu_primitive(mu0=0.0, target_filling=None, iv=None, hk=None, siwk=Non
     '''
         Find mu to satisfy target_filling.
     '''
-    if (verbose): print('Update mu...')
+    if verbose: print('Update mu...')
     mu = mu0
     hloc = None
-    if (verbose): print(
+    if verbose: print(
         root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
     try:
-        mu = scipy.optimize.newton(root_fun_primitive, mu, tol=tol,
-                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
+        mu = opt.newton(root_fun_primitive, mu, tol=tol,
+                        args=(target_filling, iv, hk, siwk, beta, verbose))
     except RuntimeError:
-        if (verbose): print('Root finding for chemical potential failed.')
-        if (verbose): print('Using old chemical potential again.')
+        if verbose: print('Root finding for chemical potential failed.')
+        if verbose: print('Using old chemical potential again.')
     if np.abs(mu.imag) < 1e-8:
         mu = mu.real
     else:
@@ -249,20 +258,20 @@ def get_fill(iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, mu=Non
     """
     g_model = get_g_model(mu=mu, iv=iv, hloc=hloc, smom0=smom0)
     gloc = get_gloc(iv=iv, hk=hk, siwk=siwk, mu_trial=mu)
-    if (beta * (smom0 + hloc.real - mu) < 20):
+    if beta * (smom0 + hloc.real - mu) < 20:
         rho_loc = 1. / (1. + np.exp(beta * (smom0 + hloc.real - mu)))
     else:
         rho_loc = np.exp(-beta * (smom0 + hloc.real - mu))
     rho_new = rho_loc + np.sum(gloc.real - g_model.real, axis=0) / beta
     n_el = 2. * rho_new
-    if (verbose): print(n_el, 'electrons at ', mu)
+    if verbose: print(n_el, 'electrons at ', mu)
     return n_el, rho_new
 
 
 # ==================================================================================================================
 
 # ==================================================================================================================
-def root_fun(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None, verbose=False):
+def root_fun(mu=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0, smom0=0.0, hloc=None):
     """Auxiliary function for the root finding"""
     return get_fill(iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc, mu=mu, verbose=False)[0] - target_filling
 
@@ -275,17 +284,18 @@ def update_mu(mu0=0.0, target_filling=1.0, iv=None, hk=None, siwk=None, beta=1.0
     Update internal chemical potential (mu) to fix the filling to the target filling with given precision.
     :return:
     """
-    if (verbose): print('Update mu...')
+    if verbose: print('Update mu...')
     hloc = hk.mean()
     mu = mu0
-    if (verbose): print(
-        root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
+    if verbose:
+        print(root_fun(mu=mu, target_filling=target_filling, iv=iv, hk=hk, siwk=siwk, beta=beta, smom0=smom0, hloc=hloc))
     try:
-        mu = scipy.optimize.newton(root_fun, mu, tol=tol,
-                                   args=(target_filling, iv, hk, siwk, beta, smom0, hloc, verbose))
+
+        mu = opt.newton(root_fun, mu, tol=tol,
+                        args=(target_filling, iv, hk, siwk, beta, smom0, hloc))
     except RuntimeError:
-        if (verbose): print('Root finding for chemical potential failed.')
-        if (verbose): print('Using old chemical potential again.')
+        if verbose: print('Root finding for chemical potential failed.')
+        if verbose: print('Using old chemical potential again.')
     if np.abs(mu.imag) < 1e-8:
         mu = mu.real
     else:
@@ -301,7 +311,9 @@ def build_g(v, ek, mu, sigma):
 
 
 class GreensFunction():
-    '''Object to build the Green's function from hk and sigma'''
+    '''
+        Object to build the (imaginary frequency) Green's function from hk and sigma
+    '''
     mu0 = 0
     mu_tol = 1e-6
 
@@ -309,19 +321,25 @@ class GreensFunction():
         self.sigma = sigma
         self.iv_core = 1j * mf.vn(sigma.beta, self.sigma.niv_core)
         self.ek = ek
-        if (n is not None):
+        if n is not None:
             self._n = n
-            self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core,
+            niv_mu_find = self.sigma.niv_core #+ niv_asympt
+            iv_mu_find = 1j * mf.vn(sigma.beta, niv_mu_find)
+            siwk_mu_find = sigma.get_siw(niv_mu_find)
+            self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=iv_mu_find, hk=ek, siwk=siwk_mu_find,
                                  beta=self.beta, smom0=sigma.smom0,
                                  tol=self.mu_tol)
-            # self._mu = update_mu_primitive(mu0=self.mu0, target_filling=self.n, iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0,)
-        elif (mu is not None):
+
+        elif mu is not None:
             self._mu = mu
-            self._n = get_fill(iv=self.iv_core, hk=ek, siwk=sigma.sigma_core, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek),
-                               mu=mu)
+            niv_mu_find = self.sigma.niv_core #+ niv_asympt
+            iv_mu_find = 1j * mf.vn(sigma.beta, niv_mu_find)
+            siwk_mu_find = sigma.get_siw(niv_mu_find)
+            self._n = get_fill(iv=iv_mu_find, hk=ek, siwk=siwk_mu_find, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek),
+                               mu=mu)[0]
             # self._n = get_fill_primitive(self.g_loc)
         else:
-            raise ValueError('Either mu or n, but bot both, must be supplied.')
+            raise ValueError('Either mu or n, but not both, must be supplied.')
 
         self.core = self.build_g_core()
         self.asympt = None
@@ -330,6 +348,20 @@ class GreensFunction():
         self.set_g_asympt(niv_asympt)
         self.g_loc = None
         self.set_gloc()
+
+    @property
+    def size(self):
+        if self.full is None:
+            return self.core.size
+        else:
+            return self.full.size
+
+    @property
+    def itemsize(self):
+        if self.full is None:
+            return self.core.itemsize
+        else:
+            return self.full.itemsize
 
     @property
     def mu(self):
@@ -366,13 +398,16 @@ class GreensFunction():
     @property
     def mem(self):
         ''' returns the memory consumption of the Green's function'''
-        if (self.full is not None):
+        if self.full is not None:
             return self.full.size * self.full.itemsize * 1e-9
         else:
             return self.core.size * self.core.itemsize * 1e-9
 
+    def fs(self, pi_shift=False):
+        return -self.g_full(pi_shift=pi_shift)[:, :, :, self.niv_full].imag / np.pi
+
     def g_full(self, pi_shift=False):
-        if (self.asympt is None):
+        if self.asympt is None:
             return self.core if not pi_shift else bz.shift_mat_by_pi(self.core)
         else:
             return mf.concatenate_core_asmypt(self.core, self.asympt) if not pi_shift else bz.shift_mat_by_pi(
@@ -382,10 +417,10 @@ class GreensFunction():
         return build_g(self.iv_core, self.ek, self.mu, self.sigma.sigma_core)
 
     def k_mean(self, iv_range='core'):
-        if (iv_range == 'core'):
+        if iv_range == 'core':
             return np.mean(self.core, axis=(0, 1, 2))
-        elif (iv_range == 'full'):
-            if (self.full is None):
+        elif iv_range == 'full':
+            if self.full is None:
                 raise ValueError('Full Greens function has to be set first.')
             return np.mean(self.full, axis=(0, 1, 2))
         else:
@@ -405,11 +440,104 @@ class GreensFunction():
         iv_asympt = 1j * mf.vn(self.beta, niv_asympt, shift=self.niv_core, pos=True)
         return mf.fermionic_full_nu_range(build_g(iv_asympt, self.ek, self.mu, sigma_asympt))
 
+    def get_sigma_full(self, niv_asympt):
+        sigma_asympt = self.sigma.get_asympt(niv_asympt, pos=False)
+        sigma_core = self.sigma.sigma_core
+        return mf.concatenate_core_asmypt(sigma_core, sigma_asympt)
+
     @property
-    def e_kin(self):
+    def e_kin(self): # be careful about the on-site energy
         ekin = 1 / self.beta * np.sum(np.mean(self.ek[..., None] * self.g_full(), axis=(0, 1, 2)))
-        assert (np.abs(ekin.imag) < 1e-8)
+        assert np.abs(ekin.imag) < 1e-8, 'Kinetic energy must be real.'
         return ekin.real
+
+    @property
+    def e_pot(self):
+        sigma_full = self.get_sigma_full(self.niv_asympt) - self.sigma.smom0 # convergence is bad thats why we subtract the
+        # static term
+        epot = 1 / (self.beta) * np.sum(np.mean(sigma_full*self.g_full(), axis=(0, 1, 2)))
+        # e_pot_core =  1 / self.beta * np.sum(np.mean(self.sigma.sigma_core*self.core, axis=(0, 1, 2)))
+        assert np.abs(epot.imag) < 1e-8, 'Potential energy must be real.'
+        return epot.real + self.sigma.smom0 * self.n/2
+
+
+class RealFrequencyGF():
+    '''
+        Object to handle the real-frequency Green's function
+    '''
+    mu0 = 0.0
+
+    def __init__(self, w, swk, ek, mu=None, n=None, deltino=0.0):
+        if mu is None and n is None:
+            raise ValueError('Either mu or n must be supplied.')
+        self.w = w
+        self.swk = swk - 1j * deltino  # [nkx,nky,nkz,nw] or [1,1,1,nw]
+        self.ek = ek
+
+        if n is not None:
+            self.n = n
+            self.mu = adjust_mu_real_f(self.mu0, self.n, self.swk, self.w, self.ek)
+            self._gwk = get_gwk(self.w, self.swk, self.ek, self.mu)
+        elif mu is not None:
+            self.mu = mu
+            self._gwk = get_gwk(self.w, self.swk, self.ek, self.mu)
+            self.n = get_filling_real_f(self.w, self.gwk())
+        else:
+            raise ValueError('Either mu or n, but not both, must be supplied.')
+
+    def awk(self, pi_shift=False):
+        return -self.gwk(pi_shift=pi_shift).imag / np.pi
+
+    @property
+    def gw(self):
+        return np.mean(self.gwk(), axis=(0, 1, 2))
+
+    @property
+    def aw(self):
+        return -self.gw.imag / np.pi
+
+    def gwk(self, pi_shift=False):
+        return self._gwk if not pi_shift else bz.shift_mat_by_pi(self._gwk)
+
+    def fs(self, pi_shift=False):
+        ''' Fermi surface'''
+        w_ind = np.argmin(np.abs(self.w))
+        return self.awk(pi_shift)[..., w_ind]
+
+    def get_fs_surface_slice_indices(self, k_grid: bz.KGrid, k_slice_dim=2, k_slice_val=0, w_val=0, pi_shift=False):
+        w_ind = np.argmin(np.abs(self.w - w_val))
+        data = k_grid.get_k_slice(self.gwk(pi_shift)[..., w_ind].real, k_slice_dim=k_slice_dim, k_slice_val=k_slice_val)
+        return plotting.get_zero_contour(data)
+
+    def get_gwk_tb(self, deltino=0.01):
+        ''' Build the non-interacting version of the Green's function'''
+        return RealFrequencyGF(self.w, np.zeros_like(self.swk) - 1j * deltino, self.ek, n=self.n)
+
+
+def get_gwk(w, swk, ek, mu):
+    return 1 / (w[None, None, None, :] + mu - ek[..., None] - swk)
+
+
+def get_filling_real_f(w, gwk):
+    ''' gwk: [kx,ky,kz,w] '''
+    ind = w <= 0
+    return -1 / np.pi * np.trapz(np.mean(gwk.imag, axis=(0, 1, 2))[ind], w[ind]) * 2  # factor 2 for spin
+
+
+def opt_func(mu, n, swk, w, ek, verbose=False):
+    giwk = get_gwk(w, swk, ek, mu)
+    fill_current = get_filling_real_f(w, giwk)
+    if verbose:
+        print('------------------')
+        print(f'{mu=}')
+        print(f'{fill_current=}')
+        print('------------------')
+    return (fill_current - n) ** 2
+
+
+def adjust_mu_real_f(mu0, n_target, swk, w, ek, verbose=False):
+    fit = opt.minimize(opt_func, x0=mu0, args=(n_target, swk, w, ek, verbose))
+    return fit.x
 
 
 if __name__ == '__main__':

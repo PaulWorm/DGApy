@@ -33,8 +33,8 @@ def load_ldga_n_an(path=None):
     dga_sde = np.load(path + 'dga_sde.npy', allow_pickle=True).item()
     dmft_sde = np.load(path + 'dmft_sde.npy', allow_pickle=True).item()
     config = np.load(path + 'config.npy', allow_pickle=True).item()
-    nk = config['box_sizes']['nk']
-    niv_urange = config['box_sizes']['niv_urange']
+    nk = config['box']['nk']
+    niv_urange = config['box']['niv_urange']
     # sigma = dga_sde['sigma']
     # sigma = dga_sde['sigma']
     dmft1p = config['dmft1p']
@@ -108,8 +108,8 @@ chi_lambda = load_ldga_chi_lambda(path_01)
 chi_ladder = load_ldga_chi_ladder(path_01)
 w01, sldga_n_01, sldga_an_01 = load_ldga_n_an(path_01)
 
-# nk = config_01['box_sizes']['nk']
-# niw_core = config_01['box_sizes']['niw_core']
+# nk = config_01['box']['nk']
+# niw_core = config_01['box']['niw_core']
 # chi_magn_ladder = chi_ladder['chi_magn_ladder'].mat.reshape(nk+(niw_core*2+1,))
 # fig = plt.figure()
 # plt.imshow(chi_magn_ladder[:,:,0,niw_core].real, cmap='RdBu')
@@ -195,12 +195,12 @@ plt.show()
 
 
 # fig = plt.figure()
-# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.imshow(ldga_066['sigma_dens'][:,:,0,config_066['box']['niv_urange']].imag,cmap='RdBu')
 # plt.colorbar()
 # plt.show()
 #
 #
 # fig = plt.figure()
-# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box_sizes']['niv_urange']].imag,cmap='RdBu')
+# plt.imshow(ldga_066['sigma_magn'][:,:,0,config_066['box']['niv_urange']].imag,cmap='RdBu')
 # plt.colorbar()
 # plt.show()

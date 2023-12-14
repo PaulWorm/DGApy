@@ -27,6 +27,7 @@ stages:          # List of stages for jobs, and their order of execution
 before_script:
   - apt --fix-broken install
   - apt install mpich
+  - pip3 install --upgrade pip
   - pip install -e .
 
 #build-job:       # This job runs in the build stage, which runs first.
@@ -39,16 +40,14 @@ unit-test-job:   # This job runs in the test stage.
   script:
     - apt update
     - apt-get install -y libmpich-dev
-    - python ./test/test_matsubara_frequencies.py
-    - python ./test/test_brillouin_zone.py
-    - python ./test/test_eliashberg.py
+    - pip list
+    - dga_unit_test
 
-#lint-test-job:   # This job also runs in the test stage.
-#  stage: test    # It can run at the same time as unit-test-job (in parallel).
-#  script:
-#    - echo "Linting code... This will take about 10 seconds."
-#    - sleep 10
-#    - echo "No lint issues found."
+lint-test-job:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - echo "Linting code..."
+    - dga_lint
 
 #deploy-job:      # This job runs in the deploy stage.
 #  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.

@@ -840,6 +840,7 @@ class MaxentSolverSVD(AnalyticContinuationSolver):
         alphas = []
         optarr = []
         ustart = np.zeros((self.n_sv))
+
         while True:
             try:
                 o = self.maxent_optimization(alpha=alpha, ustart=ustart)
@@ -855,7 +856,6 @@ class MaxentSolverSVD(AnalyticContinuationSolver):
             alpha = alpha / alpha_div
             if alpha < alpha_end:
                 break
-
         alphas = np.asarray(alphas)
         chis = np.asarray(chi)
 
@@ -893,12 +893,10 @@ class MaxentSolverSVD(AnalyticContinuationSolver):
         if interactive:
             plt.plot(np.log10(alphas), np.log10(chis), marker='s', label='chi2')
             plt.plot(np.log10(alphas), fitfun(np.log10(alphas), *popt), label='fit2lin')
-            #plt.plot(np.log10(alphas), chi2_interp(np.log10(alphas)), label='chi2 fit')
 
         closest_idx = np.argmin(np.abs(np.log10(alphas) - a_opt))
         ustart = optarr[closest_idx].u_opt
         sol = self.maxent_optimization(alpha_opt, ustart)
-
         if interactive:
             plt.plot(a_opt, np.log10(sol.chi2), marker='s', color='red', label='opt')
             plt.legend()

@@ -1,5 +1,9 @@
-import numpy as np
+'''
+    Provides utility functions for the project
+'''
+
 import os
+import numpy as np
 
 def mem(mat):
     ''' returns the memory consumption of mat'''
@@ -15,7 +19,7 @@ def uniquify(path=None):
     counter = 1
 
     while os.path.exists(path):
-        path = filename + "_" + str(counter) + extension
+        path = filename + '_' + str(counter) + extension
         counter += 1
 
     return path + '/'

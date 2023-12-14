@@ -28,7 +28,7 @@ gk_dga = np.load(input_path + 'gk_dga.npy', allow_pickle=True).item()
 chi_dmft_dens = dmft_sde['chi_dens']
 chi_dmft_magn = dmft_sde['chi_magn']
 
-niv = config['box_sizes']['niv_urange']
+niv = config['box']['niv_urange']
 iv = config['grids']['vn_urange']
 nk = config['grids']['_k_grid'].nk[0]
 sigma = dga_sde['sigma']

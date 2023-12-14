@@ -23,7 +23,7 @@ dga_sde = np.load(input_path+'dga_sde.npy', allow_pickle=True).item()
 dmft_sde = np.load(input_path+'dmft_sde.npy', allow_pickle=True).item()
 gk_dga = np.load(input_path + 'gk_dga.npy', allow_pickle=True).item()
 
-niv = config['box_sizes']['niv_urange']
+niv = config['box']['niv_urange']
 iv = config['grids']['vn_urange']
 nk = config['grids']['_k_grid'].nk[0]
 chi_dmft_dens = dmft_sde['chi_dens']
