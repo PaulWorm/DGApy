@@ -51,7 +51,7 @@ DGApy has already been successfully used in several scientific publications:
   - [Unconventional superconductivity without doping: infinite-layer nickelates under 
     pressure](https://arxiv.org/abs/2311.06195)
 - **P. Worm** <em> et al.</em>; arXiv preprint
-  - [Spin fluctuations sufficient to mediate superconductivity in nickelates](https://arxiv.org/abs/2106.15884)
+  - [Spin fluctuations sufficient to mediate superconductivity in nickelates](https://arxiv.org/abs/2312.08260)
 
 ## Installation
 Run the script

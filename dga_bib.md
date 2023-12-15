@@ -74,3 +74,29 @@ W2dynamics:
   keywords = {(continuous-time) quantum Monte Carlo, Anderson impurity model, Dynamical mean field theory, Green’s functions}
 }
 ```
+
+Paper on nickelates under pressure: 
+
+```
+@misc{dicataldo2023unconventional,
+      title={Unconventional superconductivity without doping: infinite-layer nickelates under pressure}, 
+      author={Simone Di Cataldo and Paul Worm and Jan Tomczak and Liang Si and Karsten Held},
+      year={2023},
+      eprint={2311.06195},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.supr-con}
+}
+```
+
+Paper on spin-fluctuations in nickelates:
+
+```
+@misc{worm2023spin,
+      title={Spin fluctuations sufficient to mediate superconductivity in nickelates}, 
+      author={Paul Worm and Qisi Wang and Motoharu Kitatani and Izabela Biało and Qiang Gao and Xiaolin Ren and Jaewon Choi and Diana Csontosová and Ke-Jin Zhou and Xingjiang Zhou and Zhihai Zhu and Liang Si and Johan Chang and Jan M. Tomczak and Karsten Held},
+      year={2023},
+      eprint={2312.08260},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.supr-con}
+}
+```
