@@ -120,7 +120,7 @@ Either the output of the [w2dynamics](https://github.com/w2dynamics/w2dynamics) 
 If you are not using [w2dynamics](https://github.com/w2dynamics/w2dynamics) and you do not want to implement a parser to your impurity solver a generic input format is 
 also supported, which uses a single numpy file:
 
-- fname_1p: 'dmft_input.npy': 
+- fname_1p: 'dmft_input.npy': numpy dictionary with the following entries:
   - 'giw': one-particle Green's function
   - 'siw': self-energy
   - 'n': occupation
