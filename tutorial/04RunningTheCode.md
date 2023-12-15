@@ -24,7 +24,7 @@ Activate the environment:
 conda activate dga_py 
 ```
 
-git into the dga folder and install the code:
+go into the dga folder and install the code:
 
 ```
 cd ./dga

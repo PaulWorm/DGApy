@@ -3,6 +3,7 @@
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/PaulWorm/DGApy/graphs/commit-activity)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit/)
+[![Documentation Status](https://readthedocs.org/projects/dgapy/badge/?version=latest)](https://dgapy.readthedocs.io/en/latest/)
 
 [//]: # ([![coverage]&#40;./coverage.svg&#41;]&#40;&#41;)
 [//]: # (<div id="top">top</div>)
@@ -66,13 +67,33 @@ Before installation fetch the repository via
 git clone git@github.com:PaulWorm/DGApy.git
 ```
 
-We recomment to use [anaconda](https://www.anaconda.com/) for managing your python environments. 
+We recomment to use [anaconda](https://www.anaconda.com/) for managing your python environments. To create a new conda 
+environment use 
 
-Run the script 
 ```
+conda create --name dga_py python=3.9
+```
+
+Activate the environment:
+
+```
+conda activate dga_py 
+```
+
+Before installation of the code install mpi4py using the conda environment: 
+
+```
+conda install -c conda-forge mpi4py mpich
+```
+
+which provides the MPICH MPI implementation and the python package mpi4py. Then go into the dga folder and install the code:
+
+```
+cd ./dga
 . install.sh
 ```
-in the root directory. This provides the python package dga and several command line interfaces. A detailed description of them 
+
+This provides the python package dga and several command line interfaces. A detailed description of them 
 is provided below and in the tutorial "04RunningTheCode.md".
 
 ## Usage
@@ -125,14 +146,15 @@ For the DMFT input file structure currently two input formats are supported.
 Either the output of the [w2dynamics](https://github.com/w2dynamics/w2dynamics) code.
 
 - '1p-data.hdf5': converged dmft solution
-- 'g4iw_sym.hdf5': measurement of the two-particle Green's function for the same anderson impurity model as obtained from the 
-  DMFT cycle; it is advised to use the same chemical potential (mu) as in the '1p-data.hdf5' file and not perform a new mu 
+- 'g4iw_sym.hdf5': symmetrized output (cli: sym1b) of the measurement of the two-particle Green's function for the same anderson 
+  impurity model as obtained from the DMFT cycle; it is advised to use the same chemical potential (mu) as in the '1p-data.
+  hdf5' file and not perform a new mu 
   search. 
 
 #### type: "default"
 
-If you are not using [w2dynamics](https://github.com/w2dynamics/w2dynamics) and you do not want to implement a parser to your impurity solver a generic input format is 
-also supported, which uses a single numpy file:
+If you are not using [w2dynamics](https://github.com/w2dynamics/w2dynamics) and you do not want to implement a parser to your 
+impurity solver a generic input format is also supported, which uses a single numpy file:
 
 - fname_1p: 'dmft_input.npy': numpy dictionary with the following entries:
   - 'giw': one-particle Green's function
@@ -166,7 +188,7 @@ contained in the default input structure in the "tests" folder.
 
 ## Documentation
 
-A standard documentation is still under construction. For now the tutorial in the "tutorial" folder is the best source for 
+A [standard documentation](https://dgapy.readthedocs.io/en/latest/) is still under construction. For now the tutorial in the "tutorial" folder is the best source for 
 learning how to use the code.
 
 
@@ -176,4 +198,6 @@ learning how to use the code.
 
 This package has been developed by [Paul Worm](https://www.linkedin.com/in/pworm/). If you have any questions feel free to 
 contact me via [e-mail](mailto:pworm42@gmail.com).
+
+
 
