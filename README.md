@@ -5,13 +5,19 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit/)
 
 [//]: # ([![coverage]&#40;./coverage.svg&#41;]&#40;&#41;)
-# DGApy
+[//]: # (<div id="top">top</div>)
 
+[//]: # (<div id="bottom">bottom</div>)
+
+ # <p align="left"> <img style="vertical-align:middle" src="./Logo/DGApy_Logo.png" alt="drawing" width="64"/>  DGApy </p>
+
+# Table of content
 - [Description](#description)
 - [Installation](#installation)
 - [Usage](#usage)
-- [About](#about)
 - [Testing](#testing)
+- [Documentation](#documentation)
+- [About](#about)
 
 
 ## Description
@@ -54,12 +60,20 @@ DGApy has already been successfully used in several scientific publications:
   - [Spin fluctuations sufficient to mediate superconductivity in nickelates](https://arxiv.org/abs/2312.08260)
 
 ## Installation
-Run the script
+Before installation fetch the repository via
+
+```
+git clone git@github.com:PaulWorm/DGApy.git
+```
+
+We recomment to use [anaconda](https://www.anaconda.com/) for managing your python environments. 
+
+Run the script 
 ```
 . install.sh
 ```
 in the root directory. This provides the python package dga and several command line interfaces. A detailed description of them 
-is provided below.
+is provided below and in the tutorial "04RunningTheCode.md".
 
 ## Usage
 
@@ -149,6 +163,13 @@ in the root directory. This will run unit tests and linting which are also inclu
 #### End-to-end testing 
 Several tests use datasets generated with [w2dynamics](https://github.com/w2dynamics/w2dynamics). They input files are 
 contained in the default input structure in the "tests" folder. 
+
+## Documentation
+
+A standard documentation is still under construction. For now the tutorial in the "tutorial" folder is the best source for 
+learning how to use the code.
+
+
 
 
 ## About

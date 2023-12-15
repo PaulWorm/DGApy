@@ -9,7 +9,7 @@ To install the code you will have to clone the repository using:
 
 
 ```
-git clone git@gitlab.com:PWorm/dga.git
+git clone git@github.com:PaulWorm/DGApy.git
 ```
 
 Then install [anaconda](https://www.anaconda.com/download) and set up a new python environment:
