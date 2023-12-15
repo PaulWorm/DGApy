@@ -507,7 +507,7 @@ class KPath():
         bands = np.zeros((ek_kpath.shape[:-1]))
         for i, eki in enumerate(ek_kpath):
             val, _ = np.linalg.eig(eki)
-            bands[i, :] = np.sort(val)
+            bands[i, :] = np.sort(val).real
         return bands
 
 

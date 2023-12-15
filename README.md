@@ -15,14 +15,51 @@
 
 
 ## Description
-DGA is a python package for calculations using the lambda corrected dynamical vertex correction. 
+DGApy is a python package that implements tools for the Matsubara Green's function formalism of correlated electrons on a 
+lattice. Based on the implemented frameworks, the dynamical vertex approximation (DGA) for the Hubbard model, a Feynman 
+diagrammatic 
+extension of dynamical mean field theory (DMFT), can be calculated.
+
+DGApy supports:
+
+- All primitive lattices
+- General tight-binding models
+- DGA calculations for the Hubbard model
+- Solving the linearized Eliashberg equation to obtain superconducting eigenvalues
+- Calculation of the optical conductivity, including ladder-like vertex corrections
+- Analytic continuation of Matsubara Green's functions and physical susceptibilities to the real axis
+
+A detailed description of the underlying theory and applications to nickelate and cuprate superconductors can be found in my 
+ [PhD thesis](https://repositum.tuwien.at/handle/20.500.12708/176739).
+
+Relevant and related literature:
+
+- [Original derivation of DGA](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.75.045118)
+- [Asymptotic corrections for improved frequency convergence](https://iopscience.iop.org/article/10.1088/2515-7639/ac7e6d)
+- [Maximum entropy analytic continuation](https://www.sciencedirect.com/science/article/pii/S0010465522002387)
+- [DMFT impurity solver](https://www.sciencedirect.com/science/article/abs/pii/S0010465518303217?via%3Dihub)
+
+
+In case you use this code, please consider citing my thesis and the relevant papers. A bibtex file (dga_bib.md) containing all 
+the references is included in the root directory for your convenience.
+
+## Publications using DGApy
+
+DGApy has already been successfully used in several scientific publications:
+
+- S. Di Cataldo, **P. Worm** <em> et al.</em>; arXiv preprint 
+  - [Unconventional superconductivity without doping: infinite-layer nickelates under 
+    pressure](https://arxiv.org/abs/2311.06195)
+- **P. Worm** <em> et al.</em>; arXiv preprint
+  - [Spin fluctuations sufficient to mediate superconductivity in nickelates](https://arxiv.org/abs/2106.15884)
 
 ## Installation
 Run the script
 ```
 . install.sh
 ```
-in the root directory. This provides the python package dga and several command line interfaces. 
+in the root directory. This provides the python package dga and several command line interfaces. A detailed description of them 
+is provided below.
 
 ## Usage
 
@@ -34,16 +71,33 @@ To use the dga python package, import it via
 import dga.<submodule name>
 ```
 
-The package is split into several modules. For a more detailed tutorial see the tutorial folder.
+The package is split into several modules. Here we list the most common ones: 
+
+- matsubara_frequencies (mf): handle Matsubara frequencies and frequency transformations
+- brillouin_zone (bz): handle the Brillouin zone, mapping into the irreducible BZ and mapping to k-paths
+- wannier: handle the tight-binding Hamiltonian and fourier transformation from real to reciprocal space
+- two_point (twop): classes for the one-particle Green's function and self-energy
+- local_four_point (lfp): handle local (impurity) four-poin functions
+- four_point (fp): handle non-local (ladder) four-point functions
+- analytic_continuation (ac): perform the numeric analytic continuation 
+  - based on the [ana_cont](https://github.com/josefkaufmann/ana_cont) package 
+- eliashberg_equation (eq): power iteration eigenvalue solver for the linearized Eliashberg equation
+- optics: calculate the optical conductivity
+
+It is recommended to complete the tutorial, contained in the "tutorial" folder, to get a first impression on how the modules 
+can be used.
 
 
 ### Command line interfaces
 
-#### dga_dc
+With this python package also a command line interface (cli) is provided. Contrary to the different modules, which are 
+intended to be used as a toolbox, the cli implements the dynamical vertex approximation for the Hubbard model. 
 
-Create the default config file in the current folder.
+### dga_dc
 
-#### dga_main
+Create the default config file for dga_main in the current folder.
+
+### dga_main
 
 To run a dga calculation perform the following steps:
 
@@ -51,41 +105,34 @@ To run a dga calculation perform the following steps:
 - Prepare the DMFT input files
 - Run the dga_main cli
 
-prepare a config file, like the template in config_templates. Additionally, two files containing 
-the results of a converged DMFT calculation must be prepared as starting point. Currently, loading input is primarily supported 
-for [w2dynamics](https://github.com/w2dynamics/w2dynamics). In case you want to use another impurity solver for the DMFT input, 
-feel free to contact me via [e-mail](mailto:pworm42@gmail.com) or open an issue.
+For the DMFT input file structure currently two input formats are supported. 
 
-#### dga_test
+#### type: "w2dyn"
+Either the output of the [w2dynamics](https://github.com/w2dynamics/w2dynamics) code.
 
-Run the test suite. This will run the unit tests and linting. 
+- '1p-data.hdf5': converged dmft solution
+- 'g4iw_sym.hdf5': measurement of the two-particle Green's function for the same anderson impurity model as obtained from the 
+  DMFT cycle; it is advised to use the same chemical potential (mu) as in the '1p-data.hdf5' file and not perform a new mu 
+  search. 
 
-## References
+#### type: "default"
 
-This package has been developed by [Paul Worm](https://www.linkedin.com/in/pworm/). 
-In case you use the code, please consider citing the following works: 
+If you are not using [w2dynamics](https://github.com/w2dynamics/w2dynamics) and you do not want to implement a parser to your impurity solver a generic input format is 
+also supported, which uses a single numpy file:
 
-My [thesis](https://repositum.tuwien.at/handle/20.500.12708/176739) which covers the theoretical background. 
-[This paper](https://iopscience.iop.org/article/10.1088/2515-7639/ac7e6d), on which the asymptotic correctons are based. 
-And finally the original [paper](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.75.045118), where the dynamical vertex approximation was first derived. 
+- fname_1p: 'dmft_input.npy': 
+  - 'giw': one-particle Green's function
+  - 'siw': self-energy
+  - 'n': occupation
+  - 'mu_dmft': chemical potential
+  - 'beta': inverse temperature
+  - 'u': on-site Hubbard interaction
+  - 'g4iw_dens': density-channel (upup + updown) two-particle Green's function; (w,v,vp) layout
+  - 'g4iw_magn': magnetic-channel (upup - updown) two-particle Green's function; (w,v,vp) layout
 
-If you have any questions feel free to reach out to me via [e-mail](mailto:pworm42@gmail.com).
+### dga_test
 
-For analytic continuation the [ana_cont](https://github.com/josefkaufmann/ana_cont) package is used and directly integrated as 
-source. In case you use the analytic continuation, please cite this 
-[paper](https://www.sciencedirect.com/science/article/pii/S0010465522002387).
-
-Routines for finding the chemical potential are based on those found in the 
-[w2dynamics](https://github.com/w2dynamics/w2dynamics) code. 
-
-A bibtex file (dga_bib.md) containing all the references is included in the root directory.
-
-
-## Publications using DGApy
-
-- S. Di Cataldo, P. Worm <em> et al.</em> 
-  - [Unconventional superconductivity without doping: infinite-layer nickelates under 
-    pressure](https://arxiv.org/abs/2311.06195)
+Run the test suite in the terminal. This will run the unit tests and linting.
 
 ## Testing: 
 
@@ -100,7 +147,12 @@ To run the unit tests, run
 in the root directory. This will run unit tests and linting which are also included in the gitlab CI.
 
 #### End-to-end testing 
-Several tests use datasets generated with w2dynamics or EDFermion. If you want to run tests that use those datasets, please 
-contact me, so I can share them with you.
+Several tests use datasets generated with [w2dynamics](https://github.com/w2dynamics/w2dynamics). They input files are 
+contained in the default input structure in the "tests" folder. 
 
+
+## About
+
+This package has been developed by [Paul Worm](https://www.linkedin.com/in/pworm/). If you have any questions feel free to 
+contact me via [e-mail](mailto:pworm42@gmail.com).
 

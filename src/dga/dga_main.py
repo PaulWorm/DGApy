@@ -32,11 +32,7 @@ from dga import eliashberg_equation as eq
 from dga import high_level_routines as hlr
 from dga import optics
 from dga import plotting
-
-import dga.plot_specs
-
-if (socket.gethostname() != 'DESKTOP-OEHIPTV'):
-    matplotlib.use('agg')  # non GUI backend since VSC has no display
+from dga import plot_specs
 
 # Define MPI communicator:
 comm = mpi.COMM_WORLD

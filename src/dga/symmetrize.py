@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+'''
+  Helper script to symmetrize the output of the w2dynamics code.
+  Adapted from AbinitioDGA: https://github.com/AbinitioDGA/ADGA
+'''
 import h5py
 import numpy as np
 import sys

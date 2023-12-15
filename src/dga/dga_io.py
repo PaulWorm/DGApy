@@ -52,6 +52,8 @@ def load_1p_data(input_type, path, fname_1p, fname_2p=None):
         return load_1p_data_w2dyn(path, fname_1p, fname_2p=fname_2p)
     elif input_type == 'test':
         return np.load(path + fname_1p, allow_pickle=True).item()
+    elif input_type == 'default':
+        return np.load(path + fname_1p, allow_pickle=True).item()
     else:
         raise NotImplementedError(f'Requested input type format not yet implemented. Currently known is: {KNOWNINPUTTYPES}')
 
