@@ -9,7 +9,9 @@
 
 [//]: # (<div id="bottom">bottom</div>)
 
-# <img style="vertical-align:middle" src="./Logo/DGApy_Logo.png" alt="drawing" width="64"/>  <font size="4"> DGApy </font> 
+#
+
+<img style="vertical-align:middle" src="./Logo/DGApy_Logo.png" alt="drawing" width="64"/>  <font size="4"> DGApy </font> 
 
 # Table of content
 - [Description](#description)
