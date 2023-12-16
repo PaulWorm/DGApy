@@ -94,7 +94,7 @@ output: # [optional] control additional output
   save_vrg: False
   save_fq: False
   keep_fq_optics: False
-  keep_pairing_vertex: False
+  keep_pairing_vertex: True
   verbosity: 1 # 0: no output, 1: standard output, 2: verbose output
 
 

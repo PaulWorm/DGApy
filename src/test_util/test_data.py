@@ -153,6 +153,7 @@ def load_ht_eliashberg_input():
     path = '/../../tests/2DSquare_U2_tp-0.0_tpp0.0_beta3_mu1/'
     path = os.path.dirname(__file__) + path
     dmft_data = np.load(path + 'eliashberg_input.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.two_dimensional_square_symmetries()
     hr = wannier.WannierHr(*wannier.wannier_one_band_2d_t_tp_tpp(1,0,0))
     return dmft_data, hr
 
@@ -160,6 +161,15 @@ def load_minimal_eliashberg_input():
     path = '/../../tests/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
     path = os.path.dirname(__file__) + path
     dmft_data = np.load(path + 'eliashberg_input.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.two_dimensional_square_symmetries()
+    hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
+    return dmft_data, hr
+
+def load_quasi_1d_eliashberg_input():
+    path = '/../../tests/LaSr2NiO3_beta40_n0.85/'
+    path = os.path.dirname(__file__) + path
+    dmft_data = np.load(path + 'quasi_1d_eliashberg_input.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.simultaneous_x_y_inversion()
     hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
     return dmft_data, hr
 
