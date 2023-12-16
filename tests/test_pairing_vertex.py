@@ -16,16 +16,10 @@ from test_util import util_for_testing as t_util
 
 
 def test_pairing_vertex_consistency(verbose=False, input_type='w2dyn'):
-    if input_type == 'w2dyn':
-        ddict, hr = td.load_minimal_dataset()
-    elif input_type == 'ed':
-        ddict, hr = td.load_minimal_dataset_ed()
-    else:
-        raise ValueError(f'input_type = {input_type} not recognized.')
-
+    ddict, hr = td.load_testdataset(input_type)
     # set up the single-particle quantities:
     nk = (6, 6, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     q_list = k_grid.get_irrq_list()
     ek = hr.get_ek(k_grid) * 0  # flat dispersion -> local green's function in each k-point
@@ -36,7 +30,7 @@ def test_pairing_vertex_consistency(verbose=False, input_type='w2dyn'):
     # set up G2:
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
     g4iw_magn = lfp.get_g2_from_dmft_input(ddict, 'magn')
-    if input_type == 'w2dyn':
+    if input_type != 'ed_minimal':
         g4iw_dens.symmetrize_v_vp()
         g4iw_magn.symmetrize_v_vp()
 
@@ -223,10 +217,13 @@ def test_ph_to_pp(verbose=False):
                       'g4iw_trip', rtol=1e-3, atol=1e-3)
 
 
+def main():
+    input_types = ['minimal', 'quasi_1d', 'ed_minimal']
 
+    for input_type in input_types:
+        test_pairing_vertex_consistency(verbose=False, input_type=input_type)
+
+    test_ph_to_pp()
 
 if __name__ == '__main__':
-    test_pairing_vertex_consistency(verbose=False, input_type='w2dyn')
-    test_pairing_vertex_consistency(verbose=False, input_type='ed')
-
-    test_ph_to_pp(verbose=False)
+    main()

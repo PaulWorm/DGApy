@@ -134,7 +134,7 @@ def load_minimal_dataset():
     return dmft_data, hr
 
 def load_quasi_1d_dataset():
-    path = '/../../tests/LaSr2NiO3_beta80_n0.85/'
+    path = '/../../tests/LaSr2NiO3_beta40_n0.85/'
     path = os.path.dirname(__file__) + path
     dmft_data = np.load(path + 'quasi_1d_dataset.npy',allow_pickle=True).item()
     dmft_data['sym'] = bz.simultaneous_x_y_inversion()
