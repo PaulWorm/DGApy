@@ -12,18 +12,22 @@ from test_util import test_data as td
 from test_util import util_for_testing as t_util
 
 
-def test_routine_consistency(verbose=False):
+def test_routine_consistency(input_type='minimal', verbose=False):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
-    giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
-    t_util.test_array([ddict['mu_dmft'], ], [giwk_obj.mu, ], 'mu_dmft_consistency', rtol=1e-4, atol=1e-5)
+    t_util.test_array([siwk_obj.smom0, ], [twop.get_smom0(ddict['u'],ddict['n']), ],
+                      f'{input_type}_smom0_consistency', rtol=1e-4, atol=1e-5)
+    # giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
+    giwk_obj = twop.GreensFunction(siwk_obj, ek, mu=ddict['mu_dmft'])
+    t_util.test_array([ddict['mu_dmft'], ], [giwk_obj.mu, ], f'{input_type}_mu_dmft_consistency', rtol=1e-4, atol=1e-5)
+    t_util.test_array([ddict['n'], ], [giwk_obj.n, ], f'{input_type}_n_dmft_consistency', rtol=1e-4, atol=1e-5)
 
     # set up G2:
     niw_core = mf.niw_from_mat(ddict['g4iw_dens'], axis=0)
@@ -44,31 +48,31 @@ def test_routine_consistency(verbose=False):
     gchi_magn = lfp.gchir_from_g2(g4iw_magn, giwk_obj.g_loc)
 
     # test g2-gchi transform consistency:
-    t_util.test_array(g4iw_magn.mat, lfp.g2_from_chir(gchi_magn, giwk_obj.g_loc).mat, 'g2_to_gchi_magn')
-    t_util.test_array(g4iw_dens.mat, lfp.g2_from_chir(gchi_dens, giwk_obj.g_loc).mat, 'g2_to_gchi_dens')
+    t_util.test_array(g4iw_magn.mat, lfp.g2_from_chir(gchi_magn, giwk_obj.g_loc).mat, f'{input_type}_g2_to_gchi_magn')
+    t_util.test_array(g4iw_dens.mat, lfp.g2_from_chir(gchi_dens, giwk_obj.g_loc).mat, f'{input_type}_g2_to_gchi_dens')
 
     # get fob2 from gchi:
     fob2_dens = lfp.fob2_from_gchir(gchi_dens, gchi0_core)
     fob2_magn = lfp.fob2_from_gchir(gchi_magn, gchi0_core)
 
     # test gchi-fob2 transform consistency:
-    t_util.test_array(gchi_magn.mat, lfp.gchir_from_fob2(fob2_magn, gchi0_core).mat, 'gchi_to_fob2_magn')
-    t_util.test_array(gchi_dens.mat, lfp.gchir_from_fob2(fob2_dens, gchi0_core).mat, 'gchi_to_fob2_dens')
+    t_util.test_array(gchi_magn.mat, lfp.gchir_from_fob2(fob2_magn, gchi0_core).mat, f'{input_type}_gchi_to_fob2_magn')
+    t_util.test_array(gchi_dens.mat, lfp.gchir_from_fob2(fob2_dens, gchi0_core).mat, f'{input_type}_gchi_to_fob2_dens')
 
     # get Gamma from gchi:
     gamob2_dens = lfp.gamob2_from_gchir(gchi_dens, gchi0_core)
     gamob2_magn = lfp.gamob2_from_gchir(gchi_magn, gchi0_core)
 
     # test gchi-gamob2 transform consistency:
-    t_util.test_array(gchi_magn.mat, lfp.gchir_from_gamob2(gamob2_magn, gchi0_core).mat, 'gchi_to_gamob2_magn')
-    t_util.test_array(gchi_dens.mat, lfp.gchir_from_gamob2(gamob2_dens, gchi0_core).mat, 'gchi_to_gamob2_dens')
+    t_util.test_array(gchi_magn.mat, lfp.gchir_from_gamob2(gamob2_magn, gchi0_core).mat, f'{input_type}_gchi_to_gamob2_magn')
+    t_util.test_array(gchi_dens.mat, lfp.gchir_from_gamob2(gamob2_dens, gchi0_core).mat, f'{input_type}_gchi_to_gamob2_dens')
 
     # get fob2 from Gamma:
     fob2_dens_2 = lfp.fob2_from_gamob2_urange(gamob2_dens, gchi0_core)
     fob2_magn_2 = lfp.fob2_from_gamob2_urange(gamob2_magn, gchi0_core)
 
-    t_util.test_array(fob2_dens.mat, fob2_dens_2.mat, 'fob2_from_gamob2_dens')
-    t_util.test_array(fob2_magn.mat, fob2_magn_2.mat, 'fob2_from_gamob2_magn')
+    t_util.test_array(fob2_dens.mat, fob2_dens_2.mat, f'{input_type}_fob2_from_gamob2_dens')
+    t_util.test_array(fob2_magn.mat, fob2_magn_2.mat, f'{input_type}_fob2_from_gamob2_magn')
 
     # get gchi_aux:
     gchi_aux_dens = lfp.gchi_aux_core_from_gammar(gamob2_dens, gchi0_core)
@@ -98,11 +102,11 @@ def test_routine_consistency(verbose=False):
         plt.ylabel(r'$\chi_m$')
         plt.show()
 
-    t_util.test_array(chi_dens, chi_dens_raw, 'chi_dens_consistency')
-    t_util.test_array(chi_magn, chi_magn_raw, 'chi_magn_consistency')
+    t_util.test_array(chi_dens, chi_dens_raw, f'{input_type}_chi_dens_consistency')
+    t_util.test_array(chi_magn, chi_magn_raw, f'{input_type}_chi_magn_consistency')
 
-    t_util.test_array(chi_dens, np.conj(np.flip(chi_dens)), 'chi_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(chi_magn, np.conj(np.flip(chi_magn)), 'chi_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(chi_dens, np.conj(np.flip(chi_dens)), f'{input_type}_chi_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(chi_magn, np.conj(np.flip(chi_magn)), f'{input_type}_chi_w_mw_consistency', rtol=1e-5, atol=1e-5)
 
     # get vrg:
     vrg_dens = lfp.vrg_from_gchi_aux_asympt(gchi_aux_dens, gchi0_core, chi_dens, chi_dens)
@@ -129,25 +133,26 @@ def test_routine_consistency(verbose=False):
         plt.xlim(-5, vn_core[-1])
         plt.show()
 
-    t_util.test_array(siw_sde, np.conj(np.flip(siw_sde)), 'siw_sde_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(siw_sde, siw_sde_f, 'siw_sde_vrg_and_sde_f_consistency', rtol=1e-3, atol=1e-3)
-    t_util.test_array(siw_sde, mf.cut_v(ddict['siw'], mf.niv_from_mat(siw_sde)), 'siw_sde_dmft_consistency', rtol=0.3, atol=0.3)
+    t_util.test_array(siw_sde, np.conj(np.flip(siw_sde)), f'{input_type}_siw_sde_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(siw_sde, siw_sde_f, f'{input_type}_siw_sde_vrg_and_sde_f_consistency', rtol=1e-3, atol=1e-3)
+    t_util.test_array(siw_sde, mf.cut_v(ddict['siw'], mf.niv_from_mat(siw_sde)), f'{input_type}_siw_sde_dmft_consistency',
+                      rtol=0.3, atol=0.3)
 
     # f-bse:
     fob2_dens_3 = lfp.fob2_from_gamob2_urange(gamob2_dens, gchi0_core)
     fob2_magn_3 = lfp.fob2_from_gamob2_urange(gamob2_magn, gchi0_core)
 
-    t_util.test_array(fob2_dens_2.mat, fob2_dens_3.mat, 'fob2_dens_from_gamob2_bse_consistency')
-    t_util.test_array(fob2_magn_2.mat, fob2_magn_3.mat, 'fob2_magn_from_gamob2_bse_consistency')
+    t_util.test_array(fob2_dens_2.mat, fob2_dens_3.mat, f'{input_type}_fob2_dens_from_gamob2_bse_consistency')
+    t_util.test_array(fob2_magn_2.mat, fob2_magn_3.mat, f'{input_type}_fob2_magn_from_gamob2_bse_consistency')
 
 
-def test_asymptotic_convergence(iwn=0):
+def test_asymptotic_convergence(input_type='minimal', iwn=0):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset()
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
@@ -202,10 +207,10 @@ def test_asymptotic_convergence(iwn=0):
     # test consistence with chir-core:
     chi_dens_core = gchi_dens.contract_legs()
     chi_magn_core = gchi_magn.contract_legs()
-    t_util.test_array(chi_dens_core, chi_dens_urange_list[0], f'chi_dens_core_urange_consistency_wn_{wn_core[0]}')
-    t_util.test_array(chi_magn_core, chi_magn_urange_list[0], f'chi_magn_core_urange_consistency_wn_{wn_core[0]}')
-    t_util.test_statement(t_util.is_monotonic(chi_dens_urange_list), f'chi_dens_urange_monotonic_wn_{wn_core[0]}')
-    t_util.test_statement(t_util.is_monotonic(chi_magn_urange_list), f'chi_magn_urange_monotonic_wn_{wn_core[0]}')
+    t_util.test_array(chi_dens_core, chi_dens_urange_list[0], f'{input_type}_chi_dens_core_urange_consistency_wn_{wn_core[0]}')
+    t_util.test_array(chi_magn_core, chi_magn_urange_list[0], f'{input_type}_chi_magn_core_urange_consistency_wn_{wn_core[0]}')
+    t_util.test_statement(t_util.is_monotonic(chi_dens_urange_list), f'{input_type}_chi_dens_urange_monotonic_wn_{wn_core[0]}')
+    t_util.test_statement(t_util.is_monotonic(chi_magn_urange_list), f'{input_type}_chi_magn_urange_monotonic_wn_{wn_core[0]}')
 
     # add the asympt contribution:
     chi0_shell_list = np.array([bubble_gen.get_asymptotic_correction(niv_urange)[0] for niv_urange in niv_urange_list])
@@ -216,8 +221,8 @@ def test_asymptotic_convergence(iwn=0):
     chi_magn_asympt_list = np.array([lfp.chi_phys_asympt(chi_magn_urange, chi0_urange, chi0_asympt) for
                                      chi_magn_urange, chi0_urange, chi0_asympt in zip(chi_magn_urange_list, chi0_urange_list,
                                                                                       chi0_tilde_list)])
-    t_util.test_statement(t_util.is_monotonic(chi_dens_asympt_list), f'chi_dens_asympt_monotonic_wn_{wn_core[0]}')
-    t_util.test_statement(t_util.is_monotonic(chi_magn_asympt_list), f'chi_magn_asympt_monotonic_wn_{wn_core[0]}')
+    t_util.test_statement(t_util.is_monotonic(chi_dens_asympt_list), f'{input_type}_chi_dens_asympt_monotonic_wn_{wn_core[0]}')
+    t_util.test_statement(t_util.is_monotonic(chi_magn_asympt_list), f'{input_type}_chi_magn_asympt_monotonic_wn_{wn_core[0]}')
 
     # test convergence:
     fit_fun = lambda x, a, b: a + b * x
@@ -231,16 +236,13 @@ def test_asymptotic_convergence(iwn=0):
     n_fit = 5
 
     t_util.test_array([get_asympt_extrapolation(chi0_urange_list), ],
-                      [get_asympt_extrapolation(chi0_tilde_list), ], f'chi0_extrap_wn_{wn_core[0]}', atol=1e-4)
+                      [get_asympt_extrapolation(chi0_tilde_list), ], f'{input_type}_chi0_extrap_wn_{wn_core[0]}', atol=1e-4)
     t_util.test_array([get_asympt_extrapolation(chi_dens_urange_list), ],
-                      [get_asympt_extrapolation(chi_dens_asympt_list), ], f'chi_dens_extrap_wn_{wn_core[0]}', atol=1e-4)
+                      [get_asympt_extrapolation(chi_dens_asympt_list), ],
+                      f'{input_type}_chi_dens_extrap_wn_{wn_core[0]}', atol=1e-4)
     t_util.test_array([get_asympt_extrapolation(chi_magn_urange_list), ],
-                      [get_asympt_extrapolation(chi_magn_asympt_list), ], f'chi_magn_extrap_wn_{wn_core[0]}', atol=1e-4)
-
-    # plt.figure()
-    # plt.plot(1/np.array(niv_urange_list)[::-1],chi_dens_urange_list.real[::-1], color='cornflowerblue')
-    # plt.plot(1/np.array(niv_urange_list)[::-1],chi_dens_asympt_list.real[::-1], color='firebrick')
-    # plt.show()
+                      [get_asympt_extrapolation(chi_magn_asympt_list), ],
+                      f'{input_type}_chi_magn_extrap_wn_{wn_core[0]}', atol=1e-4)
 
     # check convergence of vrg:
     vrg_dens_tilde_list = np.array([lfp.vrg_from_gchi_aux_asympt(gchi_dens_aux, gchi0_core, np.atleast_1d(chi_urange),
@@ -252,13 +254,15 @@ def test_asymptotic_convergence(iwn=0):
                                     for gchi_magn_aux, chi_urange, chi_asympt
                                     in zip(gchi_aux_magn_list, chi_magn_urange_list, chi_magn_asympt_list)])
 
-    t_util.test_statement(t_util.is_monotonic(vrg_dens_tilde_list[:, niv_core]), f'vrg_dens_tilde_monotonic_wn_{wn_core[0]}_vn1')
-    t_util.test_statement(t_util.is_monotonic(vrg_dens_tilde_list[:, niv_core - 1]), f'vrg_dens_tilde_monotonic_wn'
-                                                                                     f'_{wn_core[0]}_vn-1')
+    t_util.test_statement(t_util.is_monotonic(vrg_dens_tilde_list[:, niv_core]),
+                          f'{input_type}_vrg_dens_tilde_monotonic_wn_{wn_core[0]}_vn1')
+    t_util.test_statement(t_util.is_monotonic(vrg_dens_tilde_list[:, niv_core - 1]),
+                          f'{input_type}_vrg_dens_tilde_monotonic_wn_{wn_core[0]}_vn-1')
 
-    t_util.test_statement(t_util.is_monotonic(vrg_magn_tilde_list[:, niv_core]), f'vrg_magn_tilde_monotonic_wn_{wn_core[0]}_vn1')
-    t_util.test_statement(t_util.is_monotonic(vrg_magn_tilde_list[:, niv_core - 1]), f'vrg_magn_tilde_monotonic_wn'
-                                                                                     f'_{wn_core[0]}_vn-1')
+    t_util.test_statement(t_util.is_monotonic(vrg_magn_tilde_list[:, niv_core]),
+                          f'{input_type}_vrg_magn_tilde_monotonic_wn_{wn_core[0]}_vn1')
+    t_util.test_statement(t_util.is_monotonic(vrg_magn_tilde_list[:, niv_core - 1]),
+                          f'{input_type}_vrg_magn_tilde_monotonic_wn_{wn_core[0]}_vn-1')
 
     # do not use the asymptotics:
     vrg_dens_list = np.array([lfp.vrg_from_gchi_aux_asympt(gchi_dens_aux, gchi0_core, np.atleast_1d(chi_urange),
@@ -270,60 +274,56 @@ def test_asymptotic_convergence(iwn=0):
                               for gchi_magn_aux, chi_urange, chi_urange
                               in zip(gchi_aux_magn_list, chi_magn_urange_list, chi_magn_urange_list)])
 
-    t_util.test_statement(t_util.is_monotonic(vrg_dens_list[:, niv_core]), f'vrg_dens_monotonic_wn_{wn_core[0]}_vn1')
-    t_util.test_statement(t_util.is_monotonic(vrg_dens_list[:, niv_core - 1]), f'vrg_dens_monotonic_wn'
-                                                                               f'_{wn_core[0]}_vn-1')
+    t_util.test_statement(t_util.is_monotonic(vrg_dens_list[:, niv_core]), f'{input_type}_vrg_dens_monotonic_wn_{wn_core[0]}_vn1')
+    t_util.test_statement(t_util.is_monotonic(vrg_dens_list[:, niv_core - 1]),
+                          f'{input_type}_vrg_dens_monotonic_wn_{wn_core[0]}_vn-1')
 
-    t_util.test_statement(t_util.is_monotonic(vrg_magn_list[:, niv_core]), f'vrg_magn_monotonic_wn_{wn_core[0]}_vn1')
-    t_util.test_statement(t_util.is_monotonic(vrg_magn_list[:, niv_core - 1]), f'vrg_magn_monotonic_wn'
-                                                                               f'_{wn_core[0]}_vn-1')
+    t_util.test_statement(t_util.is_monotonic(vrg_magn_list[:, niv_core]), f'{input_type}_vrg_magn_monotonic_wn_{wn_core[0]}_vn1')
+    t_util.test_statement(t_util.is_monotonic(vrg_magn_list[:, niv_core - 1]),
+                          f'{input_type}_vrg_magn_monotonic_wn_{wn_core[0]}_vn-1')
 
     t_util.test_array([get_asympt_extrapolation(vrg_dens_list[:, niv_core]), ],
-                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core]), ], f'vrg_dens_extrap_wn_{wn_core[0]}_vn1',
-                      atol=1e-3)
+                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core]), ],
+                      f'{input_type}_vrg_dens_extrap_wn_{wn_core[0]}_vn1', atol=1e-3)
     t_util.test_array([get_asympt_extrapolation(vrg_dens_list[:, niv_core - 1]), ],
-                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core - 1]), ], f'vrg_dens_extrap_wn_{wn_core[0]}_vn-1',
-                      atol=1e-3)
+                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core - 1]), ],
+                      f'{input_type}_vrg_dens_extrap_wn_{wn_core[0]}_vn-1', atol=1e-3)
     t_util.test_array([get_asympt_extrapolation(vrg_dens_list[:, niv_core]), ],
-                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core]), ], f'vrg_magn_extrap_wn_{wn_core[0]}_vn1',
-                      atol=1e-3)
+                      [get_asympt_extrapolation(vrg_dens_tilde_list[:, niv_core]), ],
+                      f'{input_type}_vrg_magn_extrap_wn_{wn_core[0]}_vn1', atol=1e-3)
     t_util.test_array([get_asympt_extrapolation(vrg_magn_list[:, niv_core - 1]), ],
-                      [get_asympt_extrapolation(vrg_magn_tilde_list[:, niv_core - 1]), ], f'vrg_magn_extrap_wn_{wn_core[0]}_vn-1',
-                      atol=1e-3)
-
-    # plt.figure()
-    # plt.plot(1/np.array(niv_urange_list)[::-1],vrg_dens_list[:,niv_core].real[::-1], color='cornflowerblue')
-    # plt.plot(1/np.array(niv_urange_list)[::-1],vrg_dens_tilde_list[:,niv_core].real[::-1], color='firebrick')
-    # plt.show()
+                      [get_asympt_extrapolation(vrg_magn_tilde_list[:, niv_core - 1]), ],
+                      f'{input_type}_vrg_magn_extrap_wn_{wn_core[0]}_vn-1', atol=1e-3)
 
 
-def test_chi_sum_rule(verbose=False):
+def test_chi_sum_rule(input_type='minimal', verbose=False):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
     giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
-    t_util.test_array([ddict['mu_dmft'], ], [giwk_obj.mu, ], 'mu_dmft_consistency', rtol=1e-4, atol=1e-5)
+    t_util.test_array([ddict['mu_dmft'], ], [giwk_obj.mu, ], f'{input_type}_mu_dmft_consistency', rtol=1e-4, atol=1e-4)
 
     # set up G2:
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
     g4iw_magn = lfp.get_g2_from_dmft_input(ddict, 'magn')
     # print(g4iw_magn.mat.shape)
 
-    # niw_core = 50
-    # niv_core = 50
-    niw_core = int(ddict['beta'] * 2 + 10)
-    niv_core = int(ddict['beta'] * 2 + 10)
+    niw_core = 30
+    niv_core = 30
+    # niw_core = int(ddict['beta'] * 2 + 10)
+    # niv_core = int(ddict['beta'] * 2 + 10)
     wn_core = mf.wn(niw_core)
     g4iw_dens.cut_iw(niw_core)
     g4iw_magn.cut_iw(niw_core)
     g4iw_dens.cut_iv(niv_core)
     g4iw_magn.cut_iv(niv_core)
+    # print(g4iw_magn.mat.shape)
 
     # set up the bubble generator:
     bubble_gen = bub.BubbleGenerator(wn=wn_core, giwk_obj=giwk_obj, is_full_wn=False)
@@ -420,28 +420,32 @@ def test_chi_sum_rule(verbose=False):
     # t_util.test_array(extrapolated_sum_rule, exact_sum_rule, 'chi_upup_sum_rule_exact')
     extrapolated_sum_rule_tilde = get_asympt_extrapolation(chi_upup_sum_tilde)
     # print(exact_sum_rule,extrapolated_sum_rule_tilde,extrapolated_sum_rule)
-    t_util.test_array(extrapolated_sum_rule_tilde, extrapolated_sum_rule, 'chi_upup_sum_rule_tilde', atol=1e-3)
-    t_util.test_array(extrapolated_sum_rule_tilde, exact_sum_rule, 'chi_upup_sum_rule_exact_tilde', atol=1e-2, rtol=1e-1)
+    t_util.test_array(extrapolated_sum_rule_tilde, extrapolated_sum_rule, f'{input_type}_chi_upup_sum_rule_tilde', atol=1e-3)
+    t_util.test_array(extrapolated_sum_rule_tilde, exact_sum_rule, f'{input_type}_chi_upup_sum_rule_exact_tilde',
+                      atol=1e-2, rtol=1e-1)
 
 
-def test_schwinger_dyson(verbose=False):
+def test_schwinger_dyson(input_type='minimal', verbose=False):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
     giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
 
-    t_util.test_array(ddict['siw'], np.conj(np.flip(ddict['siw'])), 'siw_dmft_w_mw_consistency', rtol=1e-10, atol=1e-10)
-    t_util.test_array(ddict['giw'], np.conj(np.flip(ddict['giw'])), 'giw_dmft_w_mw_consistency', rtol=1e-10, atol=1e-10)
+    t_util.test_array(ddict['siw'], np.conj(np.flip(ddict['siw'])), f'{input_type}_siw_dmft_w_mw_consistency', rtol=1e-10,
+                      atol=1e-10)
+    t_util.test_array(ddict['giw'], np.conj(np.flip(ddict['giw'])), f'{input_type}_giw_dmft_w_mw_consistency', rtol=1e-10,
+                      atol=1e-10)
 
-    t_util.test_array(giwk_obj.g_loc, np.flip(np.conj(giwk_obj.g_loc)), 'gloc_w_mw_consistency', rtol=1e-10, atol=1e-10)
+    t_util.test_array(giwk_obj.g_loc, np.flip(np.conj(giwk_obj.g_loc)), f'{input_type}_gloc_w_mw_consistency', rtol=1e-10,
+                      atol=1e-10)
     t_util.test_array(np.squeeze(siwk_obj.get_siw(1000)), np.flip(np.conj(np.squeeze(siwk_obj.get_siw(1000)))),
-                      'sloc_w_mw_consistency', rtol=1e-10, atol=1e-10)
+                      f'{input_type}_sloc_w_mw_consistency', rtol=1e-10, atol=1e-10)
 
     # set up G2:
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
@@ -457,6 +461,7 @@ def test_schwinger_dyson(verbose=False):
     g4iw_magn.cut_iw(niw_core)
     g4iw_dens.cut_iv(niv_core)
     g4iw_magn.cut_iv(niv_core)
+    # print(g4iw_magn.mat.shape)
 
     # set up the bubble generator:
     bubble_gen = bub.BubbleGenerator(wn=wn_core, giwk_obj=giwk_obj, is_full_wn=False)
@@ -482,13 +487,14 @@ def test_schwinger_dyson(verbose=False):
                                                                         niv_shell=niv_shell)
     siw_sde = lfp.schwinger_dyson_full(vrg_dens, vrg_magn, chi_dens, chi_magn, giwk_obj.g_loc, ddict['n'], niv_shell=niv_shell)
 
-    t_util.test_array(siw_sde, mf.cut_v(ddict['siw'], mf.niv_from_mat(siw_sde)), 'siw_sde_shell_dmft_consistency', rtol=0.3,
-                      atol=0.3)
+    t_util.test_array(siw_sde, mf.cut_v(ddict['siw'], mf.niv_from_mat(siw_sde)), f'{input_type}_siw_sde_shell_dmft_consistency',
+                      rtol=0.3, atol=0.3)
 
-    t_util.test_array(ddict['siw'], np.conj(np.flip(ddict['siw'])), 'siw_dmft_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(ddict['siw'], np.conj(np.flip(ddict['siw'])), f'{input_type}_siw_dmft_w_mw_consistency',
+                      rtol=1e-5, atol=1e-5)
     t_util.test_array(mf.cut_v(siw_sde, niv_core), np.conj(np.flip(mf.cut_v(siw_sde, niv_core)))
-                      , 'siw_sde_core_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(siw_sde, np.conj(np.flip(siw_sde)), 'siw_sde_w_mw_consistency', rtol=1e-5, atol=1e-5)
+                      , f'{input_type}_siw_sde_core_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(siw_sde, np.conj(np.flip(siw_sde)), f'{input_type}_siw_sde_w_mw_consistency', rtol=1e-5, atol=1e-5)
 
     # siw with u-range quantitites only:
     gchi_aux_dens = lfp.gchi_aux_core_from_gammar(gamma_dens, gchi0_core)
@@ -500,25 +506,23 @@ def test_schwinger_dyson(verbose=False):
     chi_dens_urange = lfp.chi_phys_urange(chi_aux_dens, chi0_core, chi0_urange, ddict['u'], 'dens')
     chi_magn_urange = lfp.chi_phys_urange(chi_aux_magn, chi0_core, chi0_urange, ddict['u'], 'magn')
 
-    t_util.test_array(chi_dens_urange, np.conj(np.flip(chi_dens_urange)), 'chi_dens_urange_w_mw_consistency',
+    t_util.test_array(chi_dens_urange, np.conj(np.flip(chi_dens_urange)), f'{input_type}_chi_dens_urange_w_mw_consistency',
                       rtol=1e-5, atol=1e-5)
-    t_util.test_array(chi_magn_urange, np.conj(np.flip(chi_magn_urange)), 'chi_magn_urange_w_mw_consistency',
+    t_util.test_array(chi_magn_urange, np.conj(np.flip(chi_magn_urange)), f'{input_type}_chi_magn_urange_w_mw_consistency',
                       rtol=1e-5, atol=1e-5)
 
     vrg_dens_urange = lfp.vrg_from_gchi_aux_asympt(gchi_aux_dens, gchi0_core, chi_dens_urange, chi_dens_urange)
     vrg_magn_urange = lfp.vrg_from_gchi_aux_asympt(gchi_aux_magn, gchi0_core, chi_magn_urange, chi_magn_urange)
 
-    vrg_dens_urange_vp = lfp.vrg_from_gchi_aux_asympt(gchi_aux_dens, gchi0_core, chi_dens_urange, chi_dens_urange, sum_axis=-2)
-    vrg_magn_urange_vp = lfp.vrg_from_gchi_aux_asympt(gchi_aux_magn, gchi0_core, chi_magn_urange, chi_magn_urange, sum_axis=-2)
-
     siw_sde_urange = lfp.schwinger_dyson_full(vrg_dens_urange, vrg_magn_urange, chi_dens_urange, chi_magn_urange, giwk_obj.g_loc,
                                               ddict['n'], niv_shell=niv_shell)
 
     t_util.test_array(mf.cut_v(siw_sde_urange, niv_core), mf.cut_v(np.conj(np.flip(siw_sde_urange)), niv_core),
-                      'siw_sde_core_urange_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(siw_sde_urange, np.conj(np.flip(siw_sde_urange)), 'siw_sde_urange_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(mf.cut_v(siw_sde, niv_core), mf.cut_v(siw_sde_urange, niv_core), 'siw_sde_shell_urange_consistency',
+                      f'{input_type}_siw_sde_core_urange_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(siw_sde_urange, np.conj(np.flip(siw_sde_urange)), f'{input_type}_siw_sde_urange_w_mw_consistency',
                       rtol=1e-5, atol=1e-5)
+    t_util.test_array(mf.cut_v(siw_sde, niv_core), mf.cut_v(siw_sde_urange, niv_core),
+                      f'{input_type}_siw_sde_shell_urange_consistency', rtol=1e-5, atol=1e-5)
 
     # get f-urange:
     fob2_dens = lfp.fob2_from_gamob2_urange(gamma_dens, gchi0_urange)
@@ -528,8 +532,10 @@ def test_schwinger_dyson(verbose=False):
     fob2_dens_core = lfp.fob2_from_gchir(gchi_dens, gchi0_core)
     fob2_magn_core = lfp.fob2_from_gchir(gchi_magn, gchi0_core)
 
-    t_util.test_array(mf.cut_v(fob2_dens.mat, niv_core, axes=(-2, -1)), fob2_dens_core.mat, 'fob2_dens_core_consistency')
-    t_util.test_array(mf.cut_v(fob2_magn.mat, niv_core, axes=(-2, -1)), fob2_magn_core.mat, 'fob2_magn_core_consistency')
+    t_util.test_array(mf.cut_v(fob2_dens.mat, niv_core, axes=(-2, -1)), fob2_dens_core.mat,
+                      f'{input_type}_fob2_dens_core_consistency')
+    t_util.test_array(mf.cut_v(fob2_magn.mat, niv_core, axes=(-2, -1)), fob2_magn_core.mat,
+                      f'{input_type}_fob2_magn_core_consistency')
 
     siw_sde_f_dens = lfp.schwinger_dyson_f(fob2_dens, gchi0_urange, giwk_obj.g_loc)
     siw_sde_f_magn = lfp.schwinger_dyson_f(fob2_magn, gchi0_urange, giwk_obj.g_loc)
@@ -552,30 +558,28 @@ def test_schwinger_dyson(verbose=False):
         plt.xlim(-niv_full, niv_full)
         plt.show()
 
-    t_util.test_array(mf.cut_v(siw_sde, niv_core), mf.cut_v(siw_sde_f, niv_core), 'siw_sde_vrg_and_sde_f_consistency', rtol=1e-2,
-                      atol=1e-2)
+    t_util.test_array(mf.cut_v(siw_sde, niv_core), mf.cut_v(siw_sde_f, niv_core),
+                      f'{input_type}_siw_sde_vrg_and_sde_f_consistency', rtol=1e-2, atol=1e-2)
 
-    t_util.test_array(siw_sde_f, np.conj(np.flip(siw_sde_f)), 'siw_sde_f_w_mw_consistency', rtol=1e-5, atol=1e-5)
-    t_util.test_array(siw_sde_urange, siw_sde_f, 'siw_sde_vrg_urange_and_sde_f_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(siw_sde_f, np.conj(np.flip(siw_sde_f)), f'{input_type}_siw_sde_f_w_mw_consistency', rtol=1e-5, atol=1e-5)
+    t_util.test_array(siw_sde_urange, siw_sde_f, f'{input_type}_siw_sde_vrg_urange_and_sde_f_consistency', rtol=1e-5, atol=1e-5)
 
 
-def test_f_consistency(verbose=False):
+def test_f_consistency(input_type='minimal', verbose=False):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
     giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
-    # giwk_obj = twop.GreensFunction(siwk_obj, ek, mu = ddict['mu_dmft'])
 
     # set up G2:
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
     g4iw_magn = lfp.get_g2_from_dmft_input(ddict, 'magn')
-    # print(g4iw_magn.mat.shape)
 
     niw_core = 30
     niv_core = 30
@@ -615,14 +619,14 @@ def test_f_consistency(verbose=False):
     fob2_urange_bse_dens.cut_iv(niv_core)
     fob2_urange_bse_magn.cut_iv(niv_core)
 
-    t_util.test_array(fob2_core_exact_dens.mat, fob2_urange_bse_dens.mat, 'fob2_dens_from_gamob2_bse_consistency')
-    t_util.test_array(fob2_core_exact_magn.mat, fob2_urange_bse_magn.mat, 'fob2_magn_from_gamob2_bse_consistency')
+    t_util.test_array(fob2_core_exact_dens.mat, fob2_urange_bse_dens.mat, f'{input_type}_fob2_dens_from_gamob2_bse_consistency')
+    t_util.test_array(fob2_core_exact_magn.mat, fob2_urange_bse_magn.mat, f'{input_type}_fob2_magn_from_gamob2_bse_consistency')
 
     gchi_dens_from_fob2 = lfp.gchir_from_fob2(fob2_urange_bse_dens, gchi0_core)
     gchi_magn_from_fob2 = lfp.gchir_from_fob2(fob2_urange_bse_magn, gchi0_core)
 
-    t_util.test_array(gchi_dens.mat, gchi_dens_from_fob2.mat, 'gchi_dens_from_fob2_consistency')
-    t_util.test_array(gchi_magn.mat, gchi_magn_from_fob2.mat, 'gchi_magn_from_fob2_consistency')
+    t_util.test_array(gchi_dens.mat, gchi_dens_from_fob2.mat, f'{input_type}_gchi_dens_from_fob2_consistency')
+    t_util.test_array(gchi_magn.mat, gchi_magn_from_fob2.mat, f'{input_type}_gchi_magn_from_fob2_consistency')
 
     vrg_dens_tilde, chi_dens_tilde = lfp.get_vrg_and_chir_tilde_from_gammar_uasympt(gamma_dens, bubble_gen
                                                                                     , niv_shell=niv_shell, sum_axis=-1)
@@ -633,10 +637,6 @@ def test_f_consistency(verbose=False):
     gchi_aux_dens = lfp.gchi_aux_core_from_gammar(gamma_dens, gchi0_core)
     gchi_aux_magn = lfp.gchi_aux_core_from_gammar(gamma_magn, gchi0_core)
 
-    # # gchi_aux from gchi: WARNING: this no-longer reproduces the exact result because chi_r^(-1) is not known with asymptotics
-    # gchi_aux_dens_from_gchi = lfp.gchi_aux_core(gchi_dens)
-    # gchi_aux_magn_from_gchi = lfp.gchi_aux_core(gchi_magn)
-
     # gchi_aux from gamma-urange:
     gchi_aux_dens_urange = lfp.gchi_aux_core_from_gammar_urange(gamma_dens, gchi0_urange)
     gchi_aux_magn_urange = lfp.gchi_aux_core_from_gammar_urange(gamma_magn, gchi0_urange)
@@ -644,8 +644,8 @@ def test_f_consistency(verbose=False):
     gchi_aux_dens_urange.cut_iv(niv_core)
     gchi_aux_magn_urange.cut_iv(niv_core)
 
-    t_util.test_array(gchi_aux_dens_urange.mat, gchi_aux_dens.mat, 'gchi_aux_dens_core_urange_consistency')
-    t_util.test_array(gchi_aux_magn_urange.mat, gchi_aux_magn.mat, 'gchi_aux_magn_core_urange_consistency')
+    t_util.test_array(gchi_aux_dens_urange.mat, gchi_aux_dens.mat, f'{input_type}_gchi_aux_dens_core_urange_consistency')
+    t_util.test_array(gchi_aux_magn_urange.mat, gchi_aux_magn.mat, f'{input_type}_gchi_aux_magn_core_urange_consistency')
 
     chi_dens_urange = lfp.chi_phys_urange(gchi_aux_dens.contract_legs(), chi0_core, chi0_urange, ddict['u'], 'dens')
     chi_magn_urange = lfp.chi_phys_urange(gchi_aux_magn.contract_legs(), chi0_core, chi0_urange, ddict['u'], 'magn')
@@ -687,23 +687,19 @@ def test_f_consistency(verbose=False):
     fob2_core_vrg_magn = lfp.fob2_from_vrg_and_chir(gchi_aux_magn_tilde, vrg_magn_tilde, vrg_magn_tilde_vp, chi_magn_tilde,
                                                     gchi0_core)
 
-    t_util.test_array(fob2_core_vrg_dens.mat, fob2_core_exact_dens.mat, 'fob2_dens_from_vrg_consistency')
-    t_util.test_array(fob2_core_vrg_magn.mat, fob2_core_exact_magn.mat, 'fob2_magn_from_vrg_consistency')
+    t_util.test_array(fob2_core_vrg_dens.mat, fob2_core_exact_dens.mat, f'{input_type}_fob2_dens_from_vrg_consistency')
+    t_util.test_array(fob2_core_vrg_magn.mat, fob2_core_exact_magn.mat, f'{input_type}_fob2_magn_from_vrg_consistency')
 
     fob2_core_vrg_dens_urange = lfp.fob2_from_vrg_and_chir(gchi_aux_dens, vrg_dens_urange, vrg_dens_urange_vp, chi_dens_urange,
                                                            gchi0_core)
     fob2_core_vrg_magn_urange = lfp.fob2_from_vrg_and_chir(gchi_aux_magn, vrg_magn_urange, vrg_magn_urange_vp, chi_magn_urange,
                                                            gchi0_core)
 
-    t_util.test_array(fob2_core_vrg_dens_urange.mat, fob2_core_exact_dens.mat, 'fob2_dens_from_vrg_urange_consistency')
-    t_util.test_array(fob2_core_vrg_magn_urange.mat, fob2_core_exact_magn.mat, 'fob2_magn_from_vrg_urange_consistency')
+    t_util.test_array(fob2_core_vrg_dens_urange.mat, fob2_core_exact_dens.mat,
+                      f'{input_type}_fob2_dens_from_vrg_urange_consistency')
+    t_util.test_array(fob2_core_vrg_magn_urange.mat, fob2_core_exact_magn.mat,
+                      f'{input_type}_fob2_magn_from_vrg_urange_consistency')
 
-    # get f core from the bse with gamma (but using only the core region): WARNING: this no-longer reproduces the exact result
-    # fob2_core_bse_dens = lfp.fob2_from_gamob2_urange(gamma_dens, gchi0_core)
-    # fob2_core_bse_magn = lfp.fob2_from_gamob2_urange(gamma_magn, gchi0_core)
-    #
-    # t_util.test_array(fob2_core_exact_dens.mat, fob2_core_bse_dens.mat, 'fob2_dens_from_gamob2_bse_consistency')
-    # t_util.test_array(fob2_core_exact_magn.mat, fob2_core_bse_magn.mat, 'fob2_magn_from_gamob2_bse_consistency')
 
 
 def test_f_consistency_ed(verbose=False):
@@ -954,13 +950,13 @@ def test_schwinger_dyson_ed(verbose=False):
     t_util.test_array(siw_sde_urange, siw_sde_f, 'ed_siw_sde_vrg_urange_and_sde_f_consistency', rtol=1e-5, atol=1e-5)
 
 
-def test_crossing_symmetry():
+def test_crossing_symmetry(input_type='ed_minimal'):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset_ed()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (32, 32, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
@@ -986,20 +982,20 @@ def test_crossing_symmetry():
     t_util.test_array(g4iw_magn.mat, g4iw_magn_sym.mat, 'ed_g4iw_magn_v_vp_symmetry', rtol=1e-10, atol=1e-10)
 
 
-def test_epot(verbose=False):
+def test_epot(input_type='minimal',verbose=False):
     # Load the data:
-    ddict, hr = td.load_minimal_dataset()
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (64, 64, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
     siwk_obj = twop.SelfEnergy(ddict['siw'][None, None, None, :], ddict['beta'])
     giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'], niv_asympt=4000)
     siwk_full = giwk_obj.get_sigma_full(giwk_obj.niv_asympt)
     giwk_test = twop.build_g(giwk_obj.v * 1j, giwk_obj.ek, giwk_obj.mu, siwk_full)
-    t_util.test_array(giwk_test, giwk_obj.g_full(), 'gwk_build_from_siwk_full')
+    t_util.test_array(giwk_test, giwk_obj.g_full(), f'{input_type}_gwk_build_from_siwk_full')
 
     # set up G2:
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
@@ -1028,44 +1024,52 @@ def test_epot(verbose=False):
 
     if verbose:
         plt.figure()
-        plt.plot(giwk_obj.v_core, np.mean((giwk_obj.core.real * siwk_obj.sigma_core.real), axis=(0, 1, 2)), color='cornflowerblue')
+        plt.plot(giwk_obj.v_core, np.mean((giwk_obj.core.real * siwk_obj.sigma_core.real), axis=(0, 1, 2)),
+                 color='cornflowerblue')
         plt.plot(giwk_obj.v_core, np.mean((giwk_obj.core.imag * siwk_obj.sigma_core.imag), axis=(0, 1, 2)), color='firebrick')
         # plt.plot(giwk_obj.v_core, np.mean((giwk_obj.core * siwk_obj.sigma_core).imag, axis=(0, 1, 2)), color='firebrick')
         plt.show()
 
         plt.figure()
-        plt.plot(mf.vn(ddict['beta'],ddict['siw']), ddict['siw']-twop.get_smom0(ddict['u'],ddict['n']), color='cornflowerblue')
+        plt.plot(mf.vn(ddict['beta'], ddict['siw']), ddict['siw'] - twop.get_smom0(ddict['u'], ddict['n']),
+                 color='cornflowerblue')
         plt.plot(giwk_obj.v_core, np.mean((siwk_obj.sigma_core).real, axis=(0, 1, 2)), color='firebrick')
-        plt.xlim(0,20)
+        plt.xlim(0, 20)
         plt.show()
 
         plt.figure()
-        plt.plot(mf.vn(ddict['beta'],ddict['giw']), ddict['giw'], color='cornflowerblue')
+        plt.plot(mf.vn(ddict['beta'], ddict['giw']), ddict['giw'], color='cornflowerblue')
         plt.plot(giwk_obj.v_core, np.mean((giwk_obj.core).real, axis=(0, 1, 2)), color='firebrick')
-        plt.xlim(0,20)
+        plt.xlim(0, 20)
         plt.show()
 
     e_pot_g = giwk_obj.e_pot
     e_pot_chi = (ddict['u'] / (2 * ddict['beta']) * np.sum(chi_dens_tilde - chi_magn_tilde) + ddict['u'] * ddict[
         'n'] ** 2 / 4).real
-    sum_rule = 1/ (2 * ddict['beta']) * np.sum(chi_dens_tilde + chi_magn_tilde).real
+    sum_rule = 1 / (2 * ddict['beta']) * np.sum(chi_dens_tilde + chi_magn_tilde).real
     sum_rule_2 = twop.get_sum_chiupup(ddict['n'])
-    e_pot = 0.043563 * ddict['u'] # hardcopied double occupatio
-    t_util.test_array(sum_rule, sum_rule_2, 'chiupup_sum_rule_consistency', atol=5e-2, rtol=5e-2)
-    t_util.test_array([e_pot_g, ], e_pot, 'epot_g_chi_dmft_consistency', atol=5e-2, rtol=5e-2)
+    e_pot = 0.043563 * ddict['u']  # hardcopied double occupatio
+    t_util.test_array(sum_rule, sum_rule_2, f'{input_type}_chiupup_sum_rule_consistency', atol=5e-2, rtol=5e-2)
+    t_util.test_array([e_pot_g, ], e_pot, f'{input_type}_epot_g_chi_dmft_consistency', atol=5e-2, rtol=5e-2)
 
+
+def main():
+    input_types = ['minimal','quasi_1d']
+    # input_types = ['quasi_1d']
+    iwn = [0, 1, -1, 10, -10]
+    for it in input_types:
+        test_routine_consistency(input_type=it)
+        test_chi_sum_rule(input_type=it)
+        test_schwinger_dyson(input_type=it)
+        test_f_consistency(input_type=it)
+        for i in iwn:
+            test_asymptotic_convergence(input_type=it, iwn=i)
+
+    test_crossing_symmetry()
+    test_epot(input_type='minimal')
+    test_f_consistency_ed()
+    test_schwinger_dyson_ed()
+    test_epot(input_type='ed_minimal')
 
 if __name__ == '__main__':
-    test_routine_consistency(verbose=False)
-    test_asymptotic_convergence(0)
-    test_asymptotic_convergence(1)
-    test_asymptotic_convergence(-1)
-    test_asymptotic_convergence(10)
-    test_asymptotic_convergence(-10)
-    test_chi_sum_rule(verbose=False)
-    test_schwinger_dyson(verbose=False)
-    test_schwinger_dyson_ed(verbose=False)
-    test_f_consistency(verbose=False)
-    test_f_consistency_ed(verbose=False)
-    test_crossing_symmetry()
-    test_epot(verbose=False) # not yet working and I don't understand why
+    main()

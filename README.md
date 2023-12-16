@@ -178,10 +178,10 @@ Run the test suite in the terminal. This will run the unit tests and linting.
 To run the unit tests, run
 
 ```
-. dga_test.sh 
+dga_test 
 ```
 
-in the root directory. This will run unit tests and linting which are also included in the gitlab CI.
+This will run unit tests and linting which are also included in the gitlab CI.
 
 #### End-to-end testing
 

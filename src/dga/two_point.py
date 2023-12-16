@@ -50,10 +50,15 @@ def fit_smom(iv=None, siwk=None):
     fitdata = s_loc[niv - n_freq_fit:]
 
     mom0 = np.mean(fitdata.real)
+    # asympt_fun = lambda mom0_fit: mom0_fit
+    # loss_fun = lambda mom0_fit: np.sum((fitdata.real - asympt_fun(mom0_fit).real) ** 2)
+    # mom0 = opt.minimize(loss_fun, x0=np.array((mom0,))).x[0]
     # There is a minus sign in Josef's corresponding code, but this complies with the output from w2dyn.
     mom1 = np.mean(
         fitdata.imag * iwfit.imag)
-
+    # asympt_fun = lambda mom1_fit: -1/iwfit * mom1_fit
+    # loss_fun = lambda mom1_fit: np.sum((fitdata.imag - asympt_fun(mom1_fit).imag) ** 2)
+    # mom1 = opt.minimize(loss_fun, x0=np.array((mom1,))).x[0]
     return mom0, mom1
 
 
@@ -329,7 +334,6 @@ class GreensFunction():
             self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=iv_mu_find, hk=ek, siwk=siwk_mu_find,
                                  beta=self.beta, smom0=sigma.smom0,
                                  tol=self.mu_tol)
-
         elif mu is not None:
             self._mu = mu
             niv_mu_find = self.sigma.niv_core #+ niv_asympt
@@ -337,7 +341,6 @@ class GreensFunction():
             siwk_mu_find = sigma.get_siw(niv_mu_find)
             self._n = get_fill(iv=iv_mu_find, hk=ek, siwk=siwk_mu_find, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek),
                                mu=mu)[0]
-            # self._n = get_fill_primitive(self.g_loc)
         else:
             raise ValueError('Either mu or n, but not both, must be supplied.')
 

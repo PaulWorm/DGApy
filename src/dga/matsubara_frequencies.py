@@ -173,6 +173,10 @@ def niv_from_mat(mat, axis=-1, pos=False):
         n = np.shape(mat)[axis] // 2
     return n
 
+def clip_pos_mf_vn(mat):
+    ''' assume that v is the last dimension '''
+    niv = niv_from_mat(mat,axis=-1)
+    return mat[...,niv:]
 
 # pylint: disable=function-redefined
 # pylint: disable=unexpected-keyword-arg

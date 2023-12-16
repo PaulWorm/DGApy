@@ -4,18 +4,8 @@ import dga.w2dyn_aux_dga as w2dyn_aux_dga
 import dga.wannier as wannier
 import h5py
 from dga import matsubara_frequencies as mf
+from dga import brillouin_zone as bz
 from dga import local_four_point as lfp
-
-# class InputDataFromDMFT():
-#     ''' Simple container that contains necessary input data.'''
-#     def __init__(self,giwk_obj,sigma,hr,mu,n,u,beta):
-#         self.sigma = sigma
-#         self.hr = hr
-#         self.mu = mu
-#         self.u = u
-#         self.beta = beta
-#         self.n = n
-#         self.giwk_obj = giwk_obj
 
 CURRDIR = os.path.split(__file__)[0]
 PATH_FOR_TEST_HR_HK = os.path.dirname(__file__) + '/../../tests/TestHRAndHkFiles/'
@@ -139,6 +129,15 @@ def load_minimal_dataset():
     path = '/../../tests/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
     path = os.path.dirname(__file__) + path
     dmft_data = np.load(path + 'minimal_dataset.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.two_dimensional_square_symmetries()
+    hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
+    return dmft_data, hr
+
+def load_quasi_1d_dataset():
+    path = '/../../tests/LaSr2NiO3_beta80_n0.85/'
+    path = os.path.dirname(__file__) + path
+    dmft_data = np.load(path + 'quasi_1d_dataset.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.simultaneous_x_y_inversion()
     hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
     return dmft_data, hr
 
@@ -146,6 +145,7 @@ def load_minimal_dataset_ed():
     path = '/../../tests/2DSquare_U8_tp-0.2_tpp0.1_beta12.5_n0.90/'
     path = os.path.dirname(__file__) + path
     dmft_data = np.load(path + 'minimal_dataset_ed_fermion.npy',allow_pickle=True).item()
+    dmft_data['sym'] = bz.two_dimensional_square_symmetries()
     hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
     return dmft_data, hr
 
@@ -162,3 +162,14 @@ def load_minimal_eliashberg_input():
     dmft_data = np.load(path + 'eliashberg_input.npy',allow_pickle=True).item()
     hr = wannier.create_wannier_hr_from_file(path + 'wannier_hr.dat')
     return dmft_data, hr
+
+def load_testdataset(input_type='minimal'):
+    if input_type == 'minimal':
+        ddict, hr = load_minimal_dataset()
+    elif input_type == 'ed_minimal':
+        ddict, hr = load_minimal_dataset_ed()
+    elif input_type == 'quasi_1d':
+        ddict, hr = load_quasi_1d_dataset()
+    else:
+        raise ValueError(f'Unknown input type: {input_type}')
+    return ddict, hr

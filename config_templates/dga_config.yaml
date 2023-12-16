@@ -7,7 +7,9 @@ box_sizes:
 
 # Specify the lattice: [mandatory]
 lattice:
-  symmetries: "two_dimensional_square" # Specify lattice symmetries. Available: [two_dimensional_square]
+  symmetries: "two_dimensional_square" # Specify lattice symmetries. Either list of symmetries or string
+  # Implemented symmetries: ['x-inv', 'y-inv', 'z-inv', 'x-y-sym', 'x-y-inv']
+  # Available: [two_dimensional_square, simultaneous_x_y_inversion]
   type: "from_wannier90" # Specify type of lattice ['t_tp_tpp', 'from_wannier90']
   hr_input: "wannier_hr.dat" # tight-binding parameters as list or string for the filename (plus path) of the hr file that should
   #be loaded.
@@ -21,7 +23,7 @@ dga:
 
 # Specify dmft input:
 dmft_input:
-  type: "w2dyn"     # Input format; available: w2dyn, EDFermion
+  type: "w2dyn"     # Input format; available: w2dyn, EDFermion, default
   input_path: "./"        # Location of the files; default: "./"
   fname_1p: '1p-data.hdf5' # Name of the one-particle DMFT calculation; default: 1p-data.hdf5
   fname_2p: 'g4iw_sym.hdf5' # Name of the two-particle DMFT calculation; default: g4iw_sym.hdf5
