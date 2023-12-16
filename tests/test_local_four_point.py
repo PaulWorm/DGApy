@@ -452,10 +452,8 @@ def test_schwinger_dyson(input_type='minimal', verbose=False):
     g4iw_magn = lfp.get_g2_from_dmft_input(ddict, 'magn')
     # print(g4iw_magn.mat.shape)
 
-    niw_core = 50
-    niv_core = 50
-    # niw_core = int(ddict['beta'] * 2 + 10)
-    # niv_core = int(ddict['beta'] * 2 + 10)
+    niw_core = 30
+    niv_core = 30
     wn_core = mf.wn(niw_core)
     g4iw_dens.cut_iw(niw_core)
     g4iw_magn.cut_iw(niw_core)
@@ -837,8 +835,8 @@ def test_schwinger_dyson_ed(verbose=False):
     g4iw_dens = lfp.get_g2_from_dmft_input(ddict, 'dens')
     g4iw_magn = lfp.get_g2_from_dmft_input(ddict, 'magn')
 
-    niw_core = 50
-    niv_core = 50
+    niw_core = 30
+    niv_core = 30
     wn_core = mf.wn(niw_core)
     g4iw_dens.cut_iw(niw_core)
     g4iw_magn.cut_iw(niw_core)
