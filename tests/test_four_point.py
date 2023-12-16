@@ -16,16 +16,11 @@ def test_consistency_with_local_routines(verbose=False, input_type='ed'):
         Test the consistency of the local routines with the non-local routines.
     '''
     # load the data:
-    if input_type == 'ed':
-        ddict, hr = td.load_minimal_dataset_ed()
-    elif input_type == 'w2dyn':
-        ddict, hr = td.load_minimal_dataset()
-    else:
-        raise ValueError(f'input_type = {input_type} not recognized.')
+    ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
     nk = (6, 6, 1)
-    sym = bz.two_dimensional_square_symmetries()
+    sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     q_list = k_grid.get_irrq_list()
     ek = hr.get_ek(k_grid) * 0  # flat dispersion -> local green's function in each k-point
@@ -46,8 +41,8 @@ def test_consistency_with_local_routines(verbose=False, input_type='ed'):
     g4iw_dens.symmetrize_v_vp()
     g4iw_magn.symmetrize_v_vp()
 
-    niw_core = int(ddict['beta'] * 2 + 10)
-    niv_core = int(ddict['beta'] * 2 + 10)
+    niw_core = 30
+    niv_core = 30
     wn_core = mf.wn(niw_core)
     g4iw_dens.cut_iw(niw_core)
     g4iw_magn.cut_iw(niw_core)
@@ -254,7 +249,10 @@ def test_consistency_with_local_routines(verbose=False, input_type='ed'):
     # test consistency of fq_dens with the local fq_dens:
     t_util.test_array(fq_magn_loc, ddict['beta'] ** 2 * fob2_magn.mat, f'{input_type}_fq_magn_consistency', rtol=1e-5, atol=1e-5)
 
+def main():
+    input_types = ['ed_minimal', 'minimal', 'quasi_1d']
+    for input_type in input_types:
+        test_consistency_with_local_routines(verbose=False, input_type=input_type)
 
 if __name__ == '__main__':
-    test_consistency_with_local_routines(verbose=False, input_type='ed')
-    test_consistency_with_local_routines(verbose=False, input_type='w2dyn')
+    main()
