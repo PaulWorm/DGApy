@@ -145,9 +145,6 @@ def main():
     test_on_basic_matrix()
     test_on_random_matrix()
     input_types = ['minimal', 'high_temperature', 'quasi_1d']
-    # input_types = ['minimal', 'quasi_1d']
-    # input_types = ['quasi_1d']
-    # input_types = ['quasi_1d']
     for input_type in input_types:
         test_eliashberg(input_type)
 

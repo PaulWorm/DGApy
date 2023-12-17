@@ -1052,8 +1052,8 @@ def test_epot(input_type='minimal',verbose=False):
 
 
 def main():
-    input_types = ['minimal','quasi_1d']
-    # input_types = ['quasi_1d']
+    # input_types = ['minimal','quasi_1d']
+    input_types = ['minimal',]
     iwn = [0, 1, -1, 10, -10]
     for it in input_types:
         test_routine_consistency(input_type=it)

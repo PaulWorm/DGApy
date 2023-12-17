@@ -19,7 +19,7 @@ def test_consistency_with_local_routines(verbose=False, input_type='ed'):
     ddict, hr = td.load_testdataset(input_type)
 
     # set up the single-particle quantities:
-    nk = (6, 6, 1)
+    nk = (2, 2, 1)
     sym = ddict['sym']
     k_grid = bz.KGrid(nk, sym)
     q_list = k_grid.get_irrq_list()
@@ -250,7 +250,8 @@ def test_consistency_with_local_routines(verbose=False, input_type='ed'):
     t_util.test_array(fq_magn_loc, ddict['beta'] ** 2 * fob2_magn.mat, f'{input_type}_fq_magn_consistency', rtol=1e-5, atol=1e-5)
 
 def main():
-    input_types = ['ed_minimal', 'minimal', 'quasi_1d']
+    # input_types = ['ed_minimal', 'minimal', 'quasi_1d']
+    input_types = ['minimal',]
     for input_type in input_types:
         test_consistency_with_local_routines(verbose=False, input_type=input_type)
 

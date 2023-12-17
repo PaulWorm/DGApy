@@ -156,8 +156,14 @@ def linear_eliashberg(d_cfg: config.DgaConfig, giwk_obj: twop.GreensFunction, ch
                       shift_mat=True):
     gk_dga = mf.cut_v(giwk_obj.core, d_cfg.box.niv_pp, (-1,))
     norm = d_cfg.lattice.q_grid.nk_tot * d_cfg.sys.beta
-    gap0 = get_gap_start(shape=np.shape(gk_dga), k_type=d_cfg.eliash.gap0_sing['k'],
-                         v_type=d_cfg.eliash.gap0_sing['v'],
+    if channel == 'sing':
+        gap0_params = d_cfg.eliash.gap0_sing
+    elif channel == 'trip':
+        gap0_params = d_cfg.eliash.gap0_trip
+    else:
+        raise ValueError('Channel must be sing or trip')
+    gap0 = get_gap_start(shape=np.shape(gk_dga), k_type=gap0_params['k'],
+                         v_type=gap0_params['v'],
                          k_grid=d_cfg.lattice.q_grid.grid)
 
     gamma = -d_cfg.eliash.load_data(f'F_{channel}_pp')
