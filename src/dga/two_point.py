@@ -322,13 +322,13 @@ class GreensFunction():
     mu0 = 0
     mu_tol = 1e-6
 
-    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None, niv_asympt=2000):
+    def __init__(self, sigma: SelfEnergy, ek, mu=None, n=None, niv_asympt=2000, niv_shell_mu_find=0):
         self.sigma = sigma
         self.iv_core = 1j * mf.vn(sigma.beta, self.sigma.niv_core)
         self.ek = ek
         if n is not None:
             self._n = n
-            niv_mu_find = self.sigma.niv_core #+ niv_asympt
+            niv_mu_find = self.sigma.niv_core + niv_shell_mu_find
             iv_mu_find = 1j * mf.vn(sigma.beta, niv_mu_find)
             siwk_mu_find = sigma.get_siw(niv_mu_find)
             self._mu = update_mu(mu0=self.mu0, target_filling=self.n, iv=iv_mu_find, hk=ek, siwk=siwk_mu_find,
@@ -336,7 +336,7 @@ class GreensFunction():
                                  tol=self.mu_tol)
         elif mu is not None:
             self._mu = mu
-            niv_mu_find = self.sigma.niv_core #+ niv_asympt
+            niv_mu_find = self.sigma.niv_core + niv_shell_mu_find
             iv_mu_find = 1j * mf.vn(sigma.beta, niv_mu_find)
             siwk_mu_find = sigma.get_siw(niv_mu_find)
             self._n = get_fill(iv=iv_mu_find, hk=ek, siwk=siwk_mu_find, beta=self.beta, smom0=sigma.smom0, hloc=np.mean(ek),
