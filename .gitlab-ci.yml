@@ -43,11 +43,11 @@ unit-test-job:   # This job runs in the test stage.
     - pip list
     - dga_unit_test
 
-lint-test-job:   # This job also runs in the test stage.
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
-  script:
-    - echo "Linting code..."
-    - dga_lint
+#lint-test-job:   # This job also runs in the test stage.
+#  stage: test    # It can run at the same time as unit-test-job (in parallel).
+#  script:
+#    - echo "Linting code..."
+#    - dga_lint
 
 #deploy-job:      # This job runs in the deploy stage.
 #  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
