@@ -107,6 +107,8 @@ class ConfigBase():
         return None
 
 
+
+
 class OutputConfig(ConfigBase):
     '''
         Builds ontop of the ConfigBase class and adds a method for automatic generation of output folders
@@ -145,6 +147,11 @@ class OutputConfig(ConfigBase):
         fname = self.output_path + '/' + name + '.npy'
         if (os.path.isfile(fname)):
             os.remove(fname)
+
+    def to_yaml(self, name='config'):
+        with open(self.output_path + '/' + f'{name}.yaml', 'w') as outfile:
+            ddict = self.as_dict()
+            YAML().dump(ddict, outfile)
 
 
 class BoxSizes(ConfigBase):
@@ -381,18 +388,12 @@ class EliashbergConfig(OutputConfig):
         self.gap0_sing = None  # Initial guess for the singlet gap function
         self.gap0_trip = None  # Initial guess for the triplet gap function
         self.n_eig = 2  # Number of eigenvalues to be computed
-        self.k_sym = 'd-wave'  # k-symmetry of the gap function
+        self.k_sym = 'random'  # k-symmetry of the gap function
         self.sym_sing = True  # Symmetrize the singlet pairing vertex
         self.sym_trip = True  # symmetrize the triplet pairing vertex
+        self.eps = 1e-6
+        self.max_count = 10000
         if (config_dict is not None): self.update_dict(**config_dict)
-
-    @property
-    def k_sym(self):
-        return self._k_sym
-
-    @k_sym.setter
-    def k_sym(self, value):
-        self._k_sym = value
         self.set_gap0()
 
     def set_gap0(self):

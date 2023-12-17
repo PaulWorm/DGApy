@@ -183,3 +183,14 @@ def load_testdataset(input_type='minimal'):
     else:
         raise ValueError(f'Unknown input type: {input_type}')
     return ddict, hr
+
+def load_eliashberg_input(input_type='minimal'):
+    if input_type == 'minimal':
+        ddict, hr = load_minimal_eliashberg_input()
+    elif input_type == 'high_temperature':
+        ddict, hr = load_ht_eliashberg_input()
+    elif input_type == 'quasi_1d':
+        ddict, hr = load_quasi_1d_eliashberg_input()
+    else:
+        raise ValueError(f'Unknown input type: {input_type}')
+    return ddict, hr

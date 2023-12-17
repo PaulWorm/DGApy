@@ -6,6 +6,11 @@
 # -------------------------------------------- IMPORT MODULES ----------------------------------------------------------
 import numpy as np
 
+from dga import config
+from dga import matsubara_frequencies as mf
+from dga import two_point as twop
+from dga import local_four_point as lfp
+
 
 # ------------------------------------------------ CLASSES -------------------------------------------------------------
 
@@ -24,7 +29,7 @@ class EliashberPowerIteration():
         self.gk = gk
         self.gap0 = gap0
         self.shift_mat = shift_mat
-        self.n_eig = n_eig # should typicall not be larger than 2
+        self.n_eig = n_eig  # should typicall not be larger than 2
         self.gap = []
         self.lam = []
         self.lam_s = None
@@ -147,12 +152,27 @@ def p_wave_x(k_grid=None):
     return (np.sin(k_grid[0])[:, None, None] + 0 * np.sin(k_grid[1])[None, :, None])
 
 
-def linear_eliashberg(gamma=None, gk=None, eps=10 ** -6, max_count=10000, norm=1.0, gap0=None, shift_mat=True, n=1):
-    # Gamma has shape [nkx,nky,nkz,niv,niv]
-    powiter = EliashberPowerIteration(gamma=gamma, gk=gk, gap0=gap0, norm=norm, eps=eps, max_count=max_count, shift_mat=shift_mat,
-                                      n_eig=n)
+def linear_eliashberg(d_cfg: config.DgaConfig, giwk_obj: twop.GreensFunction, channel,
+                      shift_mat=True):
+    gk_dga = mf.cut_v(giwk_obj.core, d_cfg.box.niv_pp, (-1,))
+    norm = d_cfg.lattice.q_grid.nk_tot * d_cfg.sys.beta
+    gap0 = get_gap_start(shape=np.shape(gk_dga), k_type=d_cfg.eliash.gap0_sing['k'],
+                         v_type=d_cfg.eliash.gap0_sing['v'],
+                         k_grid=d_cfg.lattice.q_grid.grid)
 
-    return powiter.lam_s, powiter.lam_s, powiter.lam, powiter.gap
+    gamma = -d_cfg.eliash.load_data(f'F_{channel}_pp')
+    if d_cfg.eliash.sym_sing: gamma = symmetrize_gamma(gamma, channel)
+
+    if d_cfg.verbosity > 0:
+        gamma_sing_loc = d_cfg.lattice.q_grid.k_mean(gamma, 'fbz-mesh')
+        lfp.plot_fourpoint_nu_nup(gamma_sing_loc, pdir=d_cfg.eliash.output_path,
+                                                     name=f'Gamma_{channel}_pp_loc')
+
+    # Solve the linearized Eliashberg equation:
+    powiter = EliashberPowerIteration(gamma=gamma, gk=gk_dga, gap0=gap0, norm=norm, eps=d_cfg.eliash.eps,
+                                      max_count=d_cfg.eliash.max_count, shift_mat=shift_mat,
+                                      n_eig=d_cfg.eliash.n_eig)
+    return powiter
 
 
 # pylint: disable=superfluous-parens

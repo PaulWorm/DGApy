@@ -22,6 +22,7 @@ from dga import config
 from dga import analytic_continuation as a_cont
 from dga import matsubara_frequencies as mf
 from dga import dga_io
+from dga import local_four_point as lfp
 from dga import four_point as fp
 from dga import lambda_correction as lc
 from dga import two_point as twop
@@ -278,27 +279,11 @@ def main():
 
     # --------------------------------------------- ELIASHBERG ROUTINES ----------------------------------------------------------
     if comm.rank == 0 and d_cfg.eliash.do_eliash:
+
+        d_cfg.eliash.to_yaml('eliashberg_config')
         d_cfg.logger.log_cpu_time(task=' Starting Eliashberg ')
-        gk_dga = mf.cut_v(giwk_dga.core, d_cfg.box.niv_pp, (-1,))
-        norm = np.prod(d_cfg.lattice.q_grid.nk_tot) * d_cfg.sys.beta
-        gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=d_cfg.eliash.gap0_sing['k'],
-                                v_type=d_cfg.eliash.gap0_sing['v'],
-                                k_grid=d_cfg.lattice.q_grid.grid)
-
-        gamma_sing = -d_cfg.eliash.load_data('F_sing_pp')
-        # if d_cfg.eliash.sym_sing: gamma_sing = eq.symmetrize_gamma(gamma_sing, 'sing')
-        powiter_sing = eq.EliashberPowerIteration(gamma=gamma_sing, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
-                                                  n_eig=d_cfg.eliash.n_eig)
-
-        gap0 = eq.get_gap_start(shape=np.shape(gk_dga), k_type=d_cfg.eliash.gap0_trip['k'],
-                                v_type=d_cfg.eliash.gap0_trip['v'],
-                                k_grid=d_cfg.lattice.q_grid.grid)
-
-        gamma_trip = -d_cfg.eliash.load_data('F_trip_pp')
-        # if (d_cfg.eliash.sym_trip): gamma_trip = eq.symmetrize_gamma(gamma_sing, 'trip')
-        powiter_trip = eq.EliashberPowerIteration(gamma=gamma_trip, gk=gk_dga, gap0=gap0, norm=norm, shift_mat=True,
-                                                  n_eig=d_cfg.eliash.n_eig)
-
+        powiter_sing = eq.linear_eliashberg(d_cfg, giwk_dga, 'sing')
+        powiter_trip = eq.linear_eliashberg(d_cfg, giwk_dga, 'trip')
         eliashberg = {
             'lambda_sing': powiter_sing.lam,
             'lambda_trip': powiter_trip.lam,
@@ -312,22 +297,23 @@ def main():
         np.savetxt(d_cfg.eliash.output_path + 'eigenvalues_s.txt', [powiter_sing.lam_s.real, powiter_trip.lam_s.real],
                    delimiter=',', fmt='%.9f')
 
-        for i in range(len(powiter_sing.gap)):
+        for i in range(d_cfg.eliash.n_eig):
             kx, ky = d_cfg.lattice.k_grid.kx_shift, d_cfg.lattice.k_grid.ky_shift
             niv_pp = d_cfg.box.niv_pp
             data = d_cfg.lattice.k_grid.shift_mat_by_pi(powiter_sing.gap[i].real, axes=(0, 1))[:, :, 0,
                    niv_pp - 1:niv_pp + 1]
-            plotting.plot_gap_function_kx_ky(data, kx, ky, name='sing_{}'.format(i), pdir=d_cfg.eliash.output_path)
+            plotting.plot_gap_function_kx_ky(data, kx, ky, name=f'sing_{i}', pdir=d_cfg.eliash.output_path)
             data = d_cfg.lattice.k_grid.shift_mat_by_pi(powiter_trip.gap[i].real, axes=(0, 1))[:, :, 0,
                    niv_pp - 1:niv_pp + 1]
-            plotting.plot_gap_function_kx_ky(data, kx, ky, name='trip_{}'.format(i), pdir=d_cfg.eliash.output_path)
+            plotting.plot_gap_function_kx_ky(data, kx, ky, name=f'trip_{i}', pdir=d_cfg.eliash.output_path)
             d_cfg.logger.log_event('Eliashberg completed!')
-            if not d_cfg.keep_pairing_vertex:
-                d_cfg.eliash.clean_data('F_sing_pp')
-                d_cfg.eliash.clean_data('F_trip_pp')
+        if not d_cfg.keep_pairing_vertex:
+            d_cfg.eliash.clean_data('F_sing_pp')
+            d_cfg.eliash.clean_data('F_trip_pp')
 
     # --------------------------------------------- OPTICAL CONDUCTIVITY------------------------------------------------------
     if comm.rank == 0 and 'optics' in conf_file:
+        d_cfg.optics.to_yaml('optics_config')
         chijj_bubble = None
         chijj_vert = None
 

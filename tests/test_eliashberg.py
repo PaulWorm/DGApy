@@ -75,26 +75,33 @@ def test_on_random_matrix():
     t_util.test_array(eliashberg_solver.lam, eig_sort[::-1][:n_eig].real, 'random_matrix', rtol=eps, atol=eps)
 
 
-def test_ht(input_type='ht'):
+def test_eliashberg(input_type='minimal'):
     # load the input:
-    if input_type == 'ht':
-        ddict, hr = td.load_ht_eliashberg_input()
-    elif input_type == 'minimal':
-        ddict, hr = td.load_minimal_eliashberg_input()
+    ddict, hr = td.load_eliashberg_input(input_type)
+    # dmft_input, _ = td.load_testdataset(input_type)
+    if(input_type == 'quasi_1d'):
+        rtol, atol = 1e-2, 1e-2
+        rtol_s, atol_s = 1e-1, 1e-1
     else:
-        raise ValueError(f'input_type={input_type} not known')
+        rtol, atol = 1e-3, 1e-3
+        rtol_s, atol_s = 1e-6, 1e-6
     niv_pp = ddict['f_sing_pp'].shape[-1] // 2
 
     # Create the DGA Green's function:
     siwk_obj = twop.SelfEnergy(ddict['siwk_dga'], ddict['beta'])
     # Create the hr object:
     nk = np.shape(siwk_obj.sigma_core)[:-1]
-    k_grid = bz.KGrid(nk, bz.two_dimensional_square_symmetries())
+    sym = ddict['sym']
+    k_grid = bz.KGrid(nk, sym)
     ek = hr.get_ek(k_grid)
+    # siwk_dmft = twop.SelfEnergy(dmft_input['siw'], dmft_input['beta'])
+    # siwk_obj = twop.create_dga_siwk_with_dmft_as_asympt(ddict['siwk_dga'], siwk_dmft, 100)
     giwk_obj = twop.GreensFunction(siwk_obj, ek, n=ddict['n'])
 
     # Cut the Green's function to the right size:
     gk_dga = mf.cut_v(giwk_obj.core, niv_pp, (-1,))
+    print(f'Giwk-DGA mu: {giwk_obj.mu}')
+    print(f'Giwk-DGA n: {giwk_obj.n}')
 
     # Define the norm for the power iteration:
     norm = k_grid.nk_tot * ddict['beta']
@@ -114,7 +121,7 @@ def test_ht(input_type='ht'):
         # Obtain the eigenvalues and eigenvectors with numpy:
         matrix_full = build_matrix_kkp(gamma)
         gk_dga_mk = np.flip(gk_dga, axis=(-1))
-        bz.apply_symmetries(gk_dga_mk,['x-inv','y-inv'])
+        bz.apply_symmetries(gk_dga_mk, ['x-inv', 'y-inv'])
         t_util.test_array(np.abs(gk_dga) ** 2, gk_dga * gk_dga_mk, f'{input_type}_|gk|^2_consistent_with_gkgmk')
 
         mat_gg = matrix_full * np.abs(gk_dga[None, None, None, None, :, :, :, :]) ** 2
@@ -122,16 +129,28 @@ def test_ht(input_type='ht'):
         eig_val, eig_vec = np.linalg.eig(mat_gg)
         sort_ind = np.argsort(eig_val.real)
         eig_val_sort = eig_val[sort_ind].real
-
-        if powiter.lam_s != 0: # check only if lam_s is not zero
-            t_util.test_array([powiter.lam_s.real, ], eig_val_sort[0], f'{input_type}_eig_val_s_{channel}', rtol=1e-6, atol=1e-6)
-        t_util.test_array(powiter.lam.real, eig_val_sort[-n_eig:][::-1], f'{input_type}_eig_val_{channel}', rtol=1e-3, atol=1e-3)
+        print(f'Eigenvalues: {eig_val_sort[-n_eig:][::-1]}')
+        print(f'Eigenvalues pow-iter: {powiter.lam}')
+        if powiter.lam_s != 0:  # check only if lam_s is not zero
+            t_util.test_array([powiter.lam_s.real, ], eig_val_sort[0], f'{input_type}_eig_val_s_{channel}',
+                              rtol=rtol_s, atol=atol_s)
+        t_util.test_array(powiter.lam.real, eig_val_sort[-n_eig:][::-1], f'{input_type}_eig_val_{channel}',
+                          rtol=rtol, atol=atol)
 
     test_eigenvalues('sing')
     test_eigenvalues('trip')
 
-if __name__ == '__main__':
+
+def main():
     test_on_basic_matrix()
     test_on_random_matrix()
-    test_ht('ht')
-    test_ht('minimal')
+    input_types = ['minimal', 'high_temperature', 'quasi_1d']
+    # input_types = ['minimal', 'quasi_1d']
+    # input_types = ['quasi_1d']
+    # input_types = ['quasi_1d']
+    for input_type in input_types:
+        test_eliashberg(input_type)
+
+
+if __name__ == '__main__':
+    main()
