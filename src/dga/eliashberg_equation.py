@@ -167,7 +167,10 @@ def linear_eliashberg(d_cfg: config.DgaConfig, giwk_obj: twop.GreensFunction, ch
                          k_grid=d_cfg.lattice.q_grid.grid)
 
     gamma = -d_cfg.eliash.load_data(f'F_{channel}_pp')
-    if d_cfg.eliash.sym_sing: gamma = symmetrize_gamma(gamma, channel)
+    if channel == 'sing':
+        if d_cfg.eliash.sym_sing: gamma = symmetrize_gamma(gamma, channel)
+    if channel == 'trip':
+        if d_cfg.eliash.sym_trip: gamma = symmetrize_gamma(gamma, channel)
 
     if d_cfg.verbosity > 0:
         gamma_sing_loc = d_cfg.lattice.q_grid.k_mean(gamma, 'fbz-mesh')
