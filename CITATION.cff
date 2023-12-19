@@ -3,10 +3,7 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: Worm
     given-names: Paul
-    orcid: https://https://orcid.org/0000-0003-2575-5058
+orcid: https://https://orcid.org/0000-0003-2575-5058
 title: "DGApy"
 version: 2.1.0
-identifiers:
-  - type:
-    value:
 date-released: 2023-12-19
