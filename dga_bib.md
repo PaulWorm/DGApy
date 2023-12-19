@@ -1,3 +1,18 @@
+Bibfile for this code: 
+
+```
+@software{worm2023,
+  author       = {Worm, Paul},
+  title        = {DGApy},
+  month        = dec,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {dga},
+  doi          = {10.5281/zenodo.10406493},
+  url          = {https://doi.org/10.5281/zenodo.10406493}
+}
+```
+
 PhD thesis:
 
 ```

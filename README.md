@@ -3,6 +3,7 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/PaulWorm/DGApy/graphs/commit-activity)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit/)
 [![Documentation Status](https://readthedocs.org/projects/dgapy/badge/?version=latest)](https://dgapy.readthedocs.io/en/latest/)
+[![DOI](https://zenodo.org/badge/731899515.svg)](https://zenodo.org/doi/10.5281/zenodo.10406492)
 
 [//]: # ([![coverage]&#40;./coverage.svg&#41;]&#40;&#41;)
 
@@ -47,8 +48,8 @@ Relevant and related literature:
 - [Maximum entropy analytic continuation](https://www.sciencedirect.com/science/article/pii/S0010465522002387)
 - [DMFT impurity solver](https://www.sciencedirect.com/science/article/abs/pii/S0010465518303217?via%3Dihub)
 
-In case you use this code, please consider citing my thesis and the relevant papers. A bibtex file (dga_bib.md) containing all
-the references is included in the root directory for your convenience.
+In case you use this code, please cite it. Please also consider citing my thesis and the relevant papers. A bibtex file (dga_bib.
+md) containing all the references is included in the root directory for your convenience.
 
 ## Publications using DGApy
 
