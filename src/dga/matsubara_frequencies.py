@@ -15,6 +15,18 @@ KNOWN_FREQ_SHIFTS = ['plus', 'minus', 'center']
 
 
 def get_freq_shift(iwn, freq_notation):
+    ''' Get the frequency shift for the given frequency notation
+    Parameters
+    ----------
+    iwn
+    freq_notation
+
+    Returns
+    -------
+    iws
+    iws2
+
+    '''
     if freq_notation == 'plus':  # chi_0[w,v] = - beta G(v) * G(v+w)
         iws, iws2 = 0, iwn
     elif freq_notation == 'minus':  # chi_0[w,v] = - beta G(v) * G(v-w)
