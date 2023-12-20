@@ -18,6 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "DGApy"
+copyright = "Paul Worm"
 author = "Paul Worm"
 
 

@@ -55,7 +55,10 @@ def append_v_vp_shell(mat, val, niv_shell=0):
 
 # pylint: disable=unexpected-keyword-arg
 def w_to_vmvp(mat):
-    ''' Transform w -> v-vp '''
+    ''' Transform w -> v-vp
+
+        :param mat: matrix with last two dimensions v and vp
+    '''
     niw = np.shape(mat)[0] // 2
     niv = niw // 2
     mat_new = np.zeros((2 * niv, 2 * niv) + np.shape(mat)[1:], dtype=mat.dtype)

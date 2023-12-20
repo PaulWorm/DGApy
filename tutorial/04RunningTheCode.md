@@ -79,4 +79,11 @@ dga_main
 This will create an output folder that starts with LDGA_{...}. Within that folder several plots and the output files are 
 dumped. The output should (for the most part) be self-explanatory (hopefully).
 
+To run the code with mpi support use: 
+
+```
+mpiexec -np <number of tasks> dga_main 
+```
+
+where <number of tasks> is the number of mpi tasks you want to use.
 In the next tutorial (PostProcessing.ipynb) we will take a look at the output files. 
