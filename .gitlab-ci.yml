@@ -16,9 +16,6 @@
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
-variables:
-  GITLAB_API_PRIVATE_TOKEN: "$CI_JOB_TOKEN"
-
 image: dhna/mpi4py
 
 stages:          # List of stages for jobs, and their order of execution

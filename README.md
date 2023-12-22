@@ -1,12 +1,13 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
-[![pipeline status](https://gitlab.com/PWorm/dga/badges/main/pipeline.svg)](https://gitlab.com/PWorm/dga/-/commits/main)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/PaulWorm/DGApy/graphs/commit-activity)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit/)
 [![Documentation Status](https://readthedocs.org/projects/dgapy/badge/?version=latest)](https://dgapy.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/731899515.svg)](https://zenodo.org/doi/10.5281/zenodo.10406492)
 
 [//]: # ([![coverage]&#40;./coverage.svg&#41;]&#40;&#41;)
+
+[//]: # ([![pipeline status]&#40;https://gitlab.com/PWorm/dga/badges/main/pipeline.svg&#41;]&#40;https://gitlab.com/PWorm/dga/-/commits/main&#41;)
 
 [//]: # (<div id="top">top</div>)
 
