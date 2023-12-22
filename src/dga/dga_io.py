@@ -229,7 +229,10 @@ def default_giwk_checks(d_cfg: config.DgaConfig, giwk_dga, sigma_dga):
         n_fs = np.shape(fs_ind)[0]
         fs_ind = fs_ind[:n_fs // 2]
 
-        fs_points = np.stack((d_cfg.lattice.k_grid.kx[fs_ind[:, 0]], d_cfg.lattice.k_grid.ky[fs_ind[:, 1]]), axis=1)
+        try:
+            fs_points = np.stack((d_cfg.lattice.k_grid.kx[fs_ind[:, 0]], d_cfg.lattice.k_grid.ky[fs_ind[:, 1]]), axis=1)
+        except IndexError:
+            fs_points = None
         plotting.plot_kx_ky(giwk_dga.g_full(pi_shift=True)[..., 0, giwk_dga.niv_full], d_cfg.lattice.k_grid.kx_shift,
                             d_cfg.lattice.k_grid.ky_shift,
                             pdir=d_cfg.pdir, name='Giwk_dga_kz0', scatter=fs_points)

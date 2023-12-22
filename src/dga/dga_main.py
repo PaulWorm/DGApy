@@ -270,9 +270,14 @@ def main():
     # --------------------------------------------- POSTPROCESSING ----------------------------------------------------------
 
     # ---------------------------------------------------- ENERGY -----------------------------------------------------------
-    # if comm.rank == 0: # not yet finished
-    #     e_kin_dga = giwk_dga.e_kin
-    #     e_kin_dmft = giwk_dmft.e_kin
+    if comm.rank == 0: # not yet finished
+        e_kin_dga = giwk_dga.e_kin
+        e_kin_dmft = giwk_dmft.e_kin
+        e_pot_dga = giwk_dga.e_pot
+        e_pot_dmft = giwk_dga.e_pot
+        np.savetxt(d_cfg.output_path + '/energies.txt', [[e_kin_dga, e_kin_dmft, e_pot_dga, e_pot_dmft]],
+                   header='kin-dga kin-dmft pot-dga pot-dmft', fmt='%.6f')
+
 
     # --------------------------------------------- POLY-FIT ----------------------------------------------------------------
     dga_io.dga_poly_fit(d_cfg, sigma_dga, giwk_dga)
