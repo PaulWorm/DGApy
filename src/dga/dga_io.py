@@ -242,9 +242,11 @@ def default_giwk_checks(d_cfg: config.DgaConfig, giwk_dga, sigma_dga):
                    fmt='%1.6f')
 
         # Plots along Fermi-Luttinger surface:
-        plotting.plot_along_ind(sigma_dga.get_siw(d_cfg.box.niv_full), fs_ind, pdir=d_cfg.pdir,
-                                niv_plot_min=0,
-                                niv_plot=20, name='Sigma_{dga}')
+        try:
+            plotting.plot_along_ind(sigma_dga.get_siw(d_cfg.box.niv_full), fs_ind, pdir=d_cfg.pdir,
+                                niv_plot_min=0,  niv_plot=20, name='Sigma_{dga}')
+        except IndexError:
+            pass
 
 
 def dga_poly_fit(d_cfg: config.DgaConfig, sigma_dga, giwk_dga):
